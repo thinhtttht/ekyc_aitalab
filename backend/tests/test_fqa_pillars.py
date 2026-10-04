@@ -1,0 +1,179 @@
+"""Unit tests cho 4 Tiêu chí Cốt lõi FQA và Cơ chế Kiểm soát Liên tục."""
+import os
+import sys
+import numpy as np
+import pytest
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
+import config as C
+from face_analyzer import FaceResult, quality_checks, check_continuous_face_quality
+
+
+def create_valid_face():
+    """Tạo đối tượng FaceResult đạt chuẩn toàn bộ tiêu chí FQA."""
+    return FaceResult(
+        face_count=1,
+        bbox=(0.2, 0.2, 0.8, 0.8),
+        center=(0.5, 0.5),
+        face_h=0.35,
+        yaw=0.0,
+        pitch=0.0,
+        roll=0.0,
+        fill=0.75,
+        oval_dist=0.6,
+        offset=(0.0, 0.0),
+        brightness=120.0,
+        brightness_mean=120.0,
+        brightness_std=30.0,
+        sharpness=80.0,
+        scale_ratio=0.60,
+        corners_inside=True,
+        glare_detected=False,
+        hand_occlusion=False,
+        mask_detected=False,
+        sunglasses_detected=False,
+        parts_status={
+            "left_eye": True,
+            "right_eye": True,
+            "nose": True,
+            "mouth": True,
+            "left_eyebrow": True,
+            "right_eyebrow": True,
+        },
+        occluded_part_name=None,
+        perspective_ratio=0.6,
+    )
+
+
+def test_fqa_valid_face():
+    face = create_valid_face()
+    checks, msg, sev = quality_checks(face)
+    assert all(checks.values())
+    assert sev == "ok"
+    assert "hợp lệ" in msg.lower()
+
+    cont_ok, cont_msg, cont_sev = check_continuous_face_quality(face, is_turning=False)
+    assert cont_ok is True
+    assert cont_sev == "ok"
+
+
+def test_pillar_1_framing_scale():
+    # Trường hợp 1: Quá xa (scale < 0.40)
+    face_far = create_valid_face()
+    face_far.scale_ratio = 0.35
+    checks, msg, sev = quality_checks(face_far)
+    assert checks["scale_ok"] is False
+    assert sev == "warn"
+    assert "lại gần" in msg.lower() or "khung oval" in msg.lower()
+
+    # Trường hợp 2: Quá gần (scale > 0.85)
+    face_close = create_valid_face()
+    face_close.scale_ratio = 0.90
+    checks, msg, sev = quality_checks(face_close)
+    assert checks["scale_ok"] is False
+    assert sev == "warn"
+    assert "ra xa" in msg.lower() or "khung oval" in msg.lower()
+
+    # Trường hợp 3: Bounding box tràn góc ra ngoài oval
+    face_outside = create_valid_face()
+    face_outside.corners_inside = False
+    checks, msg, sev = quality_checks(face_outside)
+    assert checks["inside_oval"] is False
+    assert sev == "warn"
+    assert "vào giữa" in msg.lower() or "khung oval" in msg.lower()
+
+
+def test_pillar_2_illumination():
+    # Quá tối (Mean < 40) -> Báo Đỏ
+    face_dark = create_valid_face()
+    face_dark.brightness_mean = 32.0
+    checks, msg, sev = quality_checks(face_dark)
+    assert checks["illumination_ok"] is False
+    assert sev == "error"
+    assert "tối" in msg.lower()
+
+    # Quá sáng (Mean > 210) -> Báo Đỏ
+    face_bright = create_valid_face()
+    face_bright.brightness_mean = 230.0
+    checks, msg, sev = quality_checks(face_bright)
+    assert checks["illumination_ok"] is False
+    assert sev == "error"
+    assert "sáng" in msg.lower()
+
+    # Ngược sáng / bệt màu (Std < 10) -> Báo Vàng
+    face_backlight = create_valid_face()
+    face_backlight.brightness_std = 8.0
+    checks, msg, sev = quality_checks(face_backlight)
+    assert checks["no_backlight"] is False
+    assert sev == "warn"
+    assert "ngược sáng" in msg.lower() or "chi tiết" in msg.lower()
+
+
+def test_pillar_3_sharpness():
+    # Độ sắc nét đã được bỏ chặn, luôn đạt chuẩn khi có khuôn mặt hợp lệ
+    face = create_valid_face()
+    face.sharpness = 20.0
+    checks, msg, sev = quality_checks(face)
+    assert checks["sharpness_ok"] is True
+
+
+def test_pillar_4_occlusion():
+    # Khẩu trang -> Báo Đỏ
+    face_mask = create_valid_face()
+    face_mask.mask_detected = True
+    checks, msg, sev = quality_checks(face_mask)
+    assert checks["no_mask"] is False
+    assert sev == "error"
+    assert "khẩu trang" in msg.lower()
+
+    # Kính râm đen -> Báo Đỏ
+    face_sunglasses = create_valid_face()
+    face_sunglasses.sunglasses_detected = True
+    checks, msg, sev = quality_checks(face_sunglasses)
+    assert checks["no_sunglasses"] is False
+    assert sev == "error"
+    assert "kính râm" in msg.lower() or "kính đen" in msg.lower()
+
+    # Kính lóa phản quang -> Báo Vàng
+    face_glare = create_valid_face()
+    face_glare.glare_detected = True
+    checks, msg, sev = quality_checks(face_glare)
+    assert checks["no_glare"] is False
+    assert sev == "warn"
+    assert "lóa kính" in msg.lower()
+
+    # Tay che mặt -> Báo Đỏ
+    face_hand = create_valid_face()
+    face_hand.hand_occlusion = True
+    checks, msg, sev = quality_checks(face_hand)
+    assert checks["no_hand_occlusion"] is False
+    assert sev == "error"
+    assert "bỏ tay" in msg.lower()
+
+    # Che mắt -> Báo Đỏ
+    face_eyes = create_valid_face()
+    face_eyes.parts_status["left_eye"] = False
+    face_eyes.occluded_part_name = "mắt trái"
+    checks, msg, sev = quality_checks(face_eyes)
+    assert checks["has_eyes"] is False
+    assert sev == "error"
+    assert "che khuất" in msg.lower()
+
+
+def test_continuous_quality_during_turning():
+    # Khi xoay đầu: cho phép độ nét thấp hơn (35 thay vì 60) và bỏ qua backlight
+    face_turn = create_valid_face()
+    face_turn.sharpness = 45.0
+    face_turn.brightness_std = 12.0
+    face_turn.yaw = 28.0
+
+    cont_ok, cont_msg, cont_sev = check_continuous_face_quality(face_turn, is_turning=True)
+    assert cont_ok is True
+
+    # Nhưng nếu đeo khẩu trang hoặc lấy tay che mặt khi xoay đầu -> Vẫn bị chặn ngay lập tức
+    face_turn.hand_occlusion = True
+    cont_ok, cont_msg, cont_sev = check_continuous_face_quality(face_turn, is_turning=True)
+    assert cont_ok is False
+    assert cont_sev == "error"
+    assert "bỏ tay" in cont_msg.lower()

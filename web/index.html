@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart-eKYC | Đăng Ký Sinh Trắc Học Khuôn Mặt</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- 1. TOP NAVBAR -->
+  <header class="navbar">
+    <div class="brand">
+      <div class="brand-logo">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/>
+          <path d="m9 12 2 2 4-4"/>
+        </svg>
+      </div>
+      <div class="brand-text">
+        <span class="brand-name">Smart-eKYC</span>
+        <span class="badge-poc">Sinh trắc học PoC</span>
+      </div>
+    </div>
+
+    <div class="nav-controls">
+      <!-- Dropdown chọn Camera -->
+      <div class="camera-select-box">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+        <select id="cameraSelect" title="Chọn thiết bị camera">
+          <option value="">Đang tìm thiết bị camera...</option>
+        </select>
+      </div>
+
+      <!-- Trạng thái kết nối Backend -->
+      <div id="backendStatus" class="status-chip online">
+        <span class="dot"></span>
+        <span class="status-label">AI Backend Sẵn sàng</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- 2. MAIN 3-COLUMN CONTENT -->
+  <main class="main-layout">
+
+    <!-- CỘT TRÁI: STEPPER TIẾN TRÌNH -->
+    <aside class="stepper-card">
+      <h3 class="panel-title">Quy trình Đăng ký</h3>
+      <p class="panel-subtitle">Hệ thống phòng thủ sinh trắc học đa tầng</p>
+
+      <div class="stepper-list">
+        <!-- BƯỚC 1 -->
+        <div class="step-item" id="step-camera_check">
+          <div class="step-indicator">
+            <span class="step-num">1</span>
+            <span class="step-check">✓</span>
+            <div class="step-tail"></div>
+          </div>
+          <div class="step-body">
+            <div class="step-heading">Kiểm tra Camera</div>
+            <div class="step-sub">Độ phân giải, không đóng băng</div>
+          </div>
+        </div>
+
+        <!-- BƯỚC 2 -->
+        <div class="step-item" id="step-face_quality">
+          <div class="step-indicator">
+            <span class="step-num">2</span>
+            <span class="step-check">✓</span>
+            <div class="step-tail"></div>
+          </div>
+          <div class="step-body">
+            <div class="step-heading">Chất lượng Khuôn mặt</div>
+            <div class="step-sub">Khung Oval chuẩn, FQA, không khẩu trang/kính</div>
+          </div>
+        </div>
+
+        <!-- BƯỚC 3 -->
+        <div class="step-item" id="step-liveness">
+          <div class="step-indicator">
+            <span class="step-num">3</span>
+            <span class="step-check">✓</span>
+            <div class="step-tail"></div>
+          </div>
+          <div class="step-body">
+            <div class="step-heading">Liveness Quay đầu</div>
+            <div class="step-sub">Thử thách xoay đầu Trái / Phải ngẫu nhiên</div>
+          </div>
+        </div>
+
+        <!-- BƯỚC 4 -->
+        <div class="step-item" id="step-zoom_in">
+          <div class="step-indicator">
+            <span class="step-num">4</span>
+            <span class="step-check">✓</span>
+            <div class="step-tail"></div>
+          </div>
+          <div class="step-body">
+            <div class="step-heading">Phóng to & Tiến gần</div>
+            <div class="step-sub">Khung Oval mở rộng, kiểm tra cự ly gần</div>
+          </div>
+        </div>
+
+        <!-- BƯỚC 5 -->
+        <div class="step-item" id="step-capture">
+          <div class="step-indicator">
+            <span class="step-num">5</span>
+            <span class="step-check">✓</span>
+          </div>
+          <div class="step-body">
+            <div class="step-heading">Hoàn tất Đăng ký</div>
+            <div class="step-sub">Tự động chụp chân dung HD đạt chuẩn</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="security-badge">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        <span>Anti-Spoofing & Active Liveness PoC</span>
+      </div>
+    </aside>
+
+    <!-- CỘT GIỮA: VIEWPORT CAMERA & KHUNG OVAL ĐỘNG -->
+    <section class="camera-center">
+      <div class="camera-viewport-box" id="viewportBox">
+
+        <!-- Video hiển thị luồng webcam -->
+        <video id="webcamVideo" autoplay playsinline muted></video>
+
+        <!-- Canvas vẽ lưới Biometric Mesh & Ngũ quan theo phong cách công nghệ cao -->
+        <canvas id="meshCanvas" width="480" height="600" class="mesh-overlay-canvas"></canvas>
+
+        <!-- 4 góc Corner Brackets công nghệ -->
+        <div class="corner-bracket corner-tl"></div>
+        <div class="corner-bracket corner-tr"></div>
+        <div class="corner-bracket corner-bl"></div>
+        <div class="corner-bracket corner-br"></div>
+
+        <!-- Overlay SVG: Mặt nạ ngoài oval + Viền Oval chuyển động + Vòng tiến độ + Mũi tên -->
+        <svg id="ovalSvg" class="oval-overlay-svg" viewBox="0 0 480 600" preserveAspectRatio="none">
+          <defs>
+            <mask id="ovalMask">
+              <rect x="0" y="0" width="480" height="600" fill="#ffffff" />
+              <ellipse id="svgMaskHole" cx="240" cy="282" rx="158" ry="216" fill="#000000" />
+            </mask>
+          </defs>
+
+          <!-- Vùng tối bên ngoài khung Oval (giúp người dùng tập trung) -->
+          <rect x="0" y="0" width="480" height="600" fill="rgba(15, 23, 42, 0.45)" mask="url(#ovalMask)" />
+
+          <!-- Viền Oval chính (đổi màu theo cyan / yellow / green / red) -->
+          <ellipse id="svgOvalBorder" cx="240" cy="282" rx="158" ry="216" class="oval-stroke cyan" />
+
+          <!-- Vòng tiến độ giữ yên chạy xung quanh viền Oval -->
+          <ellipse id="svgProgressBorder" cx="240" cy="282" rx="158" ry="216" class="oval-progress" />
+        </svg>
+
+        <!-- Mũi tên hướng dẫn quay đầu nổi bật ở trung tâm -->
+        <div id="turnArrowLeft" class="turn-arrow-badge arrow-left hidden">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="19" y1="12" x2="5" y2="12"></line>
+            <polyline points="12 19 5 12 12 5"></polyline>
+          </svg>
+          <span>QUAY SANG TRÁI</span>
+        </div>
+
+        <div id="turnArrowRight" class="turn-arrow-badge arrow-right hidden">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+            <polyline points="12 5 19 12 12 19"></polyline>
+          </svg>
+          <span>QUAY SANG PHẢI</span>
+        </div>
+
+        <!-- Huy hiệu thông số góc nhìn trên video -->
+        <div class="video-top-badges">
+          <div class="cam-metric-badge" id="badgeFpsRes">
+            <span>--×--</span>
+          </div>
+          <div class="cam-metric-badge" id="badgeHeadPose">
+            <span>Yaw: --°</span>
+            <span class="divider">•</span>
+            <span>Pitch: --°</span>
+          </div>
+        </div>
+
+        <!-- Thông báo lỗi khi camera không khả dụng -->
+        <div id="cameraErrorOverlay" class="camera-error-layer hidden">
+          <div class="error-icon">⚠️</div>
+          <h4 id="cameraErrorTitle">Không thể mở Camera</h4>
+          <p id="cameraErrorDesc">Vui lòng kiểm tra quyền truy cập hoặc chọn thiết bị khác.</p>
+          <button id="btnRetryCamera" class="btn-retry">Thử lại</button>
+        </div>
+
+        <!-- Pill thông báo hướng dẫn động ở đáy video -->
+        <div id="bottomPill" class="bottom-guidance-pill cyan">
+          Đang khởi động camera và hệ thống kiểm tra...
+        </div>
+      </div>
+
+      <!-- Thanh tiến độ giữ yên (Stability Hold Bar) -->
+      <div class="hold-progress-container" id="holdProgressContainer">
+        <div class="hold-progress-header">
+          <span id="holdLabel">🎯 Giữ yên khuôn mặt: 0%</span>
+        </div>
+        <div class="hold-progress-track">
+          <div id="holdProgressBar" class="hold-progress-fill"></div>
+        </div>
+      </div>
+
+      <!-- Nút điều khiển làm lại -->
+      <div class="camera-actions">
+        <button id="btnRestartSession" class="btn-action-outline">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+          Bắt đầu lại quy trình
+        </button>
+      </div>
+    </section>
+
+    <!-- CỘT PHẢI: REALTIME CHECKLIST KIỂM TRA ĐIỀU KIỆN -->
+    <aside class="checklist-card">
+      <h3 class="panel-title">Chỉ số Kiểm định Thời gian thực</h3>
+      <p class="panel-subtitle">Yêu cầu kỹ thuật theo bản đặc tả SRS</p>
+
+      <!-- NHÓM 1: THIẾT BỊ & LUỒNG VIDEO (CAMERA QUALITY) -->
+      <div class="check-group">
+        <div class="group-title">
+          <span>1. Chất lượng Thiết bị Camera</span>
+        </div>
+        <div class="check-row" id="chk-resolution">
+          <span class="chk-icon">⚪</span>
+          <span class="chk-label">Độ phân giải (≥ 640×480)</span>
+          <span class="chk-val" id="val-resolution">--</span>
+        </div>
+        <div class="check-row" id="chk-signal">
+          <span class="chk-icon">⚪</span>
+          <span class="chk-label">Tín hiệu camera (Không đen/treo)</span>
+          <span class="chk-val" id="val-signal">--</span>
+        </div>
+        <div class="check-row" id="chk-cam-bright">
+          <span class="chk-icon">⚪</span>
+          <span class="chk-label">Độ sáng khung hình (Đủ sáng)</span>
+          <span class="chk-val" id="val-cam-bright">--</span>
+        </div>
+        <div class="check-row" id="chk-cam-noise">
+          <span class="chk-icon">⚪</span>
+          <span class="chk-label">Độ nhiễu hạt (Chuẩn Immerkær)</span>
+          <span class="chk-val" id="val-cam-noise">--</span>
+        </div>
+      </div>
+
+      <!-- NHÓM 2: PHÒNG THỦ CHỐNG GIẢ MẠO SINH TRẮC (PASSIVE ANTI-SPOOFING / PAD) -->
+      <div class="check-group">
+        <div class="group-title">
+          <span>2. Chống Giả Mạo Ảnh & Video (PAD MiniFASNet)</span>
+        </div>
+        <div class="check-row" id="chk-anti-spoof-real">
+          <span class="chk-icon">⚪</span>
+          <span class="chk-label">Người thật MiniFASNet (≥ 60%)</span>
+          <span class="chk-val" id="val-anti-spoof-real">--</span>
+        </div>
+        <div class="check-row" id="chk-anti-print">
+          <span class="chk-icon">⚪</span>
+          <span class="chk-label">Chống ảnh in 2D (Printed Attack)</span>
+          <span class="chk-val" id="val-anti-print">--</span>
+        </div>
+        <div class="check-row" id="chk-anti-replay">
+          <span class="chk-icon">⚪</span>
+          <span class="chk-label">Chống màn hình / Video replay</span>
+          <span class="chk-val" id="val-anti-replay">--</span>
+        </div>
+        <div class="check-row" id="chk-3d-depth">
+          <span class="chk-icon">⚪</span>
+          <span class="chk-label">Độ sâu hình học 3D (3D Depth Liveness)</span>
+          <span class="chk-val" id="val-3d-depth">--</span>
+        </div>
+      </div>
+
+      <!-- NHÓM 3: CHẤT LƯỢNG KHUÔN MẶT (FQA - 4 TIÊU CHÍ CỐT LÕI) -->
+      <div class="check-group">
+        <div class="group-title">
+          <span>3. Đánh giá Khuôn mặt (FQA Chuẩn Hóa)</span>
+        </div>
+        <div class="check-row" id="chk-face-count">
+          <span class="chk-icon">⚪</span>
+          <span class="chk-label">Một người duy nhất trong khung</span>
+          <span class="chk-val" id="val-face-count">--</span>
+        </div>
+        <div class="check-row" id="chk-scale">
+          <span class="chk-icon">⚪</span>
+          <span class="chk-label">Tỷ lệ khung Oval (40% - 85%)</span>
+          <span class="chk-val" id="val-scale">--</span>
+        </div>
+        <div class="check-row" id="chk-inside-oval">
+          <span class="chk-icon">⚪</span>
+          <span class="chk-label">Lọt trọn 4 góc trong khung Oval</span>
+          <span class="chk-val" id="val-inside-oval">--</span>
+        </div>
+        <div class="check-row" id="chk-straight">
+          <span class="chk-icon">⚪</span>
+          <span class="chk-label">Nhìn thẳng vào ống kính</span>
+          <span class="chk-val" id="val-straight">--</span>
+        </div>
+        <div class="check-row" id="chk-face-bright">
+          <span class="chk-icon">⚪</span>
+          <span class="chk-label">Độ sáng khuôn mặt (40 - 210)</span>
+          <span class="chk-val" id="val-face-bright">--</span>
+        </div>
+        <div class="check-row" id="chk-backlight">
+          <span class="chk-icon">⚪</span>
+          <span class="chk-label">Không bị ngược sáng (Std ≥ 15)</span>
+          <span class="chk-val" id="val-backlight">--</span>
+        </div>
+        <div class="check-row" id="chk-mask">
+          <span class="chk-icon">⚪</span>
+          <span class="chk-label">Không đeo khẩu trang</span>
+          <span class="chk-val" id="val-mask">--</span>
+        </div>
+        <div class="check-row" id="chk-sunglasses">
+          <span class="chk-icon">⚪</span>
+          <span class="chk-label">Không đeo kính râm đen</span>
+          <span class="chk-val" id="val-sunglasses">--</span>
+        </div>
+        <div class="check-row" id="chk-glare">
+          <span class="chk-icon">⚪</span>
+          <span class="chk-label">Không bị lóa kính phản quang</span>
+          <span class="chk-val" id="val-glare">--</span>
+        </div>
+        <div class="check-row" id="chk-hand">
+          <span class="chk-icon">⚪</span>
+          <span class="chk-label">Không lấy tay che mặt</span>
+          <span class="chk-val" id="val-hand">--</span>
+        </div>
+        <div class="check-row" id="chk-eyes">
+          <span class="chk-icon">⚪</span>
+          <span class="chk-label">Đôi mắt (2 bên nhìn rõ)</span>
+          <span class="chk-val" id="val-eyes">--</span>
+        </div>
+        <div class="check-row" id="chk-nose">
+          <span class="chk-icon">⚪</span>
+          <span class="chk-label">Sống mũi & chóp mũi rõ</span>
+          <span class="chk-val" id="val-nose">--</span>
+        </div>
+        <div class="check-row" id="chk-mouth">
+          <span class="chk-icon">⚪</span>
+          <span class="chk-label">Khu vực miệng & môi rõ</span>
+          <span class="chk-val" id="val-mouth">--</span>
+        </div>
+        <div class="check-row" id="chk-eyebrows">
+          <span class="chk-icon">⚪</span>
+          <span class="chk-label">Chân mày 2 bên rõ ràng</span>
+          <span class="chk-val" id="val-eyebrows">--</span>
+        </div>
+      </div>
+
+      <!-- NHÓM 4: THỬ THÁCH SINH TRẮC HỌC -->
+      <div class="check-group">
+        <div class="group-title">
+          <span>4. Thử thách Sinh trắc (Liveness)</span>
+        </div>
+        <div class="check-row" id="chk-liveness-turn">
+          <span class="chk-icon">⚪</span>
+          <span class="chk-label">Quay đầu 3D (Trái / Phải ≥ 20°)</span>
+          <span class="chk-val" id="val-liveness-turn">Chờ</span>
+        </div>
+        <div class="check-row" id="chk-zoom">
+          <span class="chk-icon">⚪</span>
+          <span class="chk-label">Tiến gần (Tăng trưởng mặt ≥ 125%)</span>
+          <span class="chk-val" id="val-zoom">Chờ</span>
+        </div>
+      </div>
+    </aside>
+
+  </main>
+
+  <!-- MODAL TỔNG KẾT KHI HOÀN TẤT ĐĂNG KÝ (HD CAPTURE SUMMARY) -->
+  <div id="summaryModal" class="modal-backdrop hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-icon-success">✓</div>
+        <h3>Đăng Ký Khuôn Mặt Thành Công!</h3>
+        <p>Khuôn mặt đã vượt qua toàn bộ cơ chế kiểm định Camera, FQA và Active Liveness.</p>
+      </div>
+
+      <!-- Ảnh chụp HD -->
+      <div class="snapshot-box">
+        <img id="snapshotImg" alt="Chân dung HD eKYC" />
+        <span class="snapshot-tag">HD Snapshot 720p</span>
+      </div>
+
+      <!-- Bảng báo cáo chỉ số -->
+      <div class="summary-metrics-grid">
+        <div class="metric-item">
+          <span class="m-label">Độ phân giải</span>
+          <span class="m-val" id="sumRes">--</span>
+        </div>
+        <div class="metric-item">
+          <span class="m-label">Độ sáng khuôn mặt</span>
+          <span class="m-val" id="sumBright">--</span>
+        </div>
+        <div class="metric-item">
+          <span class="m-label">Quay trái đạt</span>
+          <span class="m-val" id="sumTurnLeft">--°</span>
+        </div>
+        <div class="metric-item">
+          <span class="m-label">Quay phải đạt</span>
+          <span class="m-val" id="sumTurnRight">--°</span>
+        </div>
+        <div class="metric-item">
+          <span class="m-label">Độ tăng kích thước</span>
+          <span class="m-val" id="sumZoom">--%</span>
+        </div>
+        <div class="metric-item">
+          <span class="m-label">Tổng thời gian</span>
+          <span class="m-val" id="sumTime">-- giây</span>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button id="btnModalRetake" class="btn-modal-secondary">Đăng ký lại</button>
+        <button id="btnModalNext" class="btn-modal-primary">Tiếp tục (Color Flash PoC)</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

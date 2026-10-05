@@ -25,13 +25,14 @@ CAMERA_STABLE_SEC = 1.5                # camera phải đạt chuẩn liên tụ
 # ---------------------------------------------------------------------------
 OVAL_NORMAL = dict(cx=0.50, cy=0.47, rx=0.33, ry=0.36)
 OVAL_ZOOM = dict(cx=0.50, cy=0.50, rx=0.43, ry=0.46)
-OVAL_INSIDE_TOL = 1.0                  # max ((x-cx)/rx)^2 + ((y-cy)/ry)^2 <= 1.0 cho 4 góc và viền
+OVAL_INSIDE_TOL = 1.12                  # Dung sai 12% trên đường viền khuôn mặt thực tế (contour)
+CORNER_INSIDE_TOL = 1.85                # Dung sai hình học cho 4 góc bounding box chữ nhật ngoại tiếp
 
 # 1. Framing & Scale Check (Tỷ lệ vàng Width_face / Width_oval)
-FACE_SCALE_RANGE = (0.40, 0.85)        # 0.40 <= scale <= 0.85; < 0.40 -> Vàng (Lại gần); > 0.85 -> Vàng (Ra xa)
-FACE_FILL = (0.50, 0.92)               # Chiều cao mặt / chiều cao oval
-MAX_CENTER_OFFSET = 0.28               # Lệch tâm tối đa theo bán trục oval
-MAX_STRAIGHT = dict(yaw=12.0, pitch=15.0, roll=10.0)
+FACE_SCALE_RANGE = (0.36, 0.88)        # Dải cự ly tự nhiên, tránh bị kẹp quá hẹp
+FACE_FILL = (0.46, 0.94)               # Chiều cao mặt / chiều cao oval
+MAX_CENTER_OFFSET = 0.35               # Lệch tâm tối đa theo bán trục oval (thân thiện hơn)
+MAX_STRAIGHT = dict(yaw=15.0, pitch=18.0, roll=13.0)  # Góc nhìn thẳng tự nhiên khi nhìn vào màn hình
 
 # 2. Illumination Check (Độ sáng Histogram Y/Grayscale)
 FACE_BRIGHTNESS_MIN = 40.0             # Mean < 40 -> Báo Đỏ ("Không gian quá tối")
@@ -54,8 +55,8 @@ SUNGLASS_EYE_RATIO = 0.42
 SUNGLASS_EYE_STD = 22.0
 
 # 5. Consecutive Frames Smoothing (Bộ lọc ổn định)
-FQA_CONSECUTIVE_FRAMES = 6             # 6 frames liên tiếp (~0.25s) đạt chuẩn để chuyển sang Active Liveness (nhạy bén, không delay)
-HOLD_SEC = 0.25                        # Giữ yên đạt chuẩn trong 0.25s (~6 frames)
+FQA_CONSECUTIVE_FRAMES = 5             # 5 frames liên tiếp (~0.18s) đạt chuẩn để chuyển sang Active Liveness (nhạy bén, không delay)
+HOLD_SEC = 0.20                        # Giữ yên đạt chuẩn trong 0.20s (~5 frames)
 
 # ---------------------------------------------------------------------------
 # (c) LIVENESS QUAY ĐẦU

@@ -35,38 +35,38 @@ PARTS_CONFIG = {
     "left_eye": {
         "indices": [33, 160, 158, 133, 153, 144],
         "name": "Mắt phải",
-        "min_edge": 4.0,
-        "min_contrast": 25.0,
+        "min_edge": 1.5,
+        "min_contrast": 12.0,
     },
     "right_eye": {
         "indices": [362, 385, 387, 263, 373, 380],
         "name": "Mắt trái",
-        "min_edge": 4.0,
-        "min_contrast": 25.0,
+        "min_edge": 1.5,
+        "min_contrast": 12.0,
     },
     "left_eyebrow": {
         "indices": [70, 63, 105, 66, 107],
         "name": "Chân mày phải",
-        "min_edge": 1.8,
-        "min_contrast": 18.0,
+        "min_edge": 0.8,
+        "min_contrast": 8.0,
     },
     "right_eyebrow": {
         "indices": [336, 296, 334, 293, 300],
         "name": "Chân mày trái",
-        "min_edge": 1.8,
-        "min_contrast": 18.0,
+        "min_edge": 0.8,
+        "min_contrast": 8.0,
     },
     "nose": {
         "indices": [1, 2, 98, 327, 168],
         "name": "Vùng Mũi",
-        "min_edge": 2.2,
-        "min_contrast": 20.0,
+        "min_edge": 0.8,
+        "min_contrast": 8.0,
     },
     "mouth": {
         "indices": [61, 291, 0, 17, 13, 14, 78, 308],
         "name": "Vùng Miệng",
-        "min_edge": 2.5,
-        "min_contrast": 22.0,
+        "min_edge": 1.2,
+        "min_contrast": 10.0,
     },
 }
 
@@ -181,9 +181,10 @@ class FaceAnalyzer:
                     hx, hy = pt.x, pt.y
                     in_oval = ((hx - cx) / rx) ** 2 + ((hy - cy) / ry) ** 2 <= 1.0
                     in_bbox = out.bbox[0] <= hx <= out.bbox[2] and out.bbox[1] <= hy <= out.bbox[3]
-                    if in_oval or in_bbox:
+                    # Bàn tay che mặt thực sự khi lọt vào trong bounding box khuôn mặt
+                    if in_bbox:
                         hand_pts_in_face += 1
-            if hand_pts_in_face >= 2:
+            if hand_pts_in_face >= 6:
                 out.hand_occlusion = True
                 out.debug["hand_pts_in_face"] = hand_pts_in_face
         return out
@@ -210,10 +211,10 @@ def analyze_landmarks(frame_bgr: np.ndarray, lm3: np.ndarray, oval: dict, out: F
     out.fill = out.face_h / (2 * ry)
     out.offset = ((out.center[0] - cx) / rx, (out.center[1] - cy) / ry)
 
-    # 4 góc Bounding Box kiểm tra có lọt lòng elip không
+    # 4 góc Bounding Box kiểm tra lọt lòng elip theo dung sai hình học hộp chữ nhật
     corners = np.array([[x0, y0], [x1, y0], [x0, y1], [x1, y1]])
     corner_e = ((corners[:, 0] - cx) / rx) ** 2 + ((corners[:, 1] - cy) / ry) ** 2
-    out.corners_inside = bool(np.all(corner_e <= 1.0))
+    out.corners_inside = bool(np.all(corner_e <= C.CORNER_INSIDE_TOL))
     face_w = float(x1 - x0)
     oval_w = float(2 * rx)
     out.scale_ratio = float(face_w / max(0.01, oval_w))
@@ -501,9 +502,9 @@ def quality_checks(face: FaceResult, require_oval: bool = True, is_turning: bool
                 return checks, "Hãy tiến lại gần camera hơn", "warn"
             return checks, "Hãy lùi ra xa camera một chút", "warn"
         if not checks["inside_oval"]:
-            if face.scale_ratio > 0.72 or face.fill > 0.82:
+            if face.scale_ratio >= 0.78 or face.fill >= 0.86 or face.oval_dist > 1.25:
                 return checks, "Khuôn mặt tràn khung – Hãy lùi ra xa camera một chút và căn vào giữa khung Oval", "warn"
-            if face.scale_ratio < 0.48 or face.fill < 0.52:
+            if face.scale_ratio <= 0.44 or face.fill <= 0.50:
                 return checks, "Khuôn mặt quá nhỏ – Hãy tiến lại gần camera hơn và căn vào giữa khung Oval", "warn"
             dx_screen, dy = -face.offset[0], face.offset[1]
             if abs(dx_screen) > 0.20:

@@ -550,7 +550,7 @@ async function triggerOpticalFlashing() {
 // 4. CẬP NHẬT GIAO DIỆN & LƯỚI SINH TRẮC HỌC (BIOMETRIC MESH)
 // -----------------------------------------------------------------------------
 
-function drawBiometricMesh(keypoints, partsStatus = {}, occludedPartName = null, hasHandOcclusion = false, overallColor = 'cyan', antiSpoof = null) {
+function drawBiometricMesh(keypoints, partsStatus = {}, occludedPartName = null, hasHandOcclusion = false, overallColor = 'cyan', antiSpoof = null, isUpsideDown = false) {
   if (!meshCtx) return;
   meshCtx.clearRect(0, 0, meshCanvas.width, meshCanvas.height);
 
@@ -703,6 +703,8 @@ function drawBiometricMesh(keypoints, partsStatus = {}, occludedPartName = null,
     } else {
       alertText = '⚠️ CẢNH BÁO: TẤN CÔNG GIẢ MẠO';
     }
+  } else if (isUpsideDown) {
+    alertText = '⚠️ CẢNH BÁO: ĐẦU BỊ LẬT NGƯỢC';
   } else if (hasHandOcclusion) {
     alertText = '⚠️ PHÁT HIỆN TAY TRÊN KHUÔN MẶT';
   } else if (occludedPartName) {
@@ -783,7 +785,8 @@ function renderFeedback(data) {
     data.occluded_part_name,
     data.face_checks?.no_hand_occlusion === false,
     data.color || 'cyan',
-    data.anti_spoof
+    data.anti_spoof,
+    Boolean(data.face_metrics?.is_upside_down || data.face_checks?.not_upside_down === false)
   );
 
   // Cập nhật mũi tên xoay đầu
@@ -819,7 +822,8 @@ function renderFeedback(data) {
   badgeFpsRes.innerHTML = `<span>${cMet.width ?? '--'}×${cMet.height ?? '--'}</span>`;
 
   if (fMet.yaw !== undefined && fMet.yaw !== null) {
-    badgeHeadPose.innerHTML = `<span>Yaw: ${fMet.yaw > 0 ? '+' : ''}${fMet.yaw}°</span><span class="divider">•</span><span>Pitch: ${fMet.pitch}°</span>`;
+    const rollStr = (fMet.roll !== undefined && fMet.roll !== null) ? `<span class="divider">•</span><span>Roll: ${fMet.roll > 0 ? '+' : ''}${fMet.roll}°</span>` : '';
+    badgeHeadPose.innerHTML = `<span>Yaw: ${fMet.yaw > 0 ? '+' : ''}${fMet.yaw}°</span><span class="divider">•</span><span>Pitch: ${fMet.pitch > 0 ? '+' : ''}${fMet.pitch}°</span>${rollStr}`;
   } else {
     badgeHeadPose.innerHTML = `<span>Chưa có mặt</span>`;
   }
@@ -917,9 +921,33 @@ function updateChecklist(camChk = {}, camMet = {}, faceChk = {}, faceMet = {}, s
 
   // Nhóm 3: Khuôn mặt (FQA - 4 Tiêu chí Cốt lõi)
   setRow('chk-face-count', 'val-face-count', faceChk.single_face, faceMet.face_count !== undefined ? `${faceMet.face_count} người` : 'Chưa có');
-  setRow('chk-scale', 'val-scale', faceChk.scale_ok, (faceMet.scale_ratio !== undefined && faceMet.scale_ratio !== null) ? `${Math.round(faceMet.scale_ratio * 100)}%` : '--');
+  let scaleText = '--';
+  if (faceMet.scale_ratio !== undefined && faceMet.scale_ratio !== null) {
+    const pct = Math.round(faceMet.scale_ratio * 100);
+    if (faceMet.scale_ratio < 0.40) {
+      scaleText = `Quá xa (${pct}%)`;
+    } else if (faceMet.scale_ratio > 0.85) {
+      scaleText = `Quá gần (${pct}%)`;
+    } else {
+      scaleText = `Vừa vặn (${pct}%)`;
+    }
+  }
+  setRow('chk-scale', 'val-scale', faceChk.scale_ok, scaleText);
   setRow('chk-inside-oval', 'val-inside-oval', faceChk.inside_oval, faceChk.inside_oval ? 'Trọn trong Oval' : 'Tràn ngoài');
-  setRow('chk-straight', 'val-straight', faceChk.head_straight, (faceMet.yaw !== undefined && faceMet.yaw !== null) ? `Yaw ${faceMet.yaw > 0 ? '+' : ''}${faceMet.yaw}°` : '--');
+
+  let straightText = '--';
+  if (faceMet.is_upside_down || faceChk.not_upside_down === false) {
+    straightText = 'Lật ngược đầu!';
+  } else if (faceMet.roll !== undefined && faceMet.roll !== null && Math.abs(faceMet.roll) > 10.0) {
+    straightText = `Nghiêng (${faceMet.roll > 0 ? '+' : ''}${faceMet.roll}°)`;
+  } else if (faceMet.pitch !== undefined && faceMet.pitch !== null && Math.abs(faceMet.pitch) > 15.0) {
+    straightText = `Ngẩng/cúi (${faceMet.pitch > 0 ? '+' : ''}${faceMet.pitch}°)`;
+  } else if (faceMet.yaw !== undefined && faceMet.yaw !== null && Math.abs(faceMet.yaw) > 12.0) {
+    straightText = `Quay (${faceMet.yaw > 0 ? '+' : ''}${faceMet.yaw}°)`;
+  } else if (faceMet.yaw !== undefined && faceMet.yaw !== null) {
+    straightText = `Thẳng (${faceMet.yaw > 0 ? '+' : ''}${faceMet.yaw}°)`;
+  }
+  setRow('chk-straight', 'val-straight', faceChk.head_straight, straightText);
   setRow('chk-face-bright', 'val-face-bright', faceChk.illumination_ok, (faceMet.brightness_mean !== undefined && faceMet.brightness_mean !== null) ? `${Math.round(faceMet.brightness_mean)}` : '--');
   setRow('chk-backlight', 'val-backlight', faceChk.no_backlight, (faceMet.brightness_std !== undefined && faceMet.brightness_std !== null) ? `σ = ${Math.round(faceMet.brightness_std)}` : '--');
   setRow('chk-mask', 'val-mask', faceChk.no_mask, faceChk.no_mask ? 'Không có' : 'Phát hiện khẩu trang');

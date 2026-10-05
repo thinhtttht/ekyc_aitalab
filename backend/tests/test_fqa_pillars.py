@@ -177,3 +177,101 @@ def test_continuous_quality_during_turning():
     assert cont_ok is False
     assert cont_sev == "error"
     assert "bỏ tay" in cont_msg.lower()
+
+
+def test_upside_down_detection():
+    # Trường hợp lật ngược đầu (mắt ở dưới, miệng ở trên)
+    face_inverted = create_valid_face()
+    face_inverted.is_upside_down = True
+
+    checks, msg, sev = quality_checks(face_inverted)
+    assert checks["not_upside_down"] is False
+    assert checks["head_straight"] is False
+    assert sev == "error"
+    assert "lật ngược" in msg.lower()
+
+    cont_ok, cont_msg, cont_sev = check_continuous_face_quality(face_inverted)
+    assert cont_ok is False
+    assert cont_sev == "error"
+    assert "lật ngược" in cont_msg.lower()
+
+
+def test_head_tilt_and_direction_guidance():
+    # 1. Nghiêng đầu sang trái (Roll > 10 độ)
+    face_roll_left = create_valid_face()
+    face_roll_left.roll = 16.0
+    checks, msg, sev = quality_checks(face_roll_left)
+    assert checks["head_straight"] is False
+    assert sev == "warn"
+    assert "nghiêng đầu sang trái" in msg.lower()
+
+    # 2. Nghiêng đầu sang phải (Roll < -10 độ)
+    face_roll_right = create_valid_face()
+    face_roll_right.roll = -18.0
+    checks, msg, sev = quality_checks(face_roll_right)
+    assert checks["head_straight"] is False
+    assert sev == "warn"
+    assert "nghiêng đầu sang phải" in msg.lower()
+
+    # 3. Nghiêng đầu quá nhiều (Roll > 25 độ)
+    face_roll_heavy = create_valid_face()
+    face_roll_heavy.roll = 35.0
+    checks, msg, sev = quality_checks(face_roll_heavy)
+    assert checks["head_straight"] is False
+    assert sev == "warn"
+    assert "nghiêng đầu quá nhiều" in msg.lower()
+
+    # 4. Ngẩng đầu quá cao (Pitch > 15 độ)
+    face_pitch_up = create_valid_face()
+    face_pitch_up.pitch = 22.0
+    checks, msg, sev = quality_checks(face_pitch_up)
+    assert checks["head_straight"] is False
+    assert sev == "warn"
+    assert "ngẩng đầu" in msg.lower()
+
+    # 5. Cúi đầu quá thấp (Pitch < -15 độ)
+    face_pitch_down = create_valid_face()
+    face_pitch_down.pitch = -20.0
+    checks, msg, sev = quality_checks(face_pitch_down)
+    assert checks["head_straight"] is False
+    assert sev == "warn"
+    assert "cúi đầu" in msg.lower()
+
+    # 6. Quay mặt sang trái (Yaw > 12 độ)
+    face_yaw_left = create_valid_face()
+    face_yaw_left.yaw = 18.0
+    checks, msg, sev = quality_checks(face_yaw_left)
+    assert checks["head_straight"] is False
+    assert sev == "warn"
+    assert "quay mặt sang trái" in msg.lower()
+
+    # 7. Quay mặt sang phải (Yaw < -12 độ)
+    face_yaw_right = create_valid_face()
+    face_yaw_right.yaw = -19.0
+    checks, msg, sev = quality_checks(face_yaw_right)
+    assert checks["head_straight"] is False
+    assert sev == "warn"
+    assert "quay mặt sang phải" in msg.lower()
+
+
+def test_distance_guidance_overflow_and_small():
+    # Bị tràn khung khi mặt to -> Hướng dẫn lùi ra xa
+    face_overflow = create_valid_face()
+    face_overflow.corners_inside = False
+    face_overflow.scale_ratio = 0.78
+    face_overflow.fill = 0.86
+    checks, msg, sev = quality_checks(face_overflow)
+    assert checks["inside_oval"] is False
+    assert sev == "warn"
+    assert "lùi ra xa" in msg.lower()
+
+    # Bị lệch ngoài khung khi mặt nhỏ -> Hướng dẫn tiến lại gần
+    face_small_outside = create_valid_face()
+    face_small_outside.corners_inside = False
+    face_small_outside.scale_ratio = 0.44
+    face_small_outside.fill = 0.50
+    checks, msg, sev = quality_checks(face_small_outside)
+    assert checks["inside_oval"] is False
+    assert sev == "warn"
+    assert "lại gần" in msg.lower()
+

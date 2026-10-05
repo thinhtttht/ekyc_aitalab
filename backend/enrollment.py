@@ -538,6 +538,7 @@ class EnrollmentSession:
                 "yaw": face_res.yaw,
                 "pitch": face_res.pitch,
                 "roll": face_res.roll,
+                "is_upside_down": face_res.is_upside_down,
                 "fill": round(face_res.fill, 2),
                 "scale_ratio": round(face_res.scale_ratio, 2),
                 "corners_inside": face_res.corners_inside,

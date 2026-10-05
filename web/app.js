@@ -342,7 +342,7 @@ async function frameLoop() {
     // Nếu đạt giai đoạn CAPTURE -> tự động chụp snapshot HD và dừng vòng lặp
     if (data.stage === 'capture') {
       isLoopRunning = false;
-      captureHdAndShowSummary(data.summary || {});
+      captureHdAndVerify(data.summary || {});
     }
   } catch (err) {
     console.warn('Lỗi gửi frame:', err);
@@ -522,7 +522,7 @@ async function triggerOpticalFlashing() {
       updateStepper('capture');
       setRow('chk-optical-liveness', 'val-optical-liveness', true, `Đạt (r = ${verifyData.correlation_score})`);
       isLoopRunning = false;
-      captureHdAndShowSummary(verifyData.summary || {});
+      captureHdAndVerify(verifyData.summary || {});
     } else {
       bottomPill.className = 'bottom-guidance-pill red';
       bottomPill.textContent = verifyData.message || 'Chưa đủ độ phản xạ quang học trên da. Vui lòng tăng sáng màn hình và thử lại.';
@@ -1017,14 +1017,14 @@ function updateBackendStatus(isOnline) {
 // 5. CHỤP CHÂN DUNG HD VÀ HIỂN THỊ MODAL TỔNG KẾT
 // -----------------------------------------------------------------------------
 
-function captureHdAndShowSummary(summary = {}) {
-  // Tạo canvas độ phân giải gốc của camera
+async function captureHdAndVerify(initialSummary = {}) {
+  // 1. Tạo canvas độ phân giải gốc của camera để chụp ảnh chân dung HD
   const hdCanvas = document.createElement('canvas');
   hdCanvas.width = video.videoWidth || 1280;
   hdCanvas.height = video.videoHeight || 720;
   const hdCtx = hdCanvas.getContext('2d');
 
-  // Lật gương
+  // Lật gương chuẩn như ảnh người dùng nhìn thấy
   hdCtx.save();
   hdCtx.translate(hdCanvas.width, 0);
   hdCtx.scale(-1, 1);
@@ -1032,31 +1032,76 @@ function captureHdAndShowSummary(summary = {}) {
   hdCtx.restore();
 
   const snapshotDataUrl = hdCanvas.toDataURL('image/jpeg', 0.95);
-  snapshotImg.src = snapshotDataUrl;
 
-  // Điền số liệu tổng kết
-  const cam = summary.camera || {};
-  const fqa = summary.fqa || {};
-  const zoom = summary.zoom || {};
-  const liv = summary.liveness || {};
-  const tim = summary.timings || {};
+  // 2. Hiển thị trạng thái đang kiểm định an ninh backend
+  bottomPill.className = 'bottom-guidance-pill yellow';
+  bottomPill.textContent = '🛡️ Đang kiểm định toàn vẹn khuôn mặt & chống giả mạo chân dung...';
 
-  document.getElementById('sumRes').textContent = `${cam.width || video.videoWidth}×${cam.height || video.videoHeight}`;
-  document.getElementById('sumBright').textContent = fqa.brightness ? `${Math.round(fqa.brightness)}` : 'Đạt chuẩn';
+  try {
+    const res = await fetch(`${API_BASE}/api/enroll/verify_capture`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        session_id: currentSessionId,
+        image: snapshotDataUrl,
+      }),
+    });
 
-  const leftYaw = liv.turn_left?.achieved_yaw || '--';
-  const rightYaw = liv.turn_right?.achieved_yaw || '--';
-  document.getElementById('sumTurnLeft').textContent = `${leftYaw}°`;
-  document.getElementById('sumTurnRight').textContent = `${rightYaw}°`;
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || 'Lỗi kiểm định chân dung backend');
+    }
 
-  const growthPct = zoom.growth_ratio ? `${Math.round(zoom.growth_ratio * 100)}%` : '≥ 125%';
-  document.getElementById('sumZoom').textContent = growthPct;
+    const data = await res.json();
+    if (data.passed) {
+      playTingSound();
+      bottomPill.className = 'bottom-guidance-pill green';
+      bottomPill.textContent = 'Đăng ký thành công! Khuôn mặt toàn vẹn & đạt chuẩn sinh trắc học.';
+      snapshotImg.src = snapshotDataUrl;
 
-  const totalTime = tim.total || '--';
-  document.getElementById('sumTime').textContent = `${totalTime}s`;
+      // Điền số liệu tổng kết
+      const summary = data.summary || initialSummary || {};
+      const cam = summary.camera || {};
+      const fqa = summary.fqa || {};
+      const zoom = summary.zoom || {};
+      const liv = summary.liveness || {};
+      const tim = summary.timings || {};
 
-  // Hiển thị modal
-  summaryModal.classList.remove('hidden');
+      document.getElementById('sumRes').textContent = `${cam.width || video.videoWidth}×${cam.height || video.videoHeight}`;
+      document.getElementById('sumBright').textContent = fqa.brightness ? `${Math.round(fqa.brightness)}` : 'Đạt chuẩn';
+
+      const leftYaw = liv.turn_left?.achieved_yaw || '--';
+      const rightYaw = liv.turn_right?.achieved_yaw || '--';
+      document.getElementById('sumTurnLeft').textContent = `${leftYaw}°`;
+      document.getElementById('sumTurnRight').textContent = `${rightYaw}°`;
+
+      const growthPct = zoom.growth_ratio ? `${Math.round(zoom.growth_ratio * 100)}%` : '≥ 125%';
+      document.getElementById('sumZoom').textContent = growthPct;
+
+      const totalTime = tim.total || '--';
+      document.getElementById('sumTime').textContent = `${totalTime}s`;
+
+      // Hiển thị modal hoàn tất
+      summaryModal.classList.remove('hidden');
+    } else {
+      // Từ chối đăng ký và bắt buộc làm lại
+      bottomPill.className = 'bottom-guidance-pill red';
+      bottomPill.textContent = `❌ TỪ CHỐI ĐĂNG KÝ: ${data.message}`;
+
+      setTimeout(() => {
+        alert(`❌ ĐĂNG KÝ BỊ TỪ CHỐI!\n\nLý do: ${data.message}\n\nHệ thống phát hiện khuôn mặt không toàn vẹn hoặc nghi vấn giả mạo. Vui lòng thực hiện đăng ký lại từ đầu.`);
+        restartSession();
+      }, 400);
+    }
+  } catch (err) {
+    console.error('Lỗi kiểm định capture:', err);
+    bottomPill.className = 'bottom-guidance-pill red';
+    bottomPill.textContent = `❌ Lỗi kiểm tra: ${err.message}`;
+    setTimeout(() => {
+      alert(`❌ Lỗi kiểm định bảo mật: ${err.message}\nVui lòng thực hiện lại từ đầu.`);
+      restartSession();
+    }, 400);
+  }
 }
 
 // -----------------------------------------------------------------------------

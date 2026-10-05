@@ -61,6 +61,8 @@ class EnrollmentSession:
         self.max_left_yaw = 0.0
         self.max_right_yaw = 0.0
         self.max_zoom_growth = 1.0
+        self.enrolled_image_bgr: Optional[np.ndarray] = None
+        self.enrolled_face: Optional[FaceResult] = None
         self.history: Dict[str, Any] = {
             "session_id": session_id,
             "challenges": [t.value for t in self.challenge_sequence],
@@ -487,6 +489,180 @@ class EnrollmentSession:
             self.history["timings"]["total"] = round(now - self.created_at, 2)
         else:
             self.stage = Stage.FAILED
+
+    def verify_final_capture(self, frame_bgr: np.ndarray) -> Dict[str, Any]:
+        """Kiểm định bảo mật chuyên sâu ảnh chân dung cuối cùng trước khi hoàn tất đăng ký:
+        - Toàn vẹn khuôn mặt (không bị che bởi tay, khẩu trang, kính râm, hoặc vật cản).
+        - Đầy đủ ngũ quan (mắt, mũi, miệng, chân mày).
+        - Chống giả mạo ảnh in 2D và màn hình phát lại (Passive Anti-Spoofing MiniFASNet).
+        - Kiểm tra tư thế nhìn thẳng, không nghiêng lệch, không lật ngược đầu.
+        - Kiểm tra chất lượng ánh sáng và độ nét.
+        Nếu không đạt -> Từ chối và bắt buộc đăng ký lại từ đầu.
+        """
+        now = time.time()
+        analyzer = self._get_analyzer()
+        oval = C.OVAL_NORMAL
+        face_res = analyzer.analyze(frame_bgr, oval)
+
+        # 1. Phát hiện khuôn mặt & chỉ 1 người duy nhất
+        if not face_res.detected or face_res.face_count == 0:
+            self.stage = Stage.FAILED
+            return {
+                "passed": False,
+                "error_type": "no_face",
+                "message": "Không phát hiện khuôn mặt khi chụp ảnh chân dung. Vui lòng thử lại từ đầu.",
+            }
+
+        if face_res.face_count > 1:
+            self.stage = Stage.FAILED
+            return {
+                "passed": False,
+                "error_type": "multiple_faces",
+                "message": "Phát hiện nhiều khuôn mặt trong ảnh chân dung. Chỉ một người duy nhất được phép đăng ký.",
+            }
+
+        # 2. Lật ngược đầu ("mắt ở dưới mà miệng ở trên")
+        if face_res.is_upside_down:
+            self.stage = Stage.FAILED
+            return {
+                "passed": False,
+                "error_type": "upside_down",
+                "message": "Khuôn mặt bị lật ngược khi chụp chân dung. Vui lòng giữ thẳng đầu và thử lại từ đầu.",
+            }
+
+        # 3. Bàn tay che mặt
+        if face_res.hand_occlusion:
+            self.stage = Stage.FAILED
+            return {
+                "passed": False,
+                "error_type": "hand_occlusion",
+                "message": "Phát hiện bàn tay che mặt khi chụp ảnh. Vui lòng không chạm tay vào mặt và thử lại.",
+            }
+
+        # 4. Che khuất ngũ quan (Khẩu trang, Kính râm, Vật cản)
+        if face_res.mask_detected:
+            self.stage = Stage.FAILED
+            return {
+                "passed": False,
+                "error_type": "mask_detected",
+                "message": "Phát hiện khẩu trang khi chụp ảnh chân dung. Vui lòng tháo khẩu trang và thử lại từ đầu.",
+            }
+
+        if face_res.sunglasses_detected:
+            self.stage = Stage.FAILED
+            return {
+                "passed": False,
+                "error_type": "sunglasses_detected",
+                "message": "Phát hiện kính râm khi chụp ảnh chân dung. Vui lòng tháo kính râm và thử lại từ đầu.",
+            }
+
+        if face_res.occluded_part_name:
+            self.stage = Stage.FAILED
+            return {
+                "passed": False,
+                "error_type": "feature_occluded",
+                "message": f"Khuôn mặt không toàn vẹn (bị che khuất {face_res.occluded_part_name}). Vui lòng để lộ toàn bộ khuôn mặt.",
+            }
+
+        has_eyes = bool(face_res.parts_status.get("left_eye", True) and face_res.parts_status.get("right_eye", True))
+        has_nose = bool(face_res.parts_status.get("nose", True))
+        has_mouth = bool(face_res.parts_status.get("mouth", True))
+        if not (has_eyes and has_nose and has_mouth):
+            self.stage = Stage.FAILED
+            return {
+                "passed": False,
+                "error_type": "features_incomplete",
+                "message": "Ngũ quan khuôn mặt không đầy đủ hoặc bị che cản. Vui lòng thử lại từ đầu.",
+            }
+
+        # 5. Tư thế nhìn thẳng
+        if face_res.yaw is not None and abs(face_res.yaw) > 16.0:
+            self.stage = Stage.FAILED
+            return {
+                "passed": False,
+                "error_type": "bad_pose",
+                "message": "Khuôn mặt quay lệch khi chụp ảnh chân dung. Vui lòng nhìn thẳng vào camera và thử lại.",
+            }
+
+        if face_res.pitch is not None and abs(face_res.pitch) > 16.0:
+            self.stage = Stage.FAILED
+            return {
+                "passed": False,
+                "error_type": "bad_pose",
+                "message": "Khuôn mặt ngẩng quá cao hoặc cúi quá thấp khi chụp. Vui lòng giữ thẳng đầu và thử lại.",
+            }
+
+        if face_res.roll is not None and abs(face_res.roll) > 12.0:
+            self.stage = Stage.FAILED
+            return {
+                "passed": False,
+                "error_type": "bad_pose",
+                "message": "Đang nghiêng đầu khi chụp ảnh chân dung. Vui lòng giữ thẳng đầu và thử lại.",
+            }
+
+        # 6. Chống giả mạo ảnh & video (Passive Anti-Spoofing / PAD)
+        if face_res.anti_spoof and not face_res.anti_spoof.is_real:
+            self.stage = Stage.FAILED
+            spoof_msg = face_res.anti_spoof.message
+            if face_res.anti_spoof.spoof_type in ("print_attack", "planar_2d"):
+                spoof_msg = "Phát hiện ảnh in 2D giả mạo khi chụp chân dung. Yêu cầu người thật trước camera."
+            elif face_res.anti_spoof.spoof_type in ("replay_attack", "screen_moire"):
+                spoof_msg = "Phát hiện màn hình/video phát lại khi chụp chân dung. Yêu cầu người thật trước camera."
+
+            return {
+                "passed": False,
+                "error_type": "spoof_detected",
+                "message": spoof_msg,
+                "details": {
+                    "spoof_type": face_res.anti_spoof.spoof_type,
+                    "real_prob": round(face_res.anti_spoof.real_prob, 3),
+                },
+            }
+
+        # 7. Ánh sáng
+        if face_res.brightness_mean < C.FACE_BRIGHTNESS_MIN:
+            self.stage = Stage.FAILED
+            return {
+                "passed": False,
+                "error_type": "too_dark",
+                "message": "Ảnh chụp chân dung quá tối. Vui lòng tăng sáng và thử lại.",
+            }
+        if face_res.brightness_mean > C.FACE_BRIGHTNESS_MAX:
+            self.stage = Stage.FAILED
+            return {
+                "passed": False,
+                "error_type": "too_bright",
+                "message": "Ảnh chụp chân dung bị chói sáng. Vui lòng điều chỉnh ánh sáng và thử lại.",
+            }
+
+        # Đạt chuẩn toàn bộ!
+        self.enrolled_image_bgr = frame_bgr
+        self.enrolled_face = face_res
+        self.stage = Stage.CAPTURE
+        h, w = frame_bgr.shape[:2]
+        self.history["final_capture"] = {
+            "passed": True,
+            "resolution": f"{w}x{h}",
+            "sharpness": round(face_res.sharpness, 1),
+            "brightness": round(face_res.brightness_mean, 1),
+            "yaw": face_res.yaw,
+            "pitch": face_res.pitch,
+            "roll": face_res.roll,
+            "anti_spoof_real_prob": round(face_res.anti_spoof.real_prob, 3) if face_res.anti_spoof else 1.0,
+            "verified_at": round(now, 2),
+        }
+
+        return {
+            "passed": True,
+            "message": "Kiểm định khuôn mặt toàn vẹn & chống giả mạo thành công!",
+            "summary": self.history,
+            "metrics": {
+                "resolution": f"{w}x{h}",
+                "sharpness": round(face_res.sharpness, 1),
+                "brightness": round(face_res.brightness_mean, 1),
+                "anti_spoof_prob": round(face_res.anti_spoof.real_prob, 3) if face_res.anti_spoof else 1.0,
+            },
+        }
 
     def _turn_instruction(self, stage: Stage) -> str:
         if stage == Stage.TURN_LEFT:

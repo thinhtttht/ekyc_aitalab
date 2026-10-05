@@ -278,6 +278,35 @@ def enroll_color_verify(payload: ColorVerifyRequest):
     }
 
 
+class FinalCaptureRequest(BaseModel):
+    session_id: str
+    image: str = Field(description="Base64 encoded JPEG data URL hoặc raw base64 của ảnh chụp chân dung HD")
+
+
+@app.post("/api/enroll/verify_capture")
+def enroll_verify_capture(payload: FinalCaptureRequest):
+    sess = sessions.get(payload.session_id)
+    if sess is None:
+        raise HTTPException(status_code=404, detail="Phiên làm việc không tồn tại hoặc đã hết hạn")
+
+    # Giải mã ảnh base64
+    raw_b64 = payload.image
+    if "," in raw_b64:
+        raw_b64 = raw_b64.split(",", 1)[1]
+
+    try:
+        img_bytes = base64.b64decode(raw_b64)
+        nparr = np.frombuffer(img_bytes, np.uint8)
+        frame_bgr = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        if frame_bgr is None:
+            raise ValueError("Không thể decode ảnh chụp chân dung")
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Dữ liệu ảnh chụp không hợp lệ: {e}")
+
+    result = sess.verify_final_capture(frame_bgr)
+    return result
+
+
 # Gắn frontend tĩnh tại `d:\EKYC\web`
 WEB_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "web"))
 if not os.path.exists(WEB_DIR):

@@ -136,7 +136,7 @@ class OpticalAnalyzer:
                 static_image_mode=True,
                 max_num_faces=1,
                 refine_landmarks=True,
-                min_detection_confidence=0.5,
+                min_detection_confidence=0.4,
             )
 
     def close(self) -> None:
@@ -146,16 +146,20 @@ class OpticalAnalyzer:
             self._mesh = None
 
     def extract_skin_and_background_rgb(
-        self, frame_bgr: np.ndarray, custom_landmarks: Optional[np.ndarray] = None
-    ) -> Tuple[Optional[np.ndarray], np.ndarray]:
+        self,
+        frame_bgr: np.ndarray,
+        custom_landmarks: Optional[np.ndarray] = None,
+        fallback_landmarks: Optional[np.ndarray] = None,
+    ) -> Tuple[Optional[np.ndarray], np.ndarray, Optional[np.ndarray]]:
         """Trích xuất véc-tơ màu RGB của da mặt và nền trên một khung hình.
 
         Args:
             frame_bgr: Khung hình camera định dạng BGR.
             custom_landmarks: Toạ độ mốc tuỳ chọn (N, 2 hoặc N, 3) dùng cho unit tests.
+            fallback_landmarks: Mốc toạ độ từ khung hình trước đó nếu khung hình hiện tại bị chói màu.
 
         Returns:
-            Tuple (skin_rgb, bg_rgb). Nếu không tìm thấy mặt, skin_rgb là None.
+            Tuple (skin_rgb, bg_rgb, landmarks_pixel). Nếu không tìm thấy mặt, skin_rgb là None.
         """
         h, w = frame_bgr.shape[:2]
         bg_rgb = extract_background_mean_rgb(frame_bgr)
@@ -174,9 +178,12 @@ class OpticalAnalyzer:
                 face = res.multi_face_landmarks[0]
                 pts = np.array([[p.x * w, p.y * h] for p in face.landmark], dtype=np.int32)
                 landmarks_pixel = pts
+            elif fallback_landmarks is not None:
+                # Kế thừa landmark của frame trước đó trong cùng chuỗi 1s nếu frame này bị chớp màu
+                landmarks_pixel = fallback_landmarks
 
         if landmarks_pixel is None:
-            return None, bg_rgb
+            return None, bg_rgb, None
 
         # 2. Trích xuất màu trên 3 vùng da mặt
         skin_rgb_samples: List[np.ndarray] = []
@@ -187,10 +194,10 @@ class OpticalAnalyzer:
                 skin_rgb_samples.append(roi_rgb)
 
         if not skin_rgb_samples:
-            return None, bg_rgb
+            return None, bg_rgb, None
 
         mean_skin_rgb = np.mean(skin_rgb_samples, axis=0)
-        return mean_skin_rgb, bg_rgb
+        return mean_skin_rgb, bg_rgb, landmarks_pixel
 
     def analyze_sequence(
         self,
@@ -222,10 +229,16 @@ class OpticalAnalyzer:
 
         skin_rgbs: List[np.ndarray] = []
         bg_rgbs: List[np.ndarray] = []
+        last_landmarks: Optional[np.ndarray] = None
 
         for i, frame in enumerate(frames_bgr):
             cl = custom_landmarks_list[i] if custom_landmarks_list and i < len(custom_landmarks_list) else None
-            skin_rgb, bg_rgb = self.extract_skin_and_background_rgb(frame, custom_landmarks=cl)
+            use_fallback = last_landmarks if custom_landmarks_list is None else None
+            skin_rgb, bg_rgb, current_lm = self.extract_skin_and_background_rgb(
+                frame, custom_landmarks=cl, fallback_landmarks=use_fallback
+            )
+            if current_lm is not None:
+                last_landmarks = current_lm
             if skin_rgb is None:
                 return OpticalResult(
                     passed=False,

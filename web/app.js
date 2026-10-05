@@ -1088,6 +1088,9 @@ function showRejectionModal(reason) {
 }
 
 async function captureHdAndVerify(initialSummary = {}) {
+  // Cho camera 350ms ổn định lại phơi sáng (AE) và cân bằng trắng sau khi màn hình vừa nhấp nháy màu
+  await new Promise((r) => setTimeout(r, 350));
+
   // 1. Tạo canvas độ phân giải gốc của camera để chụp ảnh chân dung HD
   const hdCanvas = document.createElement('canvas');
   hdCanvas.width = video.videoWidth || 1280;

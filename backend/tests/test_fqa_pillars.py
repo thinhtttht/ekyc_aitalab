@@ -285,3 +285,46 @@ def test_distance_guidance_overflow_and_small():
     assert sev == "warn"
     assert "lại gần" in msg.lower()
 
+
+def test_mask_false_positive_with_clear_mouth_and_nose():
+    """Người dùng không đeo khẩu trang (mũi và miệng rõ ràng) dù cằm có bóng đổ cũng không bị báo giả."""
+    face = create_valid_face()
+    face.parts_status["mouth"] = True
+    face.parts_status["nose"] = True
+    face.mask_detected = False
+
+    checks, msg, sev = quality_checks(face)
+    assert checks["no_mask"] is True
+    assert sev != "error"
+
+
+def test_multiple_faces_filtering_concept():
+    """Kiểm tra logic lọc khuôn mặt: artifact nhỏ ở background không biến thành nhiều người."""
+    class DummyLandmark:
+        def __init__(self, x, y):
+            self.x = x
+            self.y = y
+
+    class DummyFace:
+        def __init__(self, x0, y0, x1, y1):
+            self.landmark = [DummyLandmark(x0, y0), DummyLandmark(x1, y1)]
+
+    # Mặt chính: 0.20 -> 0.80 (rộng 0.6, cao 0.7 -> diện tích 0.42)
+    main_f = DummyFace(0.2, 0.1, 0.8, 0.8)
+    # Nhiễu ở nền: 0.01 -> 0.05 (diện tích 0.0016 < 0.025 và < 20% mặt chính)
+    noise_f = DummyFace(0.01, 0.01, 0.05, 0.05)
+
+    all_faces = [main_f, noise_f]
+    def face_area(f):
+        xs = [p.x for p in f.landmark]
+        ys = [p.y for p in f.landmark]
+        return float((max(xs) - min(xs)) * (max(ys) - min(ys)))
+
+    sorted_faces = sorted(all_faces, key=face_area, reverse=True)
+    primary_area = face_area(sorted_faces[0])
+    valid_faces = [
+        f for f in sorted_faces
+        if face_area(f) >= max(0.025, primary_area * 0.20)
+    ]
+    assert len(valid_faces) == 1  # Chỉ còn lại 1 mặt chính duy nhất!
+

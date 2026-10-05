@@ -27,7 +27,7 @@ except Exception:  # pragma: no cover
 
 # Landmark dùng cho heuristic
 _UPPER_SKIN = [9, 151, 168, 108, 337]   # giữa 2 chân mày, trán, sống mũi trên (khẩu trang không che)
-_LOWER_FACE = [152, 175, 200, 420, 214]  # cằm, má dưới (bị khẩu trang che, không dính môi)
+_LOWER_FACE = [50, 280, 205, 425, 118, 347, 187, 411]  # má dưới hai bên (tránh chóp cằm 152 hay bị bóng đổ trần)
 _IRIS_CENTERS = [468, 473]              # tâm mống mắt (refine_landmarks)
 _EYE_FALLBACK = [159, 386]              # mí trên nếu không có iris
 
@@ -161,14 +161,28 @@ class FaceAnalyzer:
         hands_res = self._hands.process(rgb)
         faces = res.multi_face_landmarks or []
         hands = hands_res.multi_hand_landmarks or []
-        out = FaceResult(face_count=len(faces))
         if not faces:
-            return out
-        # Chọn mặt lớn nhất
-        def area(f):
-            xs = [p.x for p in f.landmark]; ys = [p.y for p in f.landmark]
-            return (max(xs) - min(xs)) * (max(ys) - min(ys))
-        face = max(faces, key=area)
+            return FaceResult(face_count=0)
+
+        # Chọn mặt lớn nhất và tính diện tích
+        def face_area(f):
+            xs = [p.x for p in f.landmark]
+            ys = [p.y for p in f.landmark]
+            return float((max(xs) - min(xs)) * (max(ys) - min(ys)))
+
+        sorted_faces = sorted(faces, key=face_area, reverse=True)
+        primary_face = sorted_faces[0]
+        primary_area = face_area(primary_face)
+
+        # Chỉ tính là "nhiều khuôn mặt" khi khuôn mặt thứ 2 có kích thước đáng kể
+        # (diện tích >= 20% mặt chính VÀ diện tích >= 0.025 tổng khung hình).
+        # Lọc bỏ hoàn toàn các vết nhiễu / tranh ảnh nhỏ xíu ở hậu cảnh.
+        valid_faces = [
+            f for f in sorted_faces
+            if face_area(f) >= max(0.025, primary_area * 0.20)
+        ]
+        out = FaceResult(face_count=len(valid_faces))
+        face = primary_face
         lm = np.array([[p.x, p.y, p.z] for p in face.landmark], dtype=np.float64)   # chuẩn hoá
         out = analyze_landmarks(frame_bgr, lm, oval, out)
 
@@ -275,8 +289,40 @@ def analyze_landmarks(frame_bgr: np.ndarray, lm3: np.ndarray, oval: dict, out: F
         roi = cv2.resize(roi, (200, max(10, int(roi.shape[0] * scale))), interpolation=cv2.INTER_AREA)
         out.sharpness = float(cv2.Laplacian(roi, cv2.CV_64F).var())
 
-    # --- Heuristic khẩu trang & Kính râm / Kính lóa (Occlusion) ---
     face_w_px = max(1.0, (x1 - x0) * w)
+
+    # --- Kiểm tra độ rõ nét & sự hiện diện của từng bộ phận ngũ quan (Occlusion Detection) ---
+    parts_status = {}
+    occluded_name = None
+    for p_key, p_cfg in PARTS_CONFIG.items():
+        sub_pts = px[p_cfg["indices"]]
+        sx0, sy0 = sub_pts.min(axis=0)
+        sx1, sy1 = sub_pts.max(axis=0)
+        pad = max(3, int(face_w_px * 0.025))
+        roi = gray[max(0, int(sy0 - pad)):min(h, int(sy1 + pad)), max(0, int(sx0 - pad)):min(w, int(sx1 + pad))]
+        if roi.size == 0:
+            parts_status[p_key] = False
+            if occluded_name is None:
+                occluded_name = p_cfg["name"]
+            continue
+
+        sobel = cv2.Sobel(roi, cv2.CV_64F, 1, 1, ksize=3)
+        edge_energy = float(np.mean(np.abs(sobel)))
+        contrast = float(roi.max() - roi.min())
+        is_ok = bool(edge_energy >= p_cfg["min_edge"] and contrast >= p_cfg["min_contrast"])
+        parts_status[p_key] = is_ok
+        if not is_ok and occluded_name is None:
+            occluded_name = p_cfg["name"]
+
+    out.parts_status = parts_status
+    out.occluded_part_name = occluded_name
+
+    # --- Heuristic khẩu trang thông minh (Robust Mask Detection) ---
+    # Khẩu trang thực tế (y tế hoặc vải) che kín MŨI VÀ MIỆNG.
+    # Nếu miệng và mũi đều rõ nét (có bờ môi, viền môi, chóp mũi) -> chắc chắn KHÔNG đeo khẩu trang!
+    has_mouth = bool(parts_status.get("mouth", True))
+    has_nose = bool(parts_status.get("nose", True))
+
     r = max(3, int(face_w_px * 0.05))
     ycc = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2YCrCb).astype(np.float64)
 
@@ -290,12 +336,20 @@ def analyze_landmarks(frame_bgr: np.ndarray, lm3: np.ndarray, oval: dict, out: F
     chroma = float(np.hypot(crl - cru, cbl - cbu))
     y_ratio = float(yl / max(1.0, yu))
     upper_skin, lower_skin = bool(_is_skin(cru, cbu)), bool(_is_skin(crl, cbl))
-    if upper_skin and lower_skin:
-        out.mask_detected = chroma > 36.0 or y_ratio < C.MASK_DARK_RATIO
-    elif upper_skin and not lower_skin:
-        out.mask_detected = True
+
+    if has_mouth and has_nose:
+        # Miệng và mũi nhìn thấy rõ ràng -> không phải khẩu trang!
+        # Chỉ báo nếu vùng mặt dưới bị phủ màu nhân tạo hoàn toàn (vải xanh y tế: Cb > 145 & Cr < 120, hoặc đen kịt Y < 25)
+        artificial_mask_color = bool((cbl > 145 and crl < 120) or yl < 25)
+        out.mask_detected = artificial_mask_color
     else:
-        out.mask_detected = chroma > C.MASK_CHROMA_DIST * 1.5 or y_ratio < C.MASK_DARK_RATIO * 0.85
+        # Vùng miệng hoặc mũi bị che khuất -> kiểm tra xem có phải do khẩu trang không
+        if upper_skin and not lower_skin:
+            out.mask_detected = True
+        elif not upper_skin and not lower_skin:
+            out.mask_detected = True
+        else:
+            out.mask_detected = chroma > 32.0 or y_ratio < 0.40 or (cbl > 135 and crl < 125)
 
     # Vùng mắt: kiểm tra Kính râm đen (Black Sunglasses) và Kính bị lóa (Glare)
     eye_rois = []
@@ -326,32 +380,6 @@ def analyze_landmarks(frame_bgr: np.ndarray, lm3: np.ndarray, oval: dict, out: F
     iod = float(np.linalg.norm(px[33] - px[263]))
     if iod > 1:
         out.perspective_ratio = round(float(np.linalg.norm(px[168] - px[1])) / iod, 4)
-
-    # --- Kiểm tra độ rõ nét & sự hiện diện của từng bộ phận ngũ quan (Occlusion Detection) ---
-    parts_status = {}
-    occluded_name = None
-    for p_key, p_cfg in PARTS_CONFIG.items():
-        sub_pts = px[p_cfg["indices"]]
-        sx0, sy0 = sub_pts.min(axis=0)
-        sx1, sy1 = sub_pts.max(axis=0)
-        pad = max(3, int(face_w_px * 0.025))
-        roi = gray[max(0, int(sy0 - pad)):min(h, int(sy1 + pad)), max(0, int(sx0 - pad)):min(w, int(sx1 + pad))]
-        if roi.size == 0:
-            parts_status[p_key] = False
-            if occluded_name is None:
-                occluded_name = p_cfg["name"]
-            continue
-
-        sobel = cv2.Sobel(roi, cv2.CV_64F, 1, 1, ksize=3)
-        edge_energy = float(np.mean(np.abs(sobel)))
-        contrast = float(roi.max() - roi.min())
-        is_ok = bool(edge_energy >= p_cfg["min_edge"] and contrast >= p_cfg["min_contrast"])
-        parts_status[p_key] = is_ok
-        if not is_ok and occluded_name is None:
-            occluded_name = p_cfg["name"]
-
-    out.parts_status = parts_status
-    out.occluded_part_name = occluded_name
 
     # --- Trích xuất toạ độ các đường mốc (Keypoints) để vẽ lưới Biometric trên frontend ---
     def round_pts(indices):

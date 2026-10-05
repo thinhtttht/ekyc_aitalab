@@ -421,6 +421,8 @@ function clearFlashingColor() {
 async function triggerOpticalFlashing() {
   if (isFlashingActive) return;
   isFlashingActive = true;
+  // Tạm dừng vòng lặp gửi frame thông thường để tránh xung đột khung hình và đè trạng thái
+  isLoopRunning = false;
 
   try {
     // 1. Gửi yêu cầu lấy chuỗi thách thức từ máy chủ
@@ -519,11 +521,13 @@ async function triggerOpticalFlashing() {
       captureHdAndShowSummary(verifyData.summary || {});
     } else {
       bottomPill.className = 'bottom-guidance-pill red';
-      bottomPill.textContent = verifyData.message || 'Xác thực thất bại. Hệ thống phát hiện bề mặt không hợp lệ.';
+      bottomPill.textContent = verifyData.message || 'Chưa đủ độ phản xạ quang học trên da. Vui lòng tăng sáng màn hình và thử lại.';
       setRow('chk-optical-liveness', 'val-optical-liveness', false, 'Không đạt');
       setTimeout(() => {
         isFlashingActive = false;
-      }, 2500);
+        isLoopRunning = true;
+        requestAnimationFrame(frameLoop);
+      }, 3000);
     }
   } catch (err) {
     console.error('Lỗi quy trình Color Flashing:', err);
@@ -532,7 +536,9 @@ async function triggerOpticalFlashing() {
     bottomPill.textContent = err.message || 'Lỗi quét quang học. Vui lòng thử lại.';
     setTimeout(() => {
       isFlashingActive = false;
-    }, 2000);
+      isLoopRunning = true;
+      requestAnimationFrame(frameLoop);
+    }, 3000);
   }
 }
 
@@ -871,7 +877,7 @@ function updateStepper(stage) {
     zoom_in: 3,
     flashing: 3,
     capture: 4,
-    failed: 1,
+    failed: 3,
   };
 
   const activeIdx = stageMap[stage] ?? 0;

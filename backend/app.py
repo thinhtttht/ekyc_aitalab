@@ -25,7 +25,9 @@ from enrollment import EnrollmentSession, Stage
 from color_challenge import challenge_manager
 from optical_analyzer import OpticalAnalyzer
 
-optical_analyzer = OpticalAnalyzer()
+optical_analyzer = OpticalAnalyzer(
+    min_pearson=C.FLASH_MIN_PEARSON, min_amplitude=C.FLASH_MIN_AMPLITUDE
+)
 
 app = FastAPI(
     title="Smart-eKYC Biometric PoC",
@@ -233,6 +235,11 @@ def enroll_color_verify(payload: ColorVerifyRequest):
         frames_bgr=frames_bgr,
         expected_colors_rgb=expected_colors,
         awb_gamma=C.FLASH_AWB_GAMMA,
+    )
+
+    print(
+        f"[OPTICAL VERIFY] passed={res.passed} | Pearson r={res.correlation_score:.3f} (min={C.FLASH_MIN_PEARSON}) | "
+        f"Amp={res.amplitude:.2f} (min={C.FLASH_MIN_AMPLITUDE}) | verdict={res.verdict} | msg={res.message}"
     )
 
     # Đánh dấu tiêu thụ token chống replay

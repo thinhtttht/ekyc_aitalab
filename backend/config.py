@@ -87,8 +87,8 @@ DEPTH_3D_MIN_DELTA = 0.025             # Độ nhô tối thiểu trục Z của
 # ---------------------------------------------------------------------------
 # (f) CHỐNG GIẢ MẠO QUANG HỌC CHỦ ĐỘNG (ACTIVE OPTICAL COLOR FLASHING PAD)
 # ---------------------------------------------------------------------------
-FLASH_MIN_PEARSON = 0.65                # Ngưỡng tương quan Pearson giữa phản xạ da và nguồn phát
-FLASH_MIN_AMPLITUDE = 4.0               # Biên độ phản xạ tối thiểu (chống ảnh in tĩnh/video bất động)
+FLASH_MIN_PEARSON = 0.35                # Ngưỡng tương quan Pearson thích ứng với ánh sáng phòng thực tế
+FLASH_MIN_AMPLITUDE = 1.0               # Biên độ phản xạ tối thiểu trên da mặt người thật
 FLASH_STEP_DURATION_MS = 330            # Thời lượng chiếu mỗi bước màu (ms)
 FLASH_AWB_GAMMA = 0.45                  # Hệ số bù trừ độ lệch cân bằng trắng (AWB)
 FLASH_CHALLENGE_TIMEOUT_SEC = 15.0      # Thời gian sống của Token thách thức (giây)

@@ -443,12 +443,25 @@ class EnrollmentSession:
             )
 
         # Giai đoạn CAPTURE hoặc FAILED
+        if self.stage == Stage.FAILED:
+            failed_msg = (
+                self.history.get("optical_liveness", {}).get("message")
+                or "Chưa đạt chuẩn phản xạ quang học trên da. Vui lòng thử lại."
+            )
+            return self._build_response(
+                message=failed_msg,
+                color="red",
+                cam_res=cam_res,
+                face_res=face_res,
+                progress=0.0,
+            )
+
         return self._build_response(
-            message="Quá trình hoàn tất",
-            color="green" if self.stage == Stage.CAPTURE else "red",
+            message="Xác thực sinh trắc học thành công! Đang chuyển sang Bước 5...",
+            color="green",
             cam_res=cam_res,
             face_res=face_res,
-            progress=1.0 if self.stage == Stage.CAPTURE else 0.0,
+            progress=1.0,
         )
 
     def apply_optical_result(

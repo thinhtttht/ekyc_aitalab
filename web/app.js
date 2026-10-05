@@ -367,13 +367,13 @@ function applyFlashingColor(hexColor, stepName, stepIndex, totalSteps) {
   // 1. Chiếu sáng vùng ngoài khung Oval trong viewport camera (trừ bên trong oval)
   if (svgFlashRect) {
     svgFlashRect.setAttribute('fill', hexColor);
-    svgFlashRect.setAttribute('opacity', '0.94');
+    svgFlashRect.setAttribute('opacity', '1.0');
   }
 
   // 2. Viền Oval phát sáng rực rỡ theo màu hiện tại
   if (ovalBorder) {
     ovalBorder.style.stroke = hexColor;
-    ovalBorder.style.filter = `drop-shadow(0 0 24px ${hexColor})`;
+    ovalBorder.style.filter = `drop-shadow(0 0 36px ${hexColor}) drop-shadow(0 0 12px ${hexColor})`;
   }
 
   // 3. Chiếu sáng toàn màn hình xung quanh (khoét rỗng bên trong khung oval)

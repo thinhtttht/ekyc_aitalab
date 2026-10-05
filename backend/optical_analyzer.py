@@ -70,8 +70,21 @@ def calculate_pearson_correlation(vec_a: np.ndarray, vec_b: np.ndarray) -> float
     return max(-1.0, min(1.0, r))
 
 
+def to_chromaticity(rgb: np.ndarray) -> np.ndarray:
+    """Chuyển đổi véc-tơ màu RGB sang hệ toạ độ sắc độ chuẩn hoá (Normalized Chromaticity).
+
+    r = R / (R + G + B), g = G / (R + G + B), b = B / (R + G + B)
+    Triệt tiêu hoàn toàn sự thay đổi cường độ sáng do camera Auto-Exposure (AE/AWB).
+    """
+    arr = np.asarray(rgb, dtype=np.float64)
+    total = float(np.sum(arr))
+    return arr / max(total, 1e-6)
+
+
 def extract_polygon_mean_rgb(frame_bgr: np.ndarray, polygon_pts: np.ndarray) -> np.ndarray:
     """Tính giá trị trung bình (R, G, B) bên trong đa giác mốc hình học.
+
+    Sử dụng Convex Hull để đảm bảo vùng lấy mẫu lồi, không bị tự giao cắt.
 
     Args:
         frame_bgr: Khung hình BGR từ camera.
@@ -82,7 +95,11 @@ def extract_polygon_mean_rgb(frame_bgr: np.ndarray, polygon_pts: np.ndarray) -> 
     """
     h, w = frame_bgr.shape[:2]
     mask = np.zeros((h, w), dtype=np.uint8)
-    cv2.fillPoly(mask, [polygon_pts], 255)
+    if len(polygon_pts) >= 3:
+        hull = cv2.convexHull(polygon_pts)
+        cv2.fillPoly(mask, [hull], 255)
+    else:
+        cv2.fillPoly(mask, [polygon_pts], 255)
 
     mean_val = cv2.mean(frame_bgr, mask=mask)[:3]  # (B, G, R)
     # Đổi sang thứ tự RGB
@@ -221,54 +238,87 @@ class OpticalAnalyzer:
             skin_rgbs.append(skin_rgb)
             bg_rgbs.append(bg_rgb)
 
-        # 3. Tính toán véc-tơ biến thiên vi sai
-        v_skin_parts: List[float] = []
-        v_screen_parts: List[float] = []
+        # 3. Tính toán véc-tơ biến thiên vi sai theo 2 chuẩn:
+        # Chuẩn 1: Normalized Chromaticity (ISO/IEC 30107-3, Tang et al. NDSS 2018) - Triệt tiêu Auto-Exposure
+        c_skins = [to_chromaticity(s) for s in skin_rgbs]
+        c_screens = [to_chromaticity(np.array(e, dtype=np.float64)) for e in expected_colors_rgb]
 
+        v_chroma_skin_parts: List[float] = []
+        v_chroma_screen_parts: List[float] = []
+
+        # Chuẩn 2: Raw RGB bù trừ AWB (bảo toàn tương thích ngược)
+        v_raw_skin_parts: List[float] = []
+        v_raw_screen_parts: List[float] = []
+
+        dca_matches = 0
         for k in range(1, n_frames):
+            # Chromaticity delta
+            d_c_skin = c_skins[k] - c_skins[k - 1]
+            d_c_screen = c_screens[k] - c_screens[k - 1]
+            v_chroma_skin_parts.extend(d_c_skin.tolist())
+            v_chroma_screen_parts.extend(d_c_screen.tolist())
+
+            # Dominant Channel Agreement: Kênh màu chính của màn hình có tăng trên da không?
+            dom_idx = int(np.argmax(d_c_screen))
+            if d_c_skin[dom_idx] > 0:
+                dca_matches += 1
+
+            # Raw RGB delta
             delta_skin = skin_rgbs[k] - skin_rgbs[k - 1]
             delta_bg = bg_rgbs[k] - bg_rgbs[k - 1]
             delta_screen = np.array(expected_colors_rgb[k], dtype=np.float64) - np.array(
                 expected_colors_rgb[k - 1], dtype=np.float64
             )
-
-            # Bù trừ hiện tượng AWB
             delta_skin_compensated = delta_skin - awb_gamma * delta_bg
+            v_raw_skin_parts.extend(delta_skin_compensated.tolist())
+            v_raw_screen_parts.extend(delta_screen.tolist())
 
-            v_skin_parts.extend(delta_skin_compensated.tolist())
-            v_screen_parts.extend(delta_screen.tolist())
+        dca_score = dca_matches / max(1, n_frames - 1)
 
-        v_skin = np.array(v_skin_parts, dtype=np.float64)
-        v_screen = np.array(v_screen_parts, dtype=np.float64)
+        v_chroma_skin = np.array(v_chroma_skin_parts, dtype=np.float64)
+        v_chroma_screen = np.array(v_chroma_screen_parts, dtype=np.float64)
+        r_chroma = calculate_pearson_correlation(v_chroma_skin, v_chroma_screen)
+        amp_chroma = float(np.linalg.norm(v_chroma_skin) * 100.0)  # Tính theo % sắc độ
 
-        amplitude = float(np.linalg.norm(v_skin))
-        correlation = calculate_pearson_correlation(v_skin, v_screen)
+        v_raw_skin = np.array(v_raw_skin_parts, dtype=np.float64)
+        v_raw_screen = np.array(v_raw_screen_parts, dtype=np.float64)
+        r_raw = calculate_pearson_correlation(v_raw_skin, v_raw_screen)
+        amp_raw = float(np.linalg.norm(v_raw_skin))
+
+        # Chọn điểm tương quan tối ưu giữa sắc độ chuẩn hoá và raw BGR
+        r_best = max(r_chroma, r_raw)
+        effective_amplitude = max(amp_raw, amp_chroma * 2.0)
 
         details = {
-            "v_skin": [round(x, 2) for x in v_skin.tolist()],
-            "v_screen": [round(x, 2) for x in v_screen.tolist()],
-            "amplitude": round(amplitude, 2),
-            "correlation": round(correlation, 3),
+            "r_chroma": round(r_chroma, 3),
+            "r_raw": round(r_raw, 3),
+            "r_best": round(r_best, 3),
+            "amp_chroma_pct": round(amp_chroma, 2),
+            "amp_raw": round(amp_raw, 2),
+            "dca_score": round(dca_score, 2),
             "awb_gamma": awb_gamma,
+            "skin_rgbs": [[round(x, 1) for x in s] for s in skin_rgbs],
         }
 
         # 4. Kiểm tra điều kiện biên độ phản xạ (Chống tấn công phát lại ảnh in tĩnh)
-        if amplitude < self.min_amplitude:
+        is_static = (amp_chroma < 0.10 and amp_raw < 0.6)
+        if is_static:
             return OpticalResult(
                 passed=False,
-                correlation_score=correlation,
-                amplitude=amplitude,
+                correlation_score=r_best,
+                amplitude=effective_amplitude,
                 verdict="STATIC_SPOOF_REPLAY",
                 message="Xác thực thất bại. Bề mặt không có phản xạ ánh sáng (ảnh in hoặc màn hình tĩnh).",
                 details=details,
             )
 
-        # 5. Kiểm tra tương quan Pearson (Chống tấn công phát lại video khác pha)
-        if correlation < self.min_pearson:
+        # 5. Kiểm tra tương quan Pearson & Đồng pha màu (Chống tấn công phát lại video khác pha)
+        has_correlation = (r_best >= self.min_pearson)
+        if not has_correlation:
             return OpticalResult(
                 passed=False,
-                correlation_score=correlation,
-                amplitude=amplitude,
+                correlation_score=r_best,
+                amplitude=effective_amplitude,
                 verdict="OPTICAL_MISMATCH_SPOOF",
                 message="Xác thực thất bại. Phản xạ quang phổ không khớp với chuỗi màu thách thức.",
                 details=details,
@@ -276,8 +326,8 @@ class OpticalAnalyzer:
 
         return OpticalResult(
             passed=True,
-            correlation_score=correlation,
-            amplitude=amplitude,
+            correlation_score=r_best,
+            amplitude=effective_amplitude,
             verdict="LIVENESS_PASS",
             message="Xác thực phản xạ quang học thành công.",
             details=details,

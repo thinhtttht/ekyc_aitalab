@@ -242,6 +242,17 @@ def enroll_color_verify(payload: ColorVerifyRequest):
         f"Amp={res.amplitude:.2f} (min={C.FLASH_MIN_AMPLITUDE}) | verdict={res.verdict} | msg={res.message}"
     )
 
+    try:
+        log_path = os.path.join(os.path.dirname(__file__), "optical_verify.log")
+        with open(log_path, "a", encoding="utf-8") as f:
+            f.write(
+                f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] session={payload.session_id} | "
+                f"passed={res.passed} | r_best={res.correlation_score:.3f} | amp={res.amplitude:.2f} | "
+                f"verdict={res.verdict} | msg={res.message} | details={res.details}\n"
+            )
+    except Exception as log_err:
+        print("Log error:", log_err)
+
     # Đánh dấu tiêu thụ token chống replay
     challenge_manager.consume_challenge(payload.session_id)
 

@@ -357,12 +357,70 @@ async function frameLoop() {
 // -----------------------------------------------------------------------------
 // 3.5. XÁC THỰC QUANG HỌC CHỦ ĐỘNG (ACTIVE OPTICAL COLOR FLASHING)
 // -----------------------------------------------------------------------------
+
+function applyFlashingColor(hexColor, stepName, stepIndex, totalSteps) {
+  const overlay = document.getElementById('flashingOverlay');
+  const svgFlashRect = document.getElementById('svgFlashRect');
+  const colorTextEl = document.getElementById('flashingColorText');
+  const ovalBorder = document.getElementById('svgOvalBorder');
+
+  // 1. Chiếu sáng vùng ngoài khung Oval trong viewport camera (trừ bên trong oval)
+  if (svgFlashRect) {
+    svgFlashRect.setAttribute('fill', hexColor);
+    svgFlashRect.setAttribute('opacity', '0.94');
+  }
+
+  // 2. Viền Oval phát sáng rực rỡ theo màu hiện tại
+  if (ovalBorder) {
+    ovalBorder.style.stroke = hexColor;
+    ovalBorder.style.filter = `drop-shadow(0 0 24px ${hexColor})`;
+  }
+
+  // 3. Chiếu sáng toàn màn hình xung quanh (khoét rỗng bên trong khung oval)
+  if (overlay && ovalBorder) {
+    const rect = ovalBorder.getBoundingClientRect();
+    const cx = Math.round(rect.left + rect.width / 2);
+    const cy = Math.round(rect.top + rect.height / 2);
+    const rx = Math.round(rect.width / 2);
+    const ry = Math.round(rect.height / 2);
+
+    // CSS Mask khoét rỗng bên trong khung oval (transparent), toàn bộ bên ngoài màn hình phủ màu
+    const maskVal = `radial-gradient(ellipse ${rx}px ${ry}px at ${cx}px ${cy}px, transparent 96%, black 100%)`;
+    overlay.style.webkitMaskImage = maskVal;
+    overlay.style.maskImage = maskVal;
+    overlay.style.backgroundColor = hexColor;
+    overlay.classList.add('active');
+  }
+
+  if (colorTextEl) {
+    colorTextEl.textContent = `Đang quét quang phổ [Màu ${stepIndex + 1}/${totalSteps}: ${stepName}]`;
+  }
+}
+
+function clearFlashingColor() {
+  const overlay = document.getElementById('flashingOverlay');
+  const svgFlashRect = document.getElementById('svgFlashRect');
+  const ovalBorder = document.getElementById('svgOvalBorder');
+
+  if (svgFlashRect) {
+    svgFlashRect.setAttribute('fill', 'transparent');
+    svgFlashRect.setAttribute('opacity', '0');
+  }
+  if (ovalBorder) {
+    ovalBorder.style.stroke = '';
+    ovalBorder.style.filter = '';
+  }
+  if (overlay) {
+    overlay.classList.remove('active');
+    overlay.style.backgroundColor = 'transparent';
+    overlay.style.webkitMaskImage = '';
+    overlay.style.maskImage = '';
+  }
+}
+
 async function triggerOpticalFlashing() {
   if (isFlashingActive) return;
   isFlashingActive = true;
-
-  const flashingOverlay = document.getElementById('flashingOverlay');
-  if (!flashingOverlay) return;
 
   try {
     // 1. Gửi yêu cầu lấy chuỗi thách thức từ máy chủ
@@ -382,18 +440,11 @@ async function triggerOpticalFlashing() {
 
     const collectedFrames = [];
 
-    // 2. Chiếu từng màu theo chuỗi thời gian thực (Toàn màn hình phát sáng)
-    const colorTextEl = document.getElementById('flashingColorText');
+    // 2. Chiếu từng màu theo chuỗi thời gian thực (Trừ bên trong khung oval)
     for (let i = 0; i < sequence.length; i++) {
       const step = sequence[i];
 
-      // Đổi màu nền toàn màn hình
-      flashingOverlay.style.backgroundColor = step.hex;
-      flashingOverlay.classList.add('active');
-
-      if (colorTextEl) {
-        colorTextEl.textContent = `Đang quét quang phổ [Màu ${i + 1}/${sequence.length}: ${step.name}]`;
-      }
+      applyFlashingColor(step.hex, step.name, i, sequence.length);
 
       holdLabel.textContent = `🌈 Quét quang phổ ${i + 1}/${sequence.length}: ${step.name}`;
       const pct = Math.round(((i + 1) / sequence.length) * 100);
@@ -436,8 +487,7 @@ async function triggerOpticalFlashing() {
     }
 
     // 3. Tắt lớp phủ sau khi chiếu xong
-    flashingOverlay.classList.remove('active');
-    flashingOverlay.style.backgroundColor = 'transparent';
+    clearFlashingColor();
 
     bottomPill.className = 'bottom-guidance-pill cyan';
     bottomPill.textContent = 'Đang phân tích phản xạ quang phổ mô da...';
@@ -477,7 +527,7 @@ async function triggerOpticalFlashing() {
     }
   } catch (err) {
     console.error('Lỗi quy trình Color Flashing:', err);
-    flashingOverlay.classList.remove('active', 'pulse');
+    clearFlashingColor();
     bottomPill.className = 'bottom-guidance-pill red';
     bottomPill.textContent = err.message || 'Lỗi quét quang học. Vui lòng thử lại.';
     setTimeout(() => {

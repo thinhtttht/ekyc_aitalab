@@ -24,10 +24,16 @@ from camera_quality import ClientStats
 from enrollment import EnrollmentSession, Stage
 from color_challenge import challenge_manager
 from optical_analyzer import OpticalAnalyzer
+from database import get_user_repository
+from feature_extractor import get_arcface_extractor
+from face_analyzer import FaceAnalyzer
 
 optical_analyzer = OpticalAnalyzer(
     min_pearson=C.FLASH_MIN_PEARSON, min_amplitude=C.FLASH_MIN_AMPLITUDE
 )
+user_repo = get_user_repository()
+arcface_extractor = get_arcface_extractor()
+verifier_analyzer = FaceAnalyzer()
 
 app = FastAPI(
     title="Smart-eKYC Biometric PoC",
@@ -305,6 +311,198 @@ def enroll_verify_capture(payload: FinalCaptureRequest):
 
     result = sess.verify_final_capture(frame_bgr)
     return result
+
+
+# ---------------------------------------------------------------------------
+# QUẢN LÝ NGƯỜI DÙNG & XÁC THỰC SINH TRẮC HỌC (ARCFACE RECOGNITION & DB)
+# ---------------------------------------------------------------------------
+
+def decode_base64_image(raw_b64: str) -> np.ndarray:
+    """Giải mã ảnh base64 (hỗ trợ cả Data URL và chuỗi thuần)."""
+    if "," in raw_b64:
+        raw_b64 = raw_b64.split(",", 1)[1]
+    img_bytes = base64.b64decode(raw_b64)
+    nparr = np.frombuffer(img_bytes, np.uint8)
+    frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+    if frame is None:
+        raise ValueError("Không thể decode ảnh JPEG")
+    return frame
+
+
+class UserEnrollPayload(BaseModel):
+    session_id: Optional[str] = None
+    user_id: Optional[str] = None
+    full_name: str = Field(min_length=1, max_length=120)
+    image: str = Field(description="Base64 encoded JPEG data URL hoặc raw base64")
+    metadata: Optional[dict] = None
+
+
+class FaceVerifyPayload(BaseModel):
+    image: str = Field(description="Base64 encoded JPEG data URL hoặc raw base64")
+    target_user_id: Optional[str] = None  # None -> 1:N; có giá trị -> 1:1
+    threshold: float = Field(default=0.45, ge=0.1, le=0.9)
+
+
+@app.post("/api/users/enroll")
+def enroll_user(payload: UserEnrollPayload):
+    """Lưu hồ sơ người dùng kèm vector ArcFace 512D vào cơ sở dữ liệu."""
+    try:
+        frame_bgr = decode_base64_image(payload.image)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Dữ liệu ảnh không hợp lệ: {e}")
+
+    # 1. Nếu có session_id và đã có final_embedding thì ưu tiên sử dụng
+    sess = sessions.get(payload.session_id) if payload.session_id else None
+    if sess and sess.final_embedding is not None:
+        emb = sess.final_embedding
+    else:
+        # Tự trích xuất từ ảnh
+        face_res = verifier_analyzer.analyze(frame_bgr, oval=C.OVAL_NORMAL)
+        kps = face_res.arcface_kps if face_res.detected else None
+        bbox = face_res.bbox if face_res.detected else None
+        try:
+            emb = arcface_extractor.extract_embedding(
+                frame_bgr,
+                landmarks_5pts=kps,
+                bbox=bbox,
+            )
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Lỗi trích xuất ArcFace: {e}")
+
+    # Đảm bảo format Data URL
+    snapshot_b64 = payload.image
+    if not snapshot_b64.startswith("data:image/"):
+        snapshot_b64 = f"data:image/jpeg;base64,{snapshot_b64}"
+
+    user = user_repo.save_user(
+        full_name=payload.full_name,
+        embedding=emb,
+        snapshot_b64=snapshot_b64,
+        user_id=payload.user_id,
+        metadata=payload.metadata,
+    )
+    return {
+        "status": "ok",
+        "message": f"Đã lưu hồ sơ sinh trắc học thành công cho '{user['full_name']}'!",
+        "user": user,
+    }
+
+
+@app.get("/api/users")
+def get_users_list():
+    """Lấy danh sách tất cả người dùng trong CSDL phục vụ UI quản lý."""
+    users = user_repo.list_users()
+    return {"status": "ok", "total": len(users), "users": users}
+
+
+@app.get("/api/users/{user_id}")
+def get_user_detail(user_id: str):
+    """Lấy chi tiết hồ sơ người dùng theo user_id."""
+    u = user_repo.get_user(user_id)
+    if not u:
+        raise HTTPException(status_code=404, detail="Không tìm thấy người dùng")
+    return {
+        "user_id": u["user_id"],
+        "full_name": u["full_name"],
+        "embedding": [round(float(v), 6) for v in u["embedding"]],
+        "embedding_dim": u["embedding_dim"],
+        "embedding_preview": u["embedding_preview"],
+        "created_at": u["created_at"],
+        "snapshot_b64": u["snapshot_b64"],
+        "metadata": u["metadata"],
+    }
+
+
+@app.delete("/api/users/{user_id}")
+def delete_user_record(user_id: str):
+    """Xoá một hồ sơ người dùng khỏi CSDL."""
+    deleted = user_repo.delete_user(user_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Không tìm thấy người dùng để xoá")
+    return {"status": "ok", "message": f"Đã xoá người dùng {user_id}"}
+
+
+@app.post("/api/verify/face")
+def verify_face_biometrics(payload: FaceVerifyPayload):
+    """Xác thực khuôn mặt thời gian thực (hỗ trợ 1:1 đích danh và 1:N nhận diện)."""
+    try:
+        frame_bgr = decode_base64_image(payload.image)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Dữ liệu ảnh không hợp lệ: {e}")
+
+    start_t = time.time()
+    face_res = verifier_analyzer.analyze(frame_bgr, oval=C.OVAL_NORMAL)
+
+    if face_res.face_count == 0:
+        return {
+            "passed": False,
+            "verdict": "NO_FACE",
+            "message": "Không phát hiện khuôn mặt trong khung hình",
+            "match_result": None,
+            "latency_ms": round((time.time() - start_t) * 1000, 1),
+        }
+
+    if face_res.face_count > 1:
+        return {
+            "passed": False,
+            "verdict": "MULTIPLE_FACES",
+            "message": "Phát hiện nhiều hơn 1 khuôn mặt trước ống kính",
+            "match_result": None,
+            "latency_ms": round((time.time() - start_t) * 1000, 1),
+        }
+
+    # Kiểm tra phòng thủ chống giả mạo Passive Anti-Spoofing
+    if face_res.anti_spoof and face_res.anti_spoof.is_real is False:
+        return {
+            "passed": False,
+            "verdict": "SPOOF_REJECTED",
+            "message": f"Từ chối giả mạo: {face_res.anti_spoof.message}",
+            "anti_spoof": {
+                "is_real": False,
+                "real_prob": round(face_res.anti_spoof.real_prob, 3),
+                "spoof_type": face_res.anti_spoof.spoof_type,
+            },
+            "match_result": None,
+            "latency_ms": round((time.time() - start_t) * 1000, 1),
+        }
+
+    # Trích xuất vector ArcFace 512 chiều
+    try:
+        query_emb = arcface_extractor.extract_embedding(
+            frame_bgr,
+            landmarks_5pts=face_res.arcface_kps,
+            bbox=face_res.bbox,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Lỗi trích xuất ArcFace: {e}")
+
+    # 1:1 hay 1:N
+    if payload.target_user_id and payload.target_user_id.strip():
+        match_data = user_repo.match_user_1_to_1(
+            query_emb,
+            payload.target_user_id.strip(),
+            threshold=payload.threshold,
+        )
+    else:
+        match_data = user_repo.match_user_1_to_n(
+            query_emb,
+            threshold=payload.threshold,
+        )
+
+    latency_ms = round((time.time() - start_t) * 1000, 1)
+    is_match = bool(match_data.get("is_match", False))
+
+    return {
+        "passed": is_match,
+        "verdict": "MATCH_SUCCESS" if is_match else "MISMATCH",
+        "message": "Xác thực danh tính thành công!" if is_match else "Không trùng khớp với hồ sơ khuôn mặt nào.",
+        "anti_spoof": {
+            "is_real": True,
+            "real_prob": round(face_res.anti_spoof.real_prob, 3) if face_res.anti_spoof else 1.0,
+        },
+        "match_result": match_data,
+        "latency_ms": latency_ms,
+    }
 
 
 # Gắn frontend tĩnh tại `d:\EKYC\web`

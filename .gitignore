@@ -27,6 +27,7 @@ yarn-error.log*
 # Logs & Databases
 *.log
 *.sqlite3
+*.db
 
 # OS generated files
 .DS_Store

@@ -38,7 +38,72 @@ const btnRestartSession = document.getElementById('btnRestartSession');
 const summaryModal = document.getElementById('summaryModal');
 const snapshotImg = document.getElementById('snapshotImg');
 const btnModalRetake = document.getElementById('btnModalRetake');
-const btnModalNext = document.getElementById('btnModalNext');
+
+// Tab Navigation
+const tabBtnEnroll = document.getElementById('tabBtnEnroll');
+const tabBtnVerify = document.getElementById('tabBtnVerify');
+const tabBtnUsers = document.getElementById('tabBtnUsers');
+const viewEnroll = document.getElementById('viewEnroll');
+const viewVerify = document.getElementById('viewVerify');
+const viewUsers = document.getElementById('viewUsers');
+const userCountBadge = document.getElementById('userCountBadge');
+
+// Enrollment Save Form in Summary Modal
+const enrollFormBox = document.getElementById('enrollFormBox');
+const enrollSavedBox = document.getElementById('enrollSavedBox');
+const inputUserName = document.getElementById('inputUserName');
+const inputUserId = document.getElementById('inputUserId');
+const btnSaveUser = document.getElementById('btnSaveUser');
+const btnGoToVerify = document.getElementById('btnGoToVerify');
+const btnGoToUsers = document.getElementById('btnGoToUsers');
+
+// Verify Tab Elements
+const verifyVideo = document.getElementById('verifyVideo');
+const btnMode1N = document.getElementById('btnMode1N');
+const btnMode11 = document.getElementById('btnMode11');
+const verifyUserSelectBox = document.getElementById('verifyUserSelectBox');
+const selectVerifyUser = document.getElementById('selectVerifyUser');
+const verifyThreshold = document.getElementById('verifyThreshold');
+const valVerifyThreshold = document.getElementById('valVerifyThreshold');
+const btnTriggerVerify = document.getElementById('btnTriggerVerify');
+const chkAutoVerify = document.getElementById('chkAutoVerify');
+const verifyOverlayBanner = document.getElementById('verifyOverlayBanner');
+const verifyOverlayText = document.getElementById('verifyOverlayText');
+
+// Verify Result Elements
+const verifyVerdictBox = document.getElementById('verifyVerdictBox');
+const verdictIcon = document.getElementById('verdictIcon');
+const verdictTitle = document.getElementById('verdictTitle');
+const verdictSubtitle = document.getElementById('verdictSubtitle');
+const matchedUserCard = document.getElementById('matchedUserCard');
+const matchedAvatar = document.getElementById('matchedAvatar');
+const matchedName = document.getElementById('matchedName');
+const matchedId = document.getElementById('matchedId');
+const matchedTime = document.getElementById('matchedTime');
+const metSim = document.getElementById('metSim');
+const metConf = document.getElementById('metConf');
+const metDist = document.getElementById('metDist');
+const metLatency = document.getElementById('metLatency');
+const metPad = document.getElementById('metPad');
+const candidatesLeaderboardBox = document.getElementById('candidatesLeaderboardBox');
+const candidatesList = document.getElementById('candidatesList');
+
+// Users Dashboard Elements
+const statTotalUsers = document.getElementById('statTotalUsers');
+const inputSearchUsers = document.getElementById('inputSearchUsers');
+const btnRefreshUsers = document.getElementById('btnRefreshUsers');
+const btnNewEnroll = document.getElementById('btnNewEnroll');
+const btnEmptyEnroll = document.getElementById('btnEmptyEnroll');
+const usersTableBody = document.getElementById('usersTableBody');
+const usersEmptyState = document.getElementById('usersEmptyState');
+
+// Vector Modal
+const vectorModal = document.getElementById('vectorModal');
+const vectorModalTitle = document.getElementById('vectorModalTitle');
+const vectorModalSubtitle = document.getElementById('vectorModalSubtitle');
+const vectorJsonContent = document.getElementById('vectorJsonContent');
+const btnCopyVector = document.getElementById('btnCopyVector');
+const btnCloseVectorModal = document.getElementById('btnCloseVectorModal');
 
 // State Variables
 let currentStream = null;
@@ -47,6 +112,14 @@ let isLoopRunning = false;
 let isSendingFrame = false;
 let isFlashingActive = false;
 let activeDeviceId = localStorage.getItem('ekyc_preferred_camera') || '';
+let currentTab = 'viewEnroll';
+let lastCapturedDataUrl = null;
+let lastSavedUserId = null;
+let currentVerifyMode = '1_to_n'; // '1_to_n' hoặc '1_to_1'
+let autoVerifyIntervalId = null;
+let isVerifyingFace = false;
+let cachedUsersList = [];
+let currentVectorJsonRaw = '';
 
 // FPS & Signal Meter
 let measuredFps = 0;
@@ -264,15 +337,12 @@ async function restartSession() {
 }
 
 btnRestartSession.addEventListener('click', restartSession);
-btnModalRetake.addEventListener('click', () => {
-  summaryModal.classList.add('hidden');
-  restartSession();
-});
-btnModalNext.addEventListener('click', () => {
-  summaryModal.classList.add('hidden');
-  bottomPill.className = 'bottom-guidance-pill green';
-  bottomPill.textContent = 'Hồ sơ sinh trắc học đã sẵn sàng cho bước tiếp theo.';
-});
+if (btnModalRetake) {
+  btnModalRetake.addEventListener('click', () => {
+    summaryModal.classList.add('hidden');
+    restartSession();
+  });
+}
 
 const btnRejectionRetry = document.getElementById('btnRejectionRetry');
 if (btnRejectionRetry) {
@@ -1057,6 +1127,7 @@ async function captureHdAndVerify(initialSummary = {}) {
       bottomPill.className = 'bottom-guidance-pill green';
       bottomPill.textContent = 'Đăng ký thành công! Khuôn mặt toàn vẹn & đạt chuẩn sinh trắc học.';
       snapshotImg.src = snapshotDataUrl;
+      lastCapturedDataUrl = snapshotDataUrl;
 
       // Điền số liệu tổng kết
       const summary = data.summary || initialSummary || {};
@@ -1080,6 +1151,19 @@ async function captureHdAndVerify(initialSummary = {}) {
       const totalTime = tim.total || '--';
       document.getElementById('sumTime').textContent = `${totalTime}s`;
 
+      // Chuẩn bị form đăng ký người dùng
+      if (enrollFormBox && enrollSavedBox) {
+        enrollFormBox.classList.remove('hidden');
+        enrollSavedBox.classList.add('hidden');
+      }
+      if (inputUserName) {
+        inputUserName.value = '';
+        inputUserName.classList.remove('error');
+      }
+      if (inputUserId) {
+        inputUserId.value = '';
+      }
+
       // Hiển thị modal hoàn tất
       summaryModal.classList.remove('hidden');
     } else {
@@ -1102,13 +1186,692 @@ async function captureHdAndVerify(initialSummary = {}) {
 }
 
 // -----------------------------------------------------------------------------
-// 6. KHỞI CHẠY HỆ THỐNG KHI LOAD TRANG
+// 6. TIỆN ÍCH HELPER (FORMAT, ESCAPE, CLIPBOARD)
+// -----------------------------------------------------------------------------
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function formatDateTime(isoStr) {
+  if (!isoStr) return '--';
+  try {
+    const d = new Date(isoStr);
+    if (isNaN(d.getTime())) return isoStr;
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  } catch (e) {
+    return isoStr;
+  }
+}
+
+async function copyToClipboard(text, triggerEl = null) {
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(text);
+    } else {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+    }
+    if (triggerEl) {
+      const origText = triggerEl.textContent;
+      triggerEl.textContent = '✓ Đã sao chép';
+      triggerEl.classList.add('copied');
+      setTimeout(() => {
+        triggerEl.textContent = origText;
+        triggerEl.classList.remove('copied');
+      }, 1500);
+    }
+  } catch (err) {
+    console.warn('Lỗi copy clipboard:', err);
+  }
+}
+
+// -----------------------------------------------------------------------------
+// 7. ĐIỀU HƯỚNG TABS & QUẢN LÝ VIEW (TABS CONTROLLER)
+// -----------------------------------------------------------------------------
+
+function switchTab(targetTabId) {
+  currentTab = targetTabId;
+
+  // 1. Cập nhật trạng thái các nút Tabs
+  [tabBtnEnroll, tabBtnVerify, tabBtnUsers].forEach((btn) => {
+    if (!btn) return;
+    if (btn.getAttribute('data-tab') === targetTabId) {
+      btn.classList.add('active');
+    } else {
+      btn.classList.remove('active');
+    }
+  });
+
+  // 2. Chuyển đổi hiển thị view panels
+  const panels = [
+    { el: viewEnroll, id: 'viewEnroll' },
+    { el: viewVerify, id: 'viewVerify' },
+    { el: viewUsers, id: 'viewUsers' },
+  ];
+
+  panels.forEach(({ el, id }) => {
+    if (!el) return;
+    if (id === targetTabId) {
+      el.classList.remove('hidden');
+      el.classList.add('active');
+    } else {
+      el.classList.add('hidden');
+      el.classList.remove('active');
+    }
+  });
+
+  // 3. Xử lý logic đặc thù cho từng view
+  if (targetTabId === 'viewVerify') {
+    stopAutoVerify();
+    // Đảm bảo video verify nhận stream webcam hiện tại
+    if (verifyVideo && currentStream) {
+      verifyVideo.srcObject = currentStream;
+      verifyVideo.play().catch(() => {});
+    }
+    loadUsersListForSelect();
+    resetVerifyVerdictUI();
+  } else if (targetTabId === 'viewUsers') {
+    stopAutoVerify();
+    loadUsersTable();
+  } else if (targetTabId === 'viewEnroll') {
+    stopAutoVerify();
+    if (video && currentStream && video.srcObject !== currentStream) {
+      video.srcObject = currentStream;
+      video.play().catch(() => {});
+    }
+  }
+}
+
+// Gắn sự kiện chuyển tab
+if (tabBtnEnroll) tabBtnEnroll.addEventListener('click', () => switchTab('viewEnroll'));
+if (tabBtnVerify) tabBtnVerify.addEventListener('click', () => switchTab('viewVerify'));
+if (tabBtnUsers) tabBtnUsers.addEventListener('click', () => switchTab('viewUsers'));
+
+// -----------------------------------------------------------------------------
+// 8. LƯU HỒ SƠ NGƯỜI DÙNG VÀO CƠ SỞ DỮ LIỆU (SAVE TO USERS DB)
+// -----------------------------------------------------------------------------
+
+async function handleSaveUser() {
+  if (!inputUserName) return;
+  const fullName = inputUserName.value.trim();
+  const userId = inputUserId ? inputUserId.value.trim() : '';
+
+  if (!fullName) {
+    inputUserName.classList.add('error');
+    inputUserName.focus();
+    return;
+  }
+  inputUserName.classList.remove('error');
+
+  const origBtnHtml = btnSaveUser.innerHTML;
+  btnSaveUser.disabled = true;
+  btnSaveUser.innerHTML = `
+    <span class="spinner-inline"></span>
+    <span>Đang trích xuất & lưu ArcFace...</span>
+  `;
+
+  try {
+    const payload = {
+      session_id: currentSessionId,
+      full_name: fullName,
+      user_id: userId || undefined,
+      image: lastCapturedDataUrl || snapshotImg.src,
+      metadata: {
+        enrolled_via: 'web_ekyc',
+        timestamp: new Date().toISOString(),
+      },
+    };
+
+    const res = await fetch(`${API_BASE}/api/users/enroll`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || 'Lỗi lưu hồ sơ vào máy chủ');
+    }
+
+    const data = await res.json();
+    lastSavedUserId = data.user?.user_id;
+
+    // Chuyển sang box thông báo thành công
+    if (enrollFormBox && enrollSavedBox) {
+      enrollFormBox.classList.add('hidden');
+      enrollSavedBox.classList.remove('hidden');
+    }
+
+    // Cập nhật số lượng user
+    loadUsersCount();
+  } catch (err) {
+    console.error('Lỗi lưu user:', err);
+    alert(`Không thể lưu hồ sơ: ${err.message}`);
+  } finally {
+    btnSaveUser.disabled = false;
+    btnSaveUser.innerHTML = origBtnHtml;
+  }
+}
+
+if (btnSaveUser) btnSaveUser.addEventListener('click', handleSaveUser);
+
+if (btnGoToVerify) {
+  btnGoToVerify.addEventListener('click', () => {
+    summaryModal.classList.add('hidden');
+    switchTab('viewVerify');
+    if (lastSavedUserId) {
+      setVerifyMode('1_to_1');
+      if (selectVerifyUser) {
+        selectVerifyUser.value = lastSavedUserId;
+      }
+    }
+  });
+}
+
+if (btnGoToUsers) {
+  btnGoToUsers.addEventListener('click', () => {
+    summaryModal.classList.add('hidden');
+    switchTab('viewUsers');
+  });
+}
+
+// -----------------------------------------------------------------------------
+// 9. QUẢN LÝ NGƯỜI DÙNG PHONG CÁCH KỸ THUẬT (USERS DASHBOARD)
+// -----------------------------------------------------------------------------
+
+async function loadUsersCount() {
+  try {
+    const res = await fetch(`${API_BASE}/api/users`);
+    if (!res.ok) return;
+    const data = await res.json();
+    const total = data.total || 0;
+    if (userCountBadge) userCountBadge.textContent = total;
+    if (statTotalUsers) statTotalUsers.textContent = total;
+  } catch (e) {}
+}
+
+async function loadUsersTable() {
+  if (!usersTableBody) return;
+
+  usersTableBody.innerHTML = `
+    <tr>
+      <td colspan="7" style="text-align: center; padding: 32px; color: var(--text-dim);">
+        <span class="spinner-inline" style="margin-right: 8px;"></span>
+        Đang tải cơ sở dữ liệu khuôn mặt...
+      </td>
+    </tr>
+  `;
+
+  try {
+    const res = await fetch(`${API_BASE}/api/users`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    cachedUsersList = data.users || [];
+
+    if (userCountBadge) userCountBadge.textContent = cachedUsersList.length;
+    if (statTotalUsers) statTotalUsers.textContent = cachedUsersList.length;
+
+    renderUsersTable(cachedUsersList);
+  } catch (err) {
+    console.error('Lỗi nạp danh sách users:', err);
+    usersTableBody.innerHTML = `
+      <tr>
+        <td colspan="7" style="text-align: center; padding: 24px; color: var(--danger-color);">
+          Lỗi kết nối cơ sở dữ liệu: ${err.message}
+        </td>
+      </tr>
+    `;
+  }
+}
+
+function renderUsersTable(users) {
+  if (!usersTableBody) return;
+
+  const searchTerm = inputSearchUsers ? inputSearchUsers.value.trim().toLowerCase() : '';
+  const filtered = users.filter((u) => {
+    if (!searchTerm) return true;
+    return (
+      (u.full_name && u.full_name.toLowerCase().includes(searchTerm)) ||
+      (u.user_id && u.user_id.toLowerCase().includes(searchTerm))
+    );
+  });
+
+  if (users.length === 0) {
+    usersTableBody.innerHTML = '';
+    if (usersEmptyState) usersEmptyState.classList.remove('hidden');
+    return;
+  }
+
+  if (usersEmptyState) usersEmptyState.classList.add('hidden');
+
+  if (filtered.length === 0) {
+    usersTableBody.innerHTML = `
+      <tr>
+        <td colspan="7" style="text-align: center; padding: 32px; color: var(--text-dim);">
+          Không tìm thấy hồ sơ nào khớp với từ khóa "<strong>${escapeHtml(searchTerm)}</strong>"
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  usersTableBody.innerHTML = filtered
+    .map((u, idx) => {
+      const previewStr = (u.embedding_preview || []).map((v) => Number(v).toFixed(3)).join(', ');
+      const avatarSrc = u.snapshot_b64 || '';
+      return `
+        <tr>
+          <td class="col-center" style="color: var(--text-dim);">${idx + 1}</td>
+          <td>
+            <div class="user-avatar-cell">
+              ${avatarSrc ? `<img src="${avatarSrc}" alt="Avatar" class="tbl-avatar" />` : '<div class="tbl-avatar-placeholder">👤</div>'}
+            </div>
+          </td>
+          <td>
+            <span class="user-id-code" title="Nhấn để sao chép User ID" onclick="copyToClipboard('${u.user_id}', this)">
+              ${u.user_id}
+            </span>
+          </td>
+          <td class="user-name-cell">
+            <strong>${escapeHtml(u.full_name)}</strong>
+          </td>
+          <td>
+            <div class="vector-preview-cell">
+              <span class="vec-chip" title="5 số đầu của vector ArcFace">[${previewStr} ...]</span>
+              <button class="btn-tbl-code" onclick="openVectorModal('${u.user_id}', '${escapeHtml(u.full_name)}')" title="Xem chi tiết toàn bộ 512 số float">
+                { } 512D
+              </button>
+            </div>
+          </td>
+          <td class="col-date">${formatDateTime(u.created_at)}</td>
+          <td class="col-actions">
+            <button class="btn-tbl-verify" onclick="quickVerifyUser('${u.user_id}')" title="Chuyển sang xác thực thử với người này">
+              ⚡ Xác thực
+            </button>
+            <button class="btn-tbl-del" onclick="deleteUserRecord('${u.user_id}', '${escapeHtml(u.full_name)}')" title="Xóa hồ sơ khỏi CSDL">
+              🗑️
+            </button>
+          </td>
+        </tr>
+      `;
+    })
+    .join('');
+}
+
+// Tìm kiếm hồ sơ người dùng
+if (inputSearchUsers) {
+  inputSearchUsers.addEventListener('input', () => {
+    renderUsersTable(cachedUsersList);
+  });
+}
+
+// Nút làm mới danh sách
+if (btnRefreshUsers) {
+  btnRefreshUsers.addEventListener('click', loadUsersTable);
+}
+
+// Nút đăng ký mới từ toolbar hoặc empty state
+if (btnNewEnroll) {
+  btnNewEnroll.addEventListener('click', () => {
+    switchTab('viewEnroll');
+    restartSession();
+  });
+}
+if (btnEmptyEnroll) {
+  btnEmptyEnroll.addEventListener('click', () => {
+    switchTab('viewEnroll');
+    restartSession();
+  });
+}
+
+// Chuyển nhanh sang xác thực đích danh 1:1
+window.quickVerifyUser = function (userId) {
+  switchTab('viewVerify');
+  setVerifyMode('1_to_1');
+  if (selectVerifyUser) {
+    selectVerifyUser.value = userId;
+  }
+};
+
+// Xóa hồ sơ người dùng
+window.deleteUserRecord = async function (userId, userName) {
+  const confirmed = confirm(`Bạn có chắc chắn muốn xóa hồ sơ sinh trắc học của "${userName}" (${userId})?`);
+  if (!confirmed) return;
+
+  try {
+    const res = await fetch(`${API_BASE}/api/users/${userId}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    await loadUsersTable();
+    loadUsersListForSelect();
+  } catch (err) {
+    alert(`Lỗi khi xóa người dùng: ${err.message}`);
+  }
+};
+
+// -----------------------------------------------------------------------------
+// 10. MODAL XEM VECTOR JSON 512D (DÀNH CHO KỸ THUẬT VIÊN)
+// -----------------------------------------------------------------------------
+
+window.openVectorModal = async function (userId, userName) {
+  if (!vectorModal) return;
+  vectorModal.classList.remove('hidden');
+  if (vectorModalTitle) vectorModalTitle.textContent = `Vector Đặc Trưng ArcFace 512D`;
+  if (vectorModalSubtitle) vectorModalSubtitle.textContent = `Hồ sơ: ${userName} • ID: ${userId}`;
+  if (vectorJsonContent) vectorJsonContent.textContent = '// Đang tải toàn bộ 512 số float từ CSDL SQLite...';
+
+  try {
+    const res = await fetch(`${API_BASE}/api/users/${userId}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    currentVectorJsonRaw = JSON.stringify(data.embedding || data.embedding_preview || [], null, 2);
+    if (vectorJsonContent) {
+      vectorJsonContent.textContent = currentVectorJsonRaw;
+    }
+  } catch (err) {
+    if (vectorJsonContent) {
+      vectorJsonContent.textContent = `// Lỗi tải vector: ${err.message}`;
+    }
+  }
+};
+
+if (btnCopyVector) {
+  btnCopyVector.addEventListener('click', () => {
+    if (currentVectorJsonRaw) {
+      copyToClipboard(currentVectorJsonRaw, btnCopyVector);
+    }
+  });
+}
+
+if (btnCloseVectorModal) {
+  btnCloseVectorModal.addEventListener('click', () => {
+    if (vectorModal) vectorModal.classList.add('hidden');
+  });
+}
+
+// -----------------------------------------------------------------------------
+// 11. TRẠM XÁC THỰC SINH TRẮC HỌC THỜI GIAN THỰC (VERIFICATION 1:1 & 1:N)
+// -----------------------------------------------------------------------------
+
+function setVerifyMode(mode) {
+  currentVerifyMode = mode;
+  if (mode === '1_to_1') {
+    if (btnMode11) btnMode11.classList.add('active');
+    if (btnMode1N) btnMode1N.classList.remove('active');
+    if (verifyUserSelectBox) verifyUserSelectBox.classList.remove('hidden');
+  } else {
+    currentVerifyMode = '1_to_n';
+    if (btnMode1N) btnMode1N.classList.add('active');
+    if (btnMode11) btnMode11.classList.remove('active');
+    if (verifyUserSelectBox) verifyUserSelectBox.classList.add('hidden');
+  }
+}
+
+if (btnMode1N) btnMode1N.addEventListener('click', () => setVerifyMode('1_to_n'));
+if (btnMode11) btnMode11.addEventListener('click', () => setVerifyMode('1_to_1'));
+
+// Slider thay đổi ngưỡng Cosine Similarity
+if (verifyThreshold && valVerifyThreshold) {
+  verifyThreshold.addEventListener('input', (e) => {
+    valVerifyThreshold.textContent = Number(e.target.value).toFixed(2);
+  });
+}
+
+async function loadUsersListForSelect() {
+  if (!selectVerifyUser) return;
+  try {
+    const res = await fetch(`${API_BASE}/api/users`);
+    if (!res.ok) return;
+    const data = await res.json();
+    const users = data.users || [];
+
+    selectVerifyUser.innerHTML = '';
+    if (users.length === 0) {
+      const opt = document.createElement('option');
+      opt.value = '';
+      opt.textContent = '-- CSDL chưa có người dùng --';
+      selectVerifyUser.appendChild(opt);
+      return;
+    }
+
+    users.forEach((u) => {
+      const opt = document.createElement('option');
+      opt.value = u.user_id;
+      opt.textContent = `${u.full_name} (${u.user_id})`;
+      selectVerifyUser.appendChild(opt);
+    });
+  } catch (e) {
+    console.warn('Lỗi tải danh sách cho select:', e);
+  }
+}
+
+function resetVerifyVerdictUI() {
+  if (verifyVerdictBox) {
+    verifyVerdictBox.className = 'verify-verdict-box idle';
+  }
+  if (verdictIcon) verdictIcon.textContent = '👁️';
+  if (verdictTitle) verdictTitle.textContent = 'Sẵn sàng đối sánh';
+  if (verdictSubtitle) {
+    verdictSubtitle.textContent =
+      currentVerifyMode === '1_to_1'
+        ? 'Chọn người dùng cần so khớp và nhấn Chụp & Xác thực ngay'
+        : 'Nhìn thẳng vào ống kính và nhấn Chụp & Xác thực ngay';
+  }
+  if (matchedUserCard) matchedUserCard.classList.add('hidden');
+  if (candidatesLeaderboardBox) candidatesLeaderboardBox.classList.add('hidden');
+}
+
+async function triggerFaceVerification() {
+  if (isVerifyingFace) return;
+  if (!verifyVideo || verifyVideo.readyState < 2) {
+    console.warn('Camera verify chưa sẵn sàng');
+    return;
+  }
+
+  isVerifyingFace = true;
+  if (verifyOverlayBanner) {
+    verifyOverlayBanner.classList.remove('hidden');
+    if (verifyOverlayText) verifyOverlayText.textContent = 'Đang trích xuất ArcFace 512D & đối sánh...';
+  }
+
+  try {
+    // 1. Chụp frame hiện tại từ video
+    const snapCanvas = document.createElement('canvas');
+    snapCanvas.width = 640;
+    snapCanvas.height = 480;
+    const sCtx = snapCanvas.getContext('2d');
+    sCtx.save();
+    sCtx.translate(640, 0);
+    sCtx.scale(-1, 1);
+    sCtx.drawImage(verifyVideo, 0, 0, 640, 480);
+    sCtx.restore();
+
+    const frameBase64 = snapCanvas.toDataURL('image/jpeg', 0.9);
+    const thresholdVal = verifyThreshold ? parseFloat(verifyThreshold.value) : 0.45;
+    const targetUserId = currentVerifyMode === '1_to_1' && selectVerifyUser ? selectVerifyUser.value : null;
+
+    if (currentVerifyMode === '1_to_1' && !targetUserId) {
+      alert('Vui lòng chọn hồ sơ người dùng để so khớp 1:1');
+      return;
+    }
+
+    const res = await fetch(`${API_BASE}/api/verify/face`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        image: frameBase64,
+        target_user_id: targetUserId,
+        threshold: thresholdVal,
+      }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || 'Lỗi đối sánh máy chủ');
+    }
+
+    const data = await res.json();
+    renderVerifyResult(data);
+  } catch (err) {
+    console.error('Lỗi xác thực:', err);
+    if (verifyVerdictBox) verifyVerdictBox.className = 'verify-verdict-box danger';
+    if (verdictIcon) verdictIcon.textContent = '⚠️';
+    if (verdictTitle) verdictTitle.textContent = 'LỖI HỆ THỐNG XÁC THỰC';
+    if (verdictSubtitle) verdictSubtitle.textContent = err.message;
+  } finally {
+    isVerifyingFace = false;
+    if (verifyOverlayBanner) verifyOverlayBanner.classList.add('hidden');
+  }
+}
+
+function renderVerifyResult(data) {
+  const match = data.match_result || {};
+  const isMatch = Boolean(match.is_match);
+  const latency = data.latency_ms != null ? `${data.latency_ms} ms` : '-- ms';
+  const padOk = Boolean(data.anti_spoof?.is_real);
+  const sim = match.similarity != null ? Number(match.similarity).toFixed(4) : '--';
+  const conf = match.confidence != null ? `${(match.confidence * 100).toFixed(1)}%` : '--%';
+  const dist = match.distance != null ? Number(match.distance).toFixed(4) : '--';
+
+  // Cập nhật thẻ thông số kỹ thuật
+  if (metSim) metSim.textContent = sim;
+  if (metConf) metConf.textContent = conf;
+  if (metDist) metDist.textContent = dist;
+  if (metLatency) metLatency.textContent = latency;
+  if (metPad) {
+    metPad.textContent = padOk
+      ? `✓ Người thật (${Math.round((data.anti_spoof.real_prob || 1) * 100)}%)`
+      : `✗ Giả mạo (${data.anti_spoof?.spoof_type || 'Attack'})`;
+  }
+
+  // Xử lý Verdict Banner & User Card
+  if (data.verdict === 'MATCH_SUCCESS') {
+    playTingSound();
+    if (verifyVerdictBox) verifyVerdictBox.className = 'verify-verdict-box success';
+    if (verdictIcon) verdictIcon.textContent = '✅';
+    if (verdictTitle) verdictTitle.textContent = 'XÁC THỰC THÀNH CÔNG';
+    if (verdictSubtitle) {
+      verdictSubtitle.textContent = `Khớp danh tính: ${match.matched_user?.full_name || ''} (Sim: ${sim})`;
+    }
+
+    if (matchedUserCard && match.matched_user) {
+      matchedUserCard.classList.remove('hidden');
+      if (matchedAvatar) matchedAvatar.src = match.matched_user.snapshot_b64 || '';
+      if (matchedName) matchedName.textContent = match.matched_user.full_name;
+      if (matchedId) matchedId.textContent = match.matched_user.user_id;
+      if (matchedTime) matchedTime.textContent = new Date().toLocaleTimeString('vi-VN');
+    }
+  } else if (data.verdict === 'MISMATCH') {
+    if (verifyVerdictBox) verifyVerdictBox.className = 'verify-verdict-box mismatch';
+    if (verdictIcon) verdictIcon.textContent = '❌';
+    if (verdictTitle) verdictTitle.textContent = 'KHÔNG KHỚP DANH TÍNH';
+    if (verdictSubtitle) {
+      verdictSubtitle.textContent =
+        currentVerifyMode === '1_to_1'
+          ? `Khuôn mặt không trùng với hồ sơ đã chọn (Sim: ${sim} < Ngưỡng)`
+          : `Không tìm thấy hồ sơ tương đồng trong CSDL (Cao nhất: ${sim})`;
+    }
+    if (matchedUserCard) matchedUserCard.classList.add('hidden');
+  } else if (data.verdict === 'SPOOF_REJECTED') {
+    if (verifyVerdictBox) verifyVerdictBox.className = 'verify-verdict-box danger';
+    if (verdictIcon) verdictIcon.textContent = '🚨';
+    if (verdictTitle) verdictTitle.textContent = 'CẢNH BÁO GIẢ MẠO (PAD ATTACK)';
+    if (verdictSubtitle) verdictSubtitle.textContent = data.message || 'Phát hiện ảnh in hoặc màn hình!';
+    if (matchedUserCard) matchedUserCard.classList.add('hidden');
+  } else {
+    // NO_FACE, MULTIPLE_FACES
+    if (verifyVerdictBox) verifyVerdictBox.className = 'verify-verdict-box warning';
+    if (verdictIcon) verdictIcon.textContent = '⚠️';
+    if (verdictTitle) verdictTitle.textContent = 'CHẤT LƯỢNG HÌNH ẢNH CHƯA ĐẠT';
+    if (verdictSubtitle) verdictSubtitle.textContent = data.message;
+    if (matchedUserCard) matchedUserCard.classList.add('hidden');
+  }
+
+  // Render Top Candidates Leaderboard (1:N)
+  if (candidatesLeaderboardBox && candidatesList) {
+    if (currentVerifyMode === '1_to_n' && match.candidates && match.candidates.length > 0) {
+      candidatesLeaderboardBox.classList.remove('hidden');
+      candidatesList.innerHTML = match.candidates
+        .map((c, i) => {
+          const cSim = Number(c.similarity).toFixed(4);
+          const cPct = Math.max(0, Math.min(100, Math.round(c.similarity * 100)));
+          const isTop = i === 0 && isMatch;
+          return `
+            <div class="candidate-row ${isTop ? 'matched' : ''}">
+              <span class="c-rank">#${i + 1}</span>
+              <img src="${c.snapshot_b64 || ''}" alt="Avatar" class="c-avatar" />
+              <div class="c-info">
+                <div class="c-name">${escapeHtml(c.full_name)}</div>
+                <div class="c-id">${c.user_id}</div>
+              </div>
+              <div class="c-meter">
+                <div class="c-bar-track">
+                  <div class="c-bar-fill ${isTop ? 'fill-match' : ''}" style="width: ${cPct}%;"></div>
+                </div>
+                <span class="c-score">${cSim}</span>
+              </div>
+            </div>
+          `;
+        })
+        .join('');
+    } else {
+      candidatesLeaderboardBox.classList.add('hidden');
+    }
+  }
+}
+
+if (btnTriggerVerify) {
+  btnTriggerVerify.addEventListener('click', triggerFaceVerification);
+}
+
+// Auto Verify Loop
+function startAutoVerify() {
+  if (autoVerifyIntervalId) clearInterval(autoVerifyIntervalId);
+  autoVerifyIntervalId = setInterval(() => {
+    if (currentTab === 'viewVerify' && !isVerifyingFace) {
+      triggerFaceVerification();
+    }
+  }, 1500);
+}
+
+function stopAutoVerify() {
+  if (autoVerifyIntervalId) {
+    clearInterval(autoVerifyIntervalId);
+    autoVerifyIntervalId = null;
+  }
+  if (chkAutoVerify) chkAutoVerify.checked = false;
+}
+
+if (chkAutoVerify) {
+  chkAutoVerify.addEventListener('change', (e) => {
+    if (e.target.checked) {
+      startAutoVerify();
+    } else {
+      stopAutoVerify();
+    }
+  });
+}
+
+// -----------------------------------------------------------------------------
+// 12. KHỞI CHẠY HỆ THỐNG KHI LOAD TRANG
 // -----------------------------------------------------------------------------
 
 window.addEventListener('DOMContentLoaded', async () => {
   await initCameraDevices();
   await startCamera(activeDeviceId);
   await startSession();
+  await loadUsersCount();
   isLoopRunning = true;
   requestAnimationFrame(frameLoop);
 });

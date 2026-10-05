@@ -17,6 +17,11 @@ import config as C
 from camera_quality import CameraMonitor, CameraResult, ClientStats
 from face_analyzer import FaceAnalyzer, FaceResult, quality_checks, check_continuous_face_quality
 
+try:
+    from backend.feature_extractor import get_arcface_extractor
+except ImportError:
+    from feature_extractor import get_arcface_extractor
+
 
 class Stage(str, Enum):
     CAMERA_CHECK = "camera_check"
@@ -63,6 +68,7 @@ class EnrollmentSession:
         self.max_zoom_growth = 1.0
         self.enrolled_image_bgr: Optional[np.ndarray] = None
         self.enrolled_face: Optional[FaceResult] = None
+        self.final_embedding: Optional[np.ndarray] = None
         self.history: Dict[str, Any] = {
             "session_id": session_id,
             "challenges": [t.value for t in self.challenge_sequence],
@@ -640,6 +646,23 @@ class EnrollmentSession:
         self.enrolled_face = face_res
         self.stage = Stage.CAPTURE
         h, w = frame_bgr.shape[:2]
+
+        # Trích xuất vector đặc trưng ArcFace 512D
+        emb_preview: list[float] = []
+        try:
+            extractor = get_arcface_extractor()
+            if extractor.is_ready:
+                emb = extractor.extract_embedding(
+                    frame_bgr,
+                    landmarks_5pts=face_res.arcface_kps,
+                    bbox=face_res.bbox,
+                )
+                self.final_embedding = emb
+                emb_preview = [round(float(v), 4) for v in emb[:5]]
+        except Exception as emb_err:
+            print("[ArcFace] Extraction warning:", emb_err)
+            self.final_embedding = None
+
         self.history["final_capture"] = {
             "passed": True,
             "resolution": f"{w}x{h}",
@@ -649,6 +672,8 @@ class EnrollmentSession:
             "pitch": face_res.pitch,
             "roll": face_res.roll,
             "anti_spoof_real_prob": round(face_res.anti_spoof.real_prob, 3) if face_res.anti_spoof else 1.0,
+            "embedding_dim": 512 if self.final_embedding is not None else 0,
+            "embedding_preview": emb_preview,
             "verified_at": round(now, 2),
         }
 
@@ -661,6 +686,8 @@ class EnrollmentSession:
                 "sharpness": round(face_res.sharpness, 1),
                 "brightness": round(face_res.brightness_mean, 1),
                 "anti_spoof_prob": round(face_res.anti_spoof.real_prob, 3) if face_res.anti_spoof else 1.0,
+                "embedding_dim": 512 if self.final_embedding is not None else 0,
+                "embedding_preview": emb_preview,
             },
         }
 

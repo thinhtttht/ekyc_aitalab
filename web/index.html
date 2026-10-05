@@ -34,6 +34,23 @@
       </div>
     </div>
 
+    <!-- TABS ĐIỀU HƯỚNG TỔNG THỂ (ENROLLMENT - VERIFICATION - USERS DB) -->
+    <nav class="nav-tabs">
+      <button id="tabBtnEnroll" class="nav-tab-btn active" data-tab="viewEnroll">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+        <span>Đăng ký eKYC</span>
+      </button>
+      <button id="tabBtnVerify" class="nav-tab-btn" data-tab="viewVerify">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+        <span>Xác thực (1:1 & 1:N)</span>
+      </button>
+      <button id="tabBtnUsers" class="nav-tab-btn" data-tab="viewUsers">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        <span>Quản lý Users</span>
+        <span id="userCountBadge" class="tab-badge">0</span>
+      </button>
+    </nav>
+
     <div class="nav-controls">
       <!-- Dropdown chọn Camera -->
       <div class="camera-select-box">
@@ -51,7 +68,8 @@
     </div>
   </header>
 
-  <!-- 2. MAIN 3-COLUMN CONTENT -->
+  <!-- 2. MAIN ENROLLMENT PANEL -->
+  <div id="viewEnroll" class="view-panel active">
   <main class="main-layout">
 
     <!-- CỘT TRÁI: STEPPER TIẾN TRÌNH -->
@@ -427,6 +445,200 @@
     </aside>
 
   </main>
+  </div>
+
+  <!-- 3. MAIN VERIFICATION PANEL (XÁC THỰC 1:1 VÀ 1:N) -->
+  <div id="viewVerify" class="view-panel hidden">
+    <div class="verify-layout">
+      <!-- CỘT TRÁI: CAMERA & ĐIỀU KHIỂN XÁC THỰC -->
+      <section class="verify-camera-card">
+        <div class="verify-header">
+          <div>
+            <h3 class="panel-title">Trạm Xác Thực Sinh Trắc Học</h3>
+            <p class="panel-subtitle">Đối sánh khuôn mặt thời gian thực bằng ArcFace 512D & MiniFASNet</p>
+          </div>
+          <div class="mode-pills">
+            <button id="btnMode1N" class="mode-pill active" title="Tìm kiếm khuôn mặt trong toàn bộ CSDL">1:N (Nhận diện)</button>
+            <button id="btnMode11" class="mode-pill" title="So khớp với một người dùng cụ thể">1:1 (So khớp đích danh)</button>
+          </div>
+        </div>
+
+        <!-- Khung chọn user khi ở chế độ 1:1 -->
+        <div id="verifyUserSelectBox" class="verify-user-select-row hidden">
+          <label for="selectVerifyUser">Chọn hồ sơ đối sánh:</label>
+          <select id="selectVerifyUser" class="verify-select">
+            <option value="">-- Đang tải danh sách người dùng... --</option>
+          </select>
+        </div>
+
+        <!-- Viewport camera của verify -->
+        <div class="verify-viewport-box" id="verifyViewportBox">
+          <video id="verifyVideo" autoplay playsinline muted></video>
+          <div class="verify-oval-guide"></div>
+
+          <!-- Trạng thái Overlay khi quét -->
+          <div id="verifyOverlayBanner" class="verify-overlay-banner hidden">
+            <span id="verifyOverlayText">Đang so khớp sinh trắc học...</span>
+          </div>
+        </div>
+
+        <!-- Điều khiển & Ngưỡng -->
+        <div class="verify-controls-bar">
+          <div class="threshold-slider-box">
+            <div class="slider-header">
+              <label for="verifyThreshold">Ngưỡng Cosine Similarity:</label>
+              <strong id="valVerifyThreshold">0.45</strong>
+            </div>
+            <input type="range" id="verifyThreshold" min="0.25" max="0.75" step="0.05" value="0.45" />
+          </div>
+
+          <div class="verify-actions">
+            <button id="btnTriggerVerify" class="btn-verify-primary">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+              Chụp & Xác thực ngay
+            </button>
+            <label class="auto-scan-toggle">
+              <input type="checkbox" id="chkAutoVerify" />
+              <span>Tự động quét liên tục (1.5s/lần)</span>
+            </label>
+          </div>
+        </div>
+      </section>
+
+      <!-- CỘT PHẢI: KẾT QUẢ KỸ THUẬT (DÂN KỸ THUẬT LÀM UI) -->
+      <aside class="verify-result-card">
+        <h3 class="panel-title">Báo Cáo Đối Sánh Chi Tiết</h3>
+        <p class="panel-subtitle">Chỉ số suy luận ArcFace & MiniFASNet PAD</p>
+
+        <!-- Banner kết quả -->
+        <div id="verifyVerdictBox" class="verify-verdict-box idle">
+          <div class="verdict-icon-box" id="verdictIcon">👁️</div>
+          <div class="verdict-text-box">
+            <h4 id="verdictTitle">Sẵn sàng đối sánh</h4>
+            <p id="verdictSubtitle">Nhìn thẳng vào camera và nhấn 'Chụp & Xác thực ngay'</p>
+          </div>
+        </div>
+
+        <!-- Chi tiết User khớp -->
+        <div id="matchedUserCard" class="matched-user-card hidden">
+          <div class="m-avatar-box">
+            <img id="matchedAvatar" src="" alt="Avatar" />
+          </div>
+          <div class="m-user-info">
+            <div class="m-name" id="matchedName">Nguyễn Văn A</div>
+            <div class="m-id" id="matchedId">USR-XXXXXXXX</div>
+            <div class="m-time" id="matchedTime">--</div>
+          </div>
+        </div>
+
+        <!-- Grid chỉ số kỹ thuật -->
+        <div class="technical-metrics-grid">
+          <div class="t-metric-item">
+            <span class="t-label">Cosine Similarity</span>
+            <span class="t-val" id="metSim">--</span>
+          </div>
+          <div class="t-metric-item">
+            <span class="t-label">Độ tự tin (Confidence)</span>
+            <span class="t-val" id="metConf">--%</span>
+          </div>
+          <div class="t-metric-item">
+            <span class="t-label">Khoảng cách Euclid</span>
+            <span class="t-val" id="metDist">--</span>
+          </div>
+          <div class="t-metric-item">
+            <span class="t-label">Thời gian suy luận</span>
+            <span class="t-val" id="metLatency">-- ms</span>
+          </div>
+          <div class="t-metric-item">
+            <span class="t-label">Anti-Spoofing PAD</span>
+            <span class="t-val" id="metPad">--</span>
+          </div>
+          <div class="t-metric-item">
+            <span class="t-label">Không gian Vector</span>
+            <span class="t-val">ArcFace 512D</span>
+          </div>
+        </div>
+
+        <!-- Bảng Top Candidates (Chế độ 1:N) -->
+        <div id="candidatesLeaderboardBox" class="candidates-box hidden">
+          <div class="group-title">Xếp hạng Ứng viên gần nhất (1:N)</div>
+          <div id="candidatesList" class="candidates-list"></div>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <!-- 4. MAIN USERS DASHBOARD PANEL (DÂN KỸ THUẬT LÀM UI) -->
+  <div id="viewUsers" class="view-panel hidden">
+    <div class="users-dashboard-layout">
+      <!-- Header Stats Bar -->
+      <div class="users-stats-bar">
+        <div class="u-stat-badge">
+          <span class="u-stat-label">Tổng hồ sơ:</span>
+          <strong id="statTotalUsers" class="u-stat-val">0</strong>
+        </div>
+        <div class="u-stat-badge">
+          <span class="u-stat-label">Model Trích xuất:</span>
+          <strong class="u-stat-val">ArcFace WebFace600K R50</strong>
+        </div>
+        <div class="u-stat-badge">
+          <span class="u-stat-label">Không gian nhúng:</span>
+          <strong class="u-stat-val">512 Float32 (L2 Unit Sphere)</strong>
+        </div>
+        <div class="u-stat-badge">
+          <span class="u-stat-label">Lưu trữ:</span>
+          <strong class="u-stat-val">SQLite (Indexed user_id)</strong>
+        </div>
+      </div>
+
+      <!-- Toolbar điều khiển -->
+      <div class="users-toolbar">
+        <div class="users-search-box">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          <input type="text" id="inputSearchUsers" placeholder="Lọc theo Tên hoặc User ID..." />
+        </div>
+
+        <div class="users-toolbar-actions">
+          <button id="btnRefreshUsers" class="btn-tool-secondary">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+            Làm mới
+          </button>
+          <button id="btnNewEnroll" class="btn-tool-primary">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Đăng ký User Mới
+          </button>
+        </div>
+      </div>
+
+      <!-- Bảng người dùng phong cách dân kỹ thuật -->
+      <div class="table-card">
+        <table class="tech-table">
+          <thead>
+            <tr>
+              <th style="width: 50px;">#</th>
+              <th style="width: 70px;">Avatar</th>
+              <th style="width: 150px;">User ID</th>
+              <th>Họ và Tên</th>
+              <th style="width: 250px;">Vector ArcFace (512D)</th>
+              <th style="width: 170px;">Ngày Đăng ký</th>
+              <th style="width: 190px; text-align: center;">Thao tác</th>
+            </tr>
+          </thead>
+          <tbody id="usersTableBody">
+            <!-- Render động từ API -->
+          </tbody>
+        </table>
+
+        <!-- Empty State -->
+        <div id="usersEmptyState" class="users-empty-state hidden">
+          <div class="empty-icon">📂</div>
+          <h4>Chưa có hồ sơ người dùng trong cơ sở dữ liệu</h4>
+          <p>Thực hiện quy trình eKYC ở Tab 'Đăng ký eKYC' để trích xuất ArcFace và lưu hồ sơ đầu tiên.</p>
+          <button id="btnEmptyEnroll" class="btn-modal-primary">Đăng ký Hồ sơ Đầu tiên</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- MODAL TỔNG KẾT KHI HOÀN TẤT ĐĂNG KÝ (HD CAPTURE SUMMARY) -->
   <div id="summaryModal" class="modal-backdrop hidden">
@@ -471,9 +683,54 @@
         </div>
       </div>
 
+      <!-- Form nhập Tên & Lưu CSDL với ArcFace 512D -->
+      <div class="user-enroll-form-box" id="enrollFormBox">
+        <div class="arcface-status-badge">
+          <span class="pulse-dot"></span>
+          <span>Đã trích xuất đặc trưng ArcFace 512 chiều (L2 Norm 1.0)</span>
+        </div>
+        <div class="form-row">
+          <label for="inputUserName">Họ và tên người dùng (*):</label>
+          <input type="text" id="inputUserName" class="modern-input" placeholder="Ví dụ: Nguyễn Văn A" />
+        </div>
+        <div class="form-row">
+          <label for="inputUserId">Mã định danh User ID (Tùy chọn):</label>
+          <input type="text" id="inputUserId" class="modern-input" placeholder="Để trống hệ thống sẽ tự sinh (e.g. USR-XXXX)" />
+        </div>
+        <div class="modal-actions">
+          <button id="btnModalRetake" class="btn-modal-secondary">Chụp lại</button>
+          <button id="btnSaveUser" class="btn-modal-primary">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+            Lưu hồ sơ vào CSDL
+          </button>
+        </div>
+      </div>
+
+      <!-- Khung thông báo lưu thành công & nút chuyển sang Xác thực thử -->
+      <div id="enrollSavedBox" class="user-saved-box hidden">
+        <div class="save-ok-chip">✓ Hồ sơ sinh trắc học đã được lưu vào CSDL SQLite!</div>
+        <div class="modal-actions">
+          <button id="btnGoToVerify" class="btn-modal-primary">⚡ Xác thực thử ngay</button>
+          <button id="btnGoToUsers" class="btn-modal-secondary">👥 Quản lý Users</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL XEM VECTOR JSON 512D (DÀNH CHO DÂN KỸ THUẬT) -->
+  <div id="vectorModal" class="modal-backdrop hidden">
+    <div class="modal-card vector-inspect-card">
+      <div class="modal-header">
+        <div class="modal-icon-code">{ }</div>
+        <h3 id="vectorModalTitle">Vector Đặc Trưng ArcFace 512D</h3>
+        <p id="vectorModalSubtitle">User ID: --</p>
+      </div>
+      <div class="vector-json-box">
+        <pre id="vectorJsonContent">--</pre>
+      </div>
       <div class="modal-actions">
-        <button id="btnModalRetake" class="btn-modal-secondary">Đăng ký lại</button>
-        <button id="btnModalNext" class="btn-modal-primary">Tiếp tục</button>
+        <button id="btnCopyVector" class="btn-modal-secondary">Sao chép Vector JSON</button>
+        <button id="btnCloseVectorModal" class="btn-modal-primary">Đóng</button>
       </div>
     </div>
   </div>

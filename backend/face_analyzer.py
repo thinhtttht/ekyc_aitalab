@@ -100,6 +100,7 @@ class FaceResult:
     perspective_ratio: Optional[float] = None            # độ dài sống mũi / khoảng cách 2 mắt
     anti_spoof: Optional[AntiSpoofResult] = None         # Kết quả kiểm tra giả mạo ảnh/video
     is_upside_down: bool = False                         # Khuôn mặt bị lật ngược (mắt ở dưới, miệng ở trên)
+    arcface_kps: Optional[np.ndarray] = None             # 5 mốc chuẩn ArcFace [left_eye, right_eye, nose, mouth_l, mouth_r]
     debug: dict = field(default_factory=dict)
 
     @property
@@ -366,6 +367,18 @@ def analyze_landmarks(frame_bgr: np.ndarray, lm3: np.ndarray, oval: dict, out: F
         "chroma_dist": round(chroma, 1), "y_ratio": round(y_ratio, 2), "upper_skin": upper_skin, "lower_skin": lower_skin,
         "brightness_std": round(out.brightness_std, 1),
     }
+
+    # --- 5 mốc chuẩn ArcFace Alignment (Mắt trái, Mắt phải, Chóp mũi, Khóe miệng trái, Khóe miệng phải) ---
+    p_eye_1 = px[468] if len(px) > 468 else (px[33] + px[133]) / 2.0
+    p_eye_2 = px[473] if len(px) > 473 else (px[362] + px[263]) / 2.0
+    p_left_eye = p_eye_1 if p_eye_1[0] < p_eye_2[0] else p_eye_2
+    p_right_eye = p_eye_2 if p_eye_1[0] < p_eye_2[0] else p_eye_1
+    p_nose = px[1]
+    p_m1 = px[61]
+    p_m2 = px[291]
+    p_mouth_left = p_m1 if p_m1[0] < p_m2[0] else p_m2
+    p_mouth_right = p_m2 if p_m1[0] < p_m2[0] else p_m1
+    out.arcface_kps = np.array([p_left_eye, p_right_eye, p_nose, p_mouth_left, p_mouth_right], dtype=np.float32)
 
     # --- Chống Giả Mạo Sinh Trắc Học (Passive Anti-Spoofing / PAD) ---
     if out.bbox is not None:

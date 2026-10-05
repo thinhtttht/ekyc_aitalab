@@ -382,20 +382,25 @@ async function triggerOpticalFlashing() {
 
     const collectedFrames = [];
 
-    // 2. Chiếu từng màu theo chuỗi thời gian thực
+    // 2. Chiếu từng màu theo chuỗi thời gian thực (Toàn màn hình phát sáng)
+    const colorTextEl = document.getElementById('flashingColorText');
     for (let i = 0; i < sequence.length; i++) {
       const step = sequence[i];
-      const rgbStr = `${step.rgb[0]}, ${step.rgb[1]}, ${step.rgb[2]}`;
 
-      flashingOverlay.style.setProperty('--flash-rgb', rgbStr);
-      flashingOverlay.classList.add('active', 'pulse');
+      // Đổi màu nền toàn màn hình
+      flashingOverlay.style.backgroundColor = step.hex;
+      flashingOverlay.classList.add('active');
+
+      if (colorTextEl) {
+        colorTextEl.textContent = `Đang quét quang phổ [Màu ${i + 1}/${sequence.length}: ${step.name}]`;
+      }
 
       holdLabel.textContent = `🌈 Quét quang phổ ${i + 1}/${sequence.length}: ${step.name}`;
       const pct = Math.round(((i + 1) / sequence.length) * 100);
       holdProgressBar.style.width = `${pct}%`;
 
-      // Chờ 200ms để ánh sáng màn hình hắt lên da ổn định trước khi AWB triệt tiêu
-      await new Promise((r) => setTimeout(r, 200));
+      // Chờ 180ms để ánh sáng màn hình phủ đều lên da mặt trước khi AWB triệt tiêu
+      await new Promise((r) => setTimeout(r, 180));
 
       // Trích xuất khung hình từ webcam
       const vw = video.videoWidth || 640;
@@ -425,13 +430,14 @@ async function triggerOpticalFlashing() {
         timestamp_ms: Date.now(),
       });
 
-      // Chờ hết thời lượng của màu này
-      const remainingMs = Math.max(50, (step.duration_ms || 330) - 200);
+      // Chờ hết thời lượng của màu này (330ms)
+      const remainingMs = Math.max(50, (step.duration_ms || 330) - 180);
       await new Promise((r) => setTimeout(r, remainingMs));
     }
 
     // 3. Tắt lớp phủ sau khi chiếu xong
-    flashingOverlay.classList.remove('active', 'pulse');
+    flashingOverlay.classList.remove('active');
+    flashingOverlay.style.backgroundColor = 'transparent';
 
     bottomPill.className = 'bottom-guidance-pill cyan';
     bottomPill.textContent = 'Đang phân tích phản xạ quang phổ mô da...';

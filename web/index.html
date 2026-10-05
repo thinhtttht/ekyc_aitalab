@@ -4,9 +4,17 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Smart-eKYC | Đăng Ký Sinh Trắc Học Khuôn Mặt</title>
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=2.1">
 </head>
 <body>
+
+  <!-- LỚP PHỦ COLOR FLASHING TOÀN MÀN HÌNH (Full-Screen Immersive Light Pulse) -->
+  <div id="flashingOverlay" class="flashing-overlay">
+    <div class="flashing-banner" id="flashingBanner">
+      <span class="flash-icon">⚡</span>
+      <span id="flashingColorText">Đang chuẩn bị quét quang học...</span>
+    </div>
+  </div>
 
   <!-- 1. TOP NAVBAR -->
   <header class="navbar">
@@ -129,9 +137,6 @@
 
         <!-- Canvas vẽ lưới Biometric Mesh & Ngũ quan theo phong cách công nghệ cao -->
         <canvas id="meshCanvas" width="480" height="600" class="mesh-overlay-canvas"></canvas>
-
-        <!-- Lớp phủ phát sáng quang học an toàn (Safe Radial Glow Flashing) -->
-        <div id="flashingOverlay" class="flashing-overlay"></div>
 
         <!-- 4 góc Corner Brackets công nghệ -->
         <div class="corner-bracket corner-tl"></div>
@@ -431,6 +436,6 @@
     </div>
   </div>
 
-  <script src="app.js"></script>
+  <script src="app.js?v=2.1"></script>
 </body>
 </html>

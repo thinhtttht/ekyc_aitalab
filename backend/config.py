@@ -84,4 +84,13 @@ ANTISPOOF_REPLAY_THRESH = 0.50         # Ngưỡng phát hiện video/màn hình
 MOIRE_ENERGY_RATIO_THRESH = 0.42       # Tỷ lệ năng lượng Fourier tần số cao (vân Moiré)
 DEPTH_3D_MIN_DELTA = 0.025             # Độ nhô tối thiểu trục Z của chóp mũi so với 2 mắt (MediaPipe)
 
+# ---------------------------------------------------------------------------
+# (f) CHỐNG GIẢ MẠO QUANG HỌC CHỦ ĐỘNG (ACTIVE OPTICAL COLOR FLASHING PAD)
+# ---------------------------------------------------------------------------
+FLASH_MIN_PEARSON = 0.65                # Ngưỡng tương quan Pearson giữa phản xạ da và nguồn phát
+FLASH_MIN_AMPLITUDE = 4.0               # Biên độ phản xạ tối thiểu (chống ảnh in tĩnh/video bất động)
+FLASH_STEP_DURATION_MS = 330            # Thời lượng chiếu mỗi bước màu (ms)
+FLASH_AWB_GAMMA = 0.45                  # Hệ số bù trừ độ lệch cân bằng trắng (AWB)
+FLASH_CHALLENGE_TIMEOUT_SEC = 15.0      # Thời gian sống của Token thách thức (giây)
+
 SESSION_TTL_SEC = 600

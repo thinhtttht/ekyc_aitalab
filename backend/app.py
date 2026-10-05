@@ -21,7 +21,11 @@ from pydantic import BaseModel, Field
 
 import config as C
 from camera_quality import ClientStats
-from enrollment import EnrollmentSession
+from enrollment import EnrollmentSession, Stage
+from color_challenge import challenge_manager
+from optical_analyzer import OpticalAnalyzer
+
+optical_analyzer = OpticalAnalyzer()
 
 app = FastAPI(
     title="Smart-eKYC Biometric PoC",
@@ -136,6 +140,112 @@ def enroll_reset(payload: dict):
             pass
         sessions.pop(session_id, None)
     return enroll_start()
+
+
+class ColorChallengeRequest(BaseModel):
+    session_id: str
+
+
+class FrameColorItem(BaseModel):
+    color_index: int
+    image: str = Field(description="Base64 encoded JPEG data URL hoặc raw base64")
+    timestamp_ms: Optional[int] = None
+
+
+class ColorVerifyRequest(BaseModel):
+    session_id: str
+    challenge_token: str
+    frames: list[FrameColorItem]
+
+
+@app.post("/api/enroll/color_challenge")
+def enroll_color_challenge(payload: ColorChallengeRequest):
+    sess = sessions.get(payload.session_id)
+    if sess is None:
+        raise HTTPException(status_code=404, detail="Phiên làm việc không tồn tại hoặc đã hết hạn")
+
+    challenge = challenge_manager.create_challenge(payload.session_id, length=3)
+    return {
+        "session_id": payload.session_id,
+        "challenge_token": challenge.token,
+        "step_duration_ms": C.FLASH_STEP_DURATION_MS,
+        "sequence": [
+            {
+                "index": step.index,
+                "name": step.name,
+                "hex": step.hex,
+                "rgb": list(step.rgb),
+                "duration_ms": step.duration_ms,
+            }
+            for step in challenge.sequence
+        ],
+        "expires_at": challenge.expires_at,
+    }
+
+
+@app.post("/api/enroll/color_verify")
+def enroll_color_verify(payload: ColorVerifyRequest):
+    sess = sessions.get(payload.session_id)
+    if sess is None:
+        raise HTTPException(status_code=404, detail="Phiên làm việc không tồn tại hoặc đã hết hạn")
+
+    is_valid, challenge_data, reason = challenge_manager.verify_token(
+        payload.session_id, payload.challenge_token
+    )
+    if not is_valid or challenge_data is None:
+        raise HTTPException(status_code=400, detail=reason)
+
+    if len(payload.frames) != len(challenge_data.sequence):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Số lượng khung hình ({len(payload.frames)}) không khớp với chuỗi thách thức ({len(challenge_data.sequence)})",
+        )
+
+    frames_bgr = []
+    for item in payload.frames:
+        raw_b64 = item.image
+        if "," in raw_b64:
+            raw_b64 = raw_b64.split(",", 1)[1]
+        try:
+            img_bytes = base64.b64decode(raw_b64)
+            nparr = np.frombuffer(img_bytes, np.uint8)
+            f_bgr = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+            if f_bgr is None:
+                raise ValueError(f"Không thể decode ảnh frame {item.color_index}")
+            frames_bgr.append(f_bgr)
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"Dữ liệu ảnh không hợp lệ: {e}")
+
+    expected_colors = [tuple(step.rgb) for step in challenge_data.sequence]
+    res = optical_analyzer.analyze_sequence(
+        frames_bgr=frames_bgr,
+        expected_colors_rgb=expected_colors,
+        awb_gamma=C.FLASH_AWB_GAMMA,
+    )
+
+    # Đánh dấu tiêu thụ token chống replay
+    challenge_manager.consume_challenge(payload.session_id)
+
+    # Cập nhật kết quả vào session
+    sess.apply_optical_result(
+        passed=res.passed,
+        correlation=res.correlation_score,
+        amplitude=res.amplitude,
+        verdict=res.verdict,
+        details=res.details,
+    )
+
+    return {
+        "session_id": payload.session_id,
+        "passed": res.passed,
+        "correlation_score": res.correlation_score,
+        "amplitude": res.amplitude,
+        "verdict": res.verdict,
+        "stage": sess.stage.value,
+        "message": res.message,
+        "details": res.details,
+        "summary": sess.history if sess.stage == Stage.CAPTURE else None,
+    }
 
 
 # Gắn frontend tĩnh tại `d:\EKYC\web`

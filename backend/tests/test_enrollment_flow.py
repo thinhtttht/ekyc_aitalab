@@ -128,11 +128,16 @@ def test_full_enrollment_pipeline(monkeypatch):
     sess.stable_start_time = time.time() - 1.1
     res = sess.process_frame(get_live_frame(), stats)
 
-    # Đạt CAPTURE
+    # Đạt FLASHING (Chuẩn bị quét ánh sáng màu quang học)
+    assert sess.stage == Stage.FLASHING
+    assert res["stage"] == Stage.FLASHING
+    assert "quét ánh sáng" in res["message"]
+
+    # Áp dụng kết quả xác thực quang học PASS -> chuyển sang CAPTURE
+    sess.apply_optical_result(passed=True, correlation=0.89, amplitude=14.2, verdict="LIVENESS_PASS")
     assert sess.stage == Stage.CAPTURE
-    assert res["stage"] == Stage.CAPTURE
-    assert "summary" in res
-    assert res["summary"]["zoom"]["growth_ratio"] >= 1.25
+    assert sess.history["optical_liveness"]["passed"] is True
+    assert sess.history["zoom"]["growth_ratio"] >= 1.25
 
 
 def test_hand_occlusion_rejection():

@@ -45,6 +45,7 @@ let currentStream = null;
 let currentSessionId = null;
 let isLoopRunning = false;
 let isSendingFrame = false;
+let isFlashingActive = false;
 let activeDeviceId = localStorage.getItem('ekyc_preferred_camera') || '';
 
 // FPS & Signal Meter
@@ -242,6 +243,9 @@ async function restartSession() {
   resetChecklistUI();
   resetStepperUI();
   updateOvalSvg({ cx: 0.5, cy: 0.47, rx: 0.33, ry: 0.36 }, 'cyan', 0);
+  isFlashingActive = false;
+  const fo = document.getElementById('flashingOverlay');
+  if (fo) fo.classList.remove('active', 'pulse');
 
   if (currentSessionId) {
     try {
@@ -330,6 +334,11 @@ async function frameLoop() {
     updateBackendStatus(true);
     renderFeedback(data);
 
+    // Nếu đạt giai đoạn FLASHING -> kích hoạt chuỗi nháy màu quang học an toàn
+    if (data.stage === 'flashing' && !isFlashingActive) {
+      triggerOpticalFlashing();
+    }
+
     // Nếu đạt giai đoạn CAPTURE -> tự động chụp snapshot HD và dừng vòng lặp
     if (data.stage === 'capture') {
       isLoopRunning = false;
@@ -343,6 +352,132 @@ async function frameLoop() {
   }
 
   requestAnimationFrame(frameLoop);
+}
+
+// -----------------------------------------------------------------------------
+// 3.5. XÁC THỰC QUANG HỌC CHỦ ĐỘNG (ACTIVE OPTICAL COLOR FLASHING)
+// -----------------------------------------------------------------------------
+async function triggerOpticalFlashing() {
+  if (isFlashingActive) return;
+  isFlashingActive = true;
+
+  const flashingOverlay = document.getElementById('flashingOverlay');
+  if (!flashingOverlay) return;
+
+  try {
+    // 1. Gửi yêu cầu lấy chuỗi thách thức từ máy chủ
+    const chRes = await fetch(`${API_BASE}/api/enroll/color_challenge`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ session_id: currentSessionId }),
+    });
+
+    if (!chRes.ok) throw new Error(`Lỗi khởi tạo challenge: ${chRes.status}`);
+    const chData = await chRes.json();
+    const sequence = chData.sequence || [];
+    const token = chData.challenge_token;
+
+    bottomPill.className = 'bottom-guidance-pill green';
+    bottomPill.textContent = 'Giữ yên khuôn mặt! Đang quét phản xạ ánh sáng...';
+
+    const collectedFrames = [];
+
+    // 2. Chiếu từng màu theo chuỗi thời gian thực
+    for (let i = 0; i < sequence.length; i++) {
+      const step = sequence[i];
+      const rgbStr = `${step.rgb[0]}, ${step.rgb[1]}, ${step.rgb[2]}`;
+
+      flashingOverlay.style.setProperty('--flash-rgb', rgbStr);
+      flashingOverlay.classList.add('active', 'pulse');
+
+      holdLabel.textContent = `🌈 Quét quang phổ ${i + 1}/${sequence.length}: ${step.name}`;
+      const pct = Math.round(((i + 1) / sequence.length) * 100);
+      holdProgressBar.style.width = `${pct}%`;
+
+      // Chờ 200ms để ánh sáng màn hình hắt lên da ổn định trước khi AWB triệt tiêu
+      await new Promise((r) => setTimeout(r, 200));
+
+      // Trích xuất khung hình từ webcam
+      const vw = video.videoWidth || 640;
+      const vh = video.videoHeight || 480;
+      const targetRatio = 4 / 5;
+      let cropW, cropH;
+      if (vw / vh > targetRatio) {
+        cropH = vh;
+        cropW = vh * targetRatio;
+      } else {
+        cropW = vw;
+        cropH = vw / targetRatio;
+      }
+      const sx = (vw - cropW) / 2;
+      const sy = (vh - cropH) / 2;
+
+      offCtx.save();
+      offCtx.translate(480, 0);
+      offCtx.scale(-1, 1);
+      offCtx.drawImage(video, sx, sy, cropW, cropH, 0, 0, 480, 600);
+      offCtx.restore();
+
+      const frameB64 = offscreenCanvas.toDataURL('image/jpeg', 0.85);
+      collectedFrames.push({
+        color_index: step.index,
+        image: frameB64,
+        timestamp_ms: Date.now(),
+      });
+
+      // Chờ hết thời lượng của màu này
+      const remainingMs = Math.max(50, (step.duration_ms || 330) - 200);
+      await new Promise((r) => setTimeout(r, remainingMs));
+    }
+
+    // 3. Tắt lớp phủ sau khi chiếu xong
+    flashingOverlay.classList.remove('active', 'pulse');
+
+    bottomPill.className = 'bottom-guidance-pill cyan';
+    bottomPill.textContent = 'Đang phân tích phản xạ quang phổ mô da...';
+
+    // 4. Gửi các khung hình lên máy chủ để xác thực quang học
+    const verifyRes = await fetch(`${API_BASE}/api/enroll/color_verify`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        session_id: currentSessionId,
+        challenge_token: token,
+        frames: collectedFrames,
+      }),
+    });
+
+    if (!verifyRes.ok) {
+      const errData = await verifyRes.json().catch(() => ({}));
+      throw new Error(errData.detail || 'Xác thực quang học thất bại');
+    }
+
+    const verifyData = await verifyRes.json();
+    if (verifyData.passed) {
+      playTingSound();
+      bottomPill.className = 'bottom-guidance-pill green';
+      bottomPill.textContent = 'Xác thực sinh trắc học hoàn tất! Đang chụp chân dung HD...';
+      updateStepper('capture');
+      setRow('chk-optical-liveness', 'val-optical-liveness', true, `Đạt (r = ${verifyData.correlation_score})`);
+      isLoopRunning = false;
+      captureHdAndShowSummary(verifyData.summary || {});
+    } else {
+      bottomPill.className = 'bottom-guidance-pill red';
+      bottomPill.textContent = verifyData.message || 'Xác thực thất bại. Hệ thống phát hiện bề mặt không hợp lệ.';
+      setRow('chk-optical-liveness', 'val-optical-liveness', false, 'Không đạt');
+      setTimeout(() => {
+        isFlashingActive = false;
+      }, 2500);
+    }
+  } catch (err) {
+    console.error('Lỗi quy trình Color Flashing:', err);
+    flashingOverlay.classList.remove('active', 'pulse');
+    bottomPill.className = 'bottom-guidance-pill red';
+    bottomPill.textContent = err.message || 'Lỗi quét quang học. Vui lòng thử lại.';
+    setTimeout(() => {
+      isFlashingActive = false;
+    }, 2000);
+  }
 }
 
 // -----------------------------------------------------------------------------
@@ -600,7 +735,9 @@ function renderFeedback(data) {
   // Cập nhật thanh tiến độ giữ yên
   const pct = Math.round((data.progress || 0) * 100);
   holdProgressBar.style.width = `${pct}%`;
-  if (data.stage === 'zoom_in') {
+  if (data.stage === 'flashing') {
+    holdLabel.textContent = `🌈 Đang quét quang phổ: ${pct}%`;
+  } else if (data.stage === 'zoom_in') {
     holdLabel.textContent = `🔍 Tiến gần Oval lớn: ${pct}%`;
   } else if (data.stage.startsWith('turn_')) {
     holdLabel.textContent = `🔄 Giữ góc quay đầu: ${pct}%`;
@@ -676,6 +813,7 @@ function updateStepper(stage) {
     turn_right: 2,
     recenter: 2,
     zoom_in: 3,
+    flashing: 3,
     capture: 4,
     failed: 1,
   };
@@ -730,10 +868,14 @@ function updateChecklist(camChk = {}, camMet = {}, faceChk = {}, faceMet = {}, s
   // Nhóm 4: Thử thách Sinh trắc
   const isLivenessActive = stage.startsWith('turn_') || stage === 'recenter';
   const isZoomActive = stage === 'zoom_in';
-  const isPastLiveness = stage === 'zoom_in' || stage === 'capture';
+  const isFlashingActiveStage = stage === 'flashing';
+  const isPastLiveness = stage === 'zoom_in' || stage === 'flashing' || stage === 'capture';
+  const isPastZoom = stage === 'flashing' || stage === 'capture';
+  const isPastFlashing = stage === 'capture';
 
   setRow('chk-liveness-turn', 'val-liveness-turn', isPastLiveness ? true : (isLivenessActive ? null : null), isPastLiveness ? 'Đạt' : (isLivenessActive ? 'Đang thực hiện' : 'Chờ'));
-  setRow('chk-zoom', 'val-zoom', stage === 'capture' ? true : (isZoomActive ? null : null), stage === 'capture' ? 'Đạt' : (isZoomActive ? 'Đang thực hiện' : 'Chờ'));
+  setRow('chk-zoom', 'val-zoom', isPastZoom ? true : (isZoomActive ? null : null), isPastZoom ? 'Đạt' : (isZoomActive ? 'Đang thực hiện' : 'Chờ'));
+  setRow('chk-optical-liveness', 'val-optical-liveness', isPastFlashing ? true : (isFlashingActiveStage ? null : null), isPastFlashing ? 'Đạt' : (isFlashingActiveStage ? 'Đang quét màu' : 'Chờ'));
 }
 
 function setRow(rowId, valId, isPass, textVal) {

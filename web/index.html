@@ -96,8 +96,8 @@
             <div class="step-tail"></div>
           </div>
           <div class="step-body">
-            <div class="step-heading">Phóng to & Tiến gần</div>
-            <div class="step-sub">Khung Oval mở rộng, kiểm tra cự ly gần</div>
+            <div class="step-heading">Tiến gần & Quét quang học</div>
+            <div class="step-sub">Oval mở rộng, phân tích phản xạ ánh sáng da</div>
           </div>
         </div>
 
@@ -129,6 +129,9 @@
 
         <!-- Canvas vẽ lưới Biometric Mesh & Ngũ quan theo phong cách công nghệ cao -->
         <canvas id="meshCanvas" width="480" height="600" class="mesh-overlay-canvas"></canvas>
+
+        <!-- Lớp phủ phát sáng quang học an toàn (Safe Radial Glow Flashing) -->
+        <div id="flashingOverlay" class="flashing-overlay"></div>
 
         <!-- 4 góc Corner Brackets công nghệ -->
         <div class="corner-bracket corner-tl"></div>
@@ -367,6 +370,11 @@
           <span class="chk-icon">⚪</span>
           <span class="chk-label">Tiến gần (Tăng trưởng mặt ≥ 125%)</span>
           <span class="chk-val" id="val-zoom">Chờ</span>
+        </div>
+        <div class="check-row" id="chk-optical-liveness">
+          <span class="chk-icon">⚪</span>
+          <span class="chk-label">Quang phổ da mặt (Color Flashing)</span>
+          <span class="chk-val" id="val-optical-liveness">Chờ</span>
         </div>
       </div>
     </aside>

@@ -25,6 +25,7 @@ class Stage(str, Enum):
     TURN_RIGHT = "turn_right"
     RECENTER = "recenter"
     ZOOM_IN = "zoom_in"
+    FLASHING = "flashing"
     CAPTURE = "capture"
     FAILED = "failed"
 
@@ -387,7 +388,7 @@ class EnrollmentSession:
                 progress = min(1.0, elapsed / C.HOLD_SEC)
 
                 if elapsed >= C.HOLD_SEC:
-                    self.stage = Stage.CAPTURE
+                    self.stage = Stage.FLASHING
                     self.history["zoom"] = {
                         "baseline_face_h": base_h,
                         "final_face_h": face_res.face_h,
@@ -396,10 +397,10 @@ class EnrollmentSession:
                         "final_persp": face_res.perspective_ratio,
                     }
                     self.history["timings"]["zoom"] = round(now - self.stage_start_time, 2)
-                    self.history["timings"]["total"] = round(now - self.created_at, 2)
+                    self.stage_start_time = now
 
                     return self._build_response(
-                        message="Xác thực sinh trắc học hoàn tất! Đang chụp chân dung HD...",
+                        message="Giữ yên khuôn mặt! Chuẩn bị quét ánh sáng màu...",
                         color="green",
                         cam_res=cam_res,
                         face_res=face_res,
@@ -431,6 +432,16 @@ class EnrollmentSession:
                     progress=0.0,
                 )
 
+        # --- GIAI ĐOẠN (e): FLASHING (Quét ánh sáng màu quang học) ---
+        if self.stage == Stage.FLASHING:
+            return self._build_response(
+                message="Đang quét ánh sáng quang học... Hãy nhìn thẳng vào màn hình",
+                color="green",
+                cam_res=cam_res,
+                face_res=face_res,
+                progress=1.0,
+            )
+
         # Giai đoạn CAPTURE hoặc FAILED
         return self._build_response(
             message="Quá trình hoàn tất",
@@ -439,6 +450,30 @@ class EnrollmentSession:
             face_res=face_res,
             progress=1.0 if self.stage == Stage.CAPTURE else 0.0,
         )
+
+    def apply_optical_result(
+        self,
+        passed: bool,
+        correlation: float,
+        amplitude: float,
+        verdict: str,
+        details: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """Cập nhật kết quả xác thực quang học từ endpoint verify."""
+        now = time.time()
+        self.history["optical_liveness"] = {
+            "passed": passed,
+            "correlation_score": round(correlation, 3),
+            "amplitude": round(amplitude, 2),
+            "verdict": verdict,
+            "details": details or {},
+        }
+        if passed:
+            self.stage = Stage.CAPTURE
+            self.history["timings"]["optical"] = round(now - self.stage_start_time, 2)
+            self.history["timings"]["total"] = round(now - self.created_at, 2)
+        else:
+            self.stage = Stage.FAILED
 
     def _turn_instruction(self, stage: Stage) -> str:
         if stage == Stage.TURN_LEFT:

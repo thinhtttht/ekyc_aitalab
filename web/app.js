@@ -366,6 +366,7 @@ function applyFlashingColor(hexColor, stepName, stepIndex, totalSteps) {
 
   // 1. Chiếu sáng vùng ngoài khung Oval trong viewport camera (trừ bên trong oval)
   if (svgFlashRect) {
+    svgFlashRect.style.transition = 'none';
     svgFlashRect.setAttribute('fill', hexColor);
     svgFlashRect.setAttribute('opacity', '1.0');
   }
@@ -378,6 +379,7 @@ function applyFlashingColor(hexColor, stepName, stepIndex, totalSteps) {
 
   // 3. Chiếu sáng toàn màn hình xung quanh (khoét rỗng bên trong khung oval)
   if (overlay && ovalBorder) {
+    overlay.style.transition = 'none';
     const rect = ovalBorder.getBoundingClientRect();
     const cx = Math.round(rect.left + rect.width / 2);
     const cy = Math.round(rect.top + rect.height / 2);
@@ -403,6 +405,7 @@ function clearFlashingColor() {
   const ovalBorder = document.getElementById('svgOvalBorder');
 
   if (svgFlashRect) {
+    svgFlashRect.style.transition = '';
     svgFlashRect.setAttribute('fill', 'transparent');
     svgFlashRect.setAttribute('opacity', '0');
   }
@@ -411,6 +414,7 @@ function clearFlashingColor() {
     ovalBorder.style.filter = '';
   }
   if (overlay) {
+    overlay.style.transition = '';
     overlay.classList.remove('active');
     overlay.style.backgroundColor = 'transparent';
     overlay.style.webkitMaskImage = '';
@@ -452,8 +456,8 @@ async function triggerOpticalFlashing() {
       const pct = Math.round(((i + 1) / sequence.length) * 100);
       holdProgressBar.style.width = `${pct}%`;
 
-      // Chờ 180ms để ánh sáng màn hình phủ đều lên da mặt trước khi AWB triệt tiêu
-      await new Promise((r) => setTimeout(r, 180));
+      // Chờ 260ms để ánh sáng màn hình phủ đều lên da mặt và webcam buffer cập nhật khung hình mới
+      await new Promise((r) => setTimeout(r, 260));
 
       // Trích xuất khung hình từ webcam
       const vw = video.videoWidth || 640;
@@ -483,8 +487,8 @@ async function triggerOpticalFlashing() {
         timestamp_ms: Date.now(),
       });
 
-      // Chờ hết thời lượng của màu này (330ms)
-      const remainingMs = Math.max(50, (step.duration_ms || 330) - 180);
+      // Chờ hết thời lượng của màu này (mặc định 400ms)
+      const remainingMs = Math.max(50, (step.duration_ms || 400) - 260);
       await new Promise((r) => setTimeout(r, remainingMs));
     }
 

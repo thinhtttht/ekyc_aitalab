@@ -991,7 +991,8 @@ function updateChecklist(camChk = {}, camMet = {}, faceChk = {}, faceMet = {}, s
     }
   }
   setRow('chk-scale', 'val-scale', faceChk.scale_ok, scaleText);
-  setRow('chk-inside-oval', 'val-inside-oval', faceChk.inside_oval, faceChk.inside_oval ? 'Trọn trong Oval' : 'Tràn ngoài');
+  const ovalD = typeof faceMet.oval_dist === 'number' && faceMet.oval_dist < 50 ? ` d=${faceMet.oval_dist.toFixed(2)}` : '';
+  setRow('chk-inside-oval', 'val-inside-oval', faceChk.inside_oval, (faceChk.inside_oval ? 'Trong Oval' : 'Tràn ngoài') + ovalD);
 
   let straightText = '--';
   if (faceMet.is_upside_down || faceChk.not_upside_down === false) {

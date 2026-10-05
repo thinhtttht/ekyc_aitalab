@@ -75,13 +75,23 @@ def test_pillar_1_framing_scale():
     assert sev == "warn"
     assert "ra xa" in msg.lower() or "khung oval" in msg.lower()
 
-    # Trường hợp 3: Bounding box tràn góc ra ngoài oval
+    # Trường hợp 3: Viền mặt tràn ra ngoài oval
     face_outside = create_valid_face()
-    face_outside.corners_inside = False
+    face_outside.oval_dist = 1.35
     checks, msg, sev = quality_checks(face_outside)
     assert checks["inside_oval"] is False
     assert sev == "warn"
     assert "vào giữa" in msg.lower() or "khung oval" in msg.lower()
+
+    # Trường hợp 4 (regression): mặt căn giữa, scale 0.73 -> góc bbox nhô ra elip
+    # nhưng viền mặt thật nằm gọn trong oval -> PHẢI đạt.
+    face_fit = create_valid_face()
+    face_fit.scale_ratio = 0.73
+    face_fit.fill = 0.70
+    face_fit.oval_dist = 0.53
+    face_fit.corners_inside = False
+    checks, msg, sev = quality_checks(face_fit)
+    assert checks["inside_oval"] is True
 
 
 def test_pillar_2_illumination():
@@ -257,7 +267,7 @@ def test_head_tilt_and_direction_guidance():
 def test_distance_guidance_overflow_and_small():
     # Bị tràn khung khi mặt to -> Hướng dẫn lùi ra xa
     face_overflow = create_valid_face()
-    face_overflow.corners_inside = False
+    face_overflow.oval_dist = 1.30
     face_overflow.scale_ratio = 0.78
     face_overflow.fill = 0.86
     checks, msg, sev = quality_checks(face_overflow)
@@ -267,7 +277,7 @@ def test_distance_guidance_overflow_and_small():
 
     # Bị lệch ngoài khung khi mặt nhỏ -> Hướng dẫn tiến lại gần
     face_small_outside = create_valid_face()
-    face_small_outside.corners_inside = False
+    face_small_outside.oval_dist = 1.30
     face_small_outside.scale_ratio = 0.44
     face_small_outside.fill = 0.50
     checks, msg, sev = quality_checks(face_small_outside)

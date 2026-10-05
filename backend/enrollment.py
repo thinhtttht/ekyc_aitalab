@@ -274,14 +274,14 @@ class EnrollmentSession:
                     self.stage_start_time = now
                     self.turn_hold_counter = 0
                     return self._build_response(
-                        message="Đã nhận diện! Hãy quay đầu nhìn thẳng lại vào camera",
+                        message="Đã nhận diện! Vui lòng nhìn thẳng lại vào camera",
                         color="green",
                         cam_res=cam_res,
                         face_res=face_res,
                         progress=1.0,
                     )
                 return self._build_response(
-                    message="Giữ nguyên góc quay...",
+                    message="Giữ nguyên góc quay đầu...",
                     color="green",
                     cam_res=cam_res,
                     face_res=face_res,
@@ -312,7 +312,7 @@ class EnrollmentSession:
 
             if not face_res.detected or face_res.yaw is None:
                 return self._build_response(
-                    message="Hãy quay đầu nhìn thẳng vào camera",
+                    message="Vui lòng quay đầu nhìn thẳng vào camera",
                     color="yellow",
                     cam_res=cam_res,
                     face_res=face_res,
@@ -339,14 +339,14 @@ class EnrollmentSession:
                     self.stage_start_time = now
                     self.stable_start_time = None
                     return self._build_response(
-                        message="Khung Oval đang phóng to. Hãy TIẾN GẦN camera hơn để mặt lọt vừa Oval lớn!",
+                        message="Khung Oval đã mở rộng. Vui lòng tiến lại gần camera hơn để vừa khung",
                         color="yellow",
                         cam_res=cam_res,
                         face_res=face_res,
                         progress=0.0,
                     )
             return self._build_response(
-                message="Hãy nhìn thẳng vào camera để tiếp tục...",
+                message="Vui lòng nhìn thẳng vào camera để tiếp tục...",
                 color="yellow",
                 cam_res=cam_res,
                 face_res=face_res,
@@ -666,10 +666,10 @@ class EnrollmentSession:
 
     def _turn_instruction(self, stage: Stage) -> str:
         if stage == Stage.TURN_LEFT:
-            return "Hơi quay đầu sang TRÁI (theo hướng bạn nhìn) khoảng 20°"
+            return "Từ từ quay đầu sang Trái"
         if stage == Stage.TURN_RIGHT:
-            return "Hơi quay đầu sang PHẢI (theo hướng bạn nhìn) khoảng 20°"
-        return "Hãy làm theo hướng dẫn"
+            return "Từ từ quay đầu sang Phải"
+        return "Làm theo chỉ dẫn trên màn hình"
 
     def _handle_challenge_timeout(self, cam_res: CameraResult, face_res: Optional[FaceResult], extra: str = "") -> Dict[str, Any]:
         self.attempts += 1

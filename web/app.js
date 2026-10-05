@@ -264,11 +264,24 @@ async function restartSession() {
 }
 
 btnRestartSession.addEventListener('click', restartSession);
-btnModalRetake.addEventListener('click', restartSession);
-btnModalNext.addEventListener('click', () => {
-  alert('Giai đoạn Đăng ký khuôn mặt với Khung Oval & Active Liveness hoàn tất xuất sắc!\nSẵn sàng tích hợp sang Cổng Color Flashing và MiniFASNet tiếp theo.');
+btnModalRetake.addEventListener('click', () => {
   summaryModal.classList.add('hidden');
+  restartSession();
 });
+btnModalNext.addEventListener('click', () => {
+  summaryModal.classList.add('hidden');
+  bottomPill.className = 'bottom-guidance-pill green';
+  bottomPill.textContent = 'Hồ sơ sinh trắc học đã sẵn sàng cho bước tiếp theo.';
+});
+
+const btnRejectionRetry = document.getElementById('btnRejectionRetry');
+if (btnRejectionRetry) {
+  btnRejectionRetry.addEventListener('click', () => {
+    const rejModal = document.getElementById('rejectionModal');
+    if (rejModal) rejModal.classList.add('hidden');
+    restartSession();
+  });
+}
 
 // Vòng lặp gửi frame tự điều tốc
 async function frameLoop() {
@@ -452,7 +465,7 @@ async function triggerOpticalFlashing() {
 
       applyFlashingColor(step.hex, step.name, i, sequence.length);
 
-      holdLabel.textContent = `🌈 Quét quang phổ ${i + 1}/${sequence.length}: ${step.name}`;
+      holdLabel.textContent = `Quét quang phổ ánh sáng ${i + 1}/${sequence.length}: ${step.name}`;
       const pct = Math.round(((i + 1) / sequence.length) * 100);
       holdProgressBar.style.width = `${pct}%`;
 
@@ -547,7 +560,7 @@ async function triggerOpticalFlashing() {
 }
 
 // -----------------------------------------------------------------------------
-// 4. CẬP NHẬT GIAO DIỆN & LƯỚI SINH TRẮC HỌC (BIOMETRIC MESH)
+// 4. CẬP NHẬT GIAO DIỆN & LƯỚI SINH TRẮC HỌC (BIOMETRIC MESH - APPLE FACE ID / STRIPE IDENTITY AESTHETIC)
 // -----------------------------------------------------------------------------
 
 function drawBiometricMesh(keypoints, partsStatus = {}, occludedPartName = null, hasHandOcclusion = false, overallColor = 'cyan', antiSpoof = null, isUpsideDown = false) {
@@ -561,19 +574,19 @@ function drawBiometricMesh(keypoints, partsStatus = {}, occludedPartName = null,
   const toPx = (pt) => [pt[0] * w, pt[1] * h];
 
   const isGreen = overallColor === 'green';
-  const defaultStroke = isGreen ? 'rgba(34, 197, 94, 0.78)' : 'rgba(56, 189, 248, 0.78)';
-  const defaultFill = isGreen ? '#86efac' : '#bae6fd';
-  const defaultShadow = isGreen ? '#22c55e' : '#38bdf8';
+  const defaultStroke = isGreen ? 'rgba(34, 197, 94, 0.52)' : 'rgba(56, 189, 248, 0.52)';
+  const defaultFill = isGreen ? '#a7f3d0' : '#bae6fd';
+  const defaultShadow = isGreen ? 'rgba(34, 197, 94, 0.4)' : 'rgba(56, 189, 248, 0.4)';
 
-  const occludedStroke = 'rgba(239, 68, 68, 0.95)';
-  const occludedFill = '#fca5a5';
-  const occludedShadow = '#ef4444';
+  const occludedStroke = 'rgba(244, 63, 94, 0.85)';
+  const occludedFill = '#fecdd3';
+  const occludedShadow = 'rgba(244, 63, 94, 0.6)';
 
-  // 1. Đường lưới tam giác / vi liên kết sinh trắc (Triangulation HUD)
+  // 1. Đường vi liên kết sinh trắc học tinh gọn (Apple TrueDepth / LiDAR Hairline Grid)
   meshCtx.save();
-  meshCtx.lineWidth = 0.9;
-  meshCtx.strokeStyle = isGreen ? 'rgba(34, 197, 94, 0.28)' : 'rgba(56, 189, 248, 0.28)';
-  meshCtx.setLineDash([3, 3]);
+  meshCtx.lineWidth = 0.55;
+  meshCtx.strokeStyle = isGreen ? 'rgba(34, 197, 94, 0.16)' : 'rgba(56, 189, 248, 0.16)';
+  meshCtx.setLineDash([2, 3]);
 
   // Nối lông mày tới sống mũi
   if (keypoints.left_eyebrow && keypoints.nose && keypoints.right_eyebrow) {
@@ -587,7 +600,7 @@ function drawBiometricMesh(keypoints, partsStatus = {}, occludedPartName = null,
     meshCtx.stroke();
   }
 
-  // Nối chóp mũi tới 2 góc khóe miệng
+  // Nối chóp mũi tới 2 khóe miệng
   if (keypoints.nose && keypoints.mouth) {
     const noseTip = toPx(keypoints.nose[Math.min(6, keypoints.nose.length - 1)]);
     const mouthLeft = toPx(keypoints.mouth[0]);
@@ -610,7 +623,7 @@ function drawBiometricMesh(keypoints, partsStatus = {}, occludedPartName = null,
   }
   meshCtx.restore();
 
-  // 2. Vẽ từng bộ phận ngũ quan và viền hàm
+  // 2. Vẽ đường bao ngũ quan tinh tế và các micro-landmarks
   const partsList = [
     { key: 'jaw', isClosed: false, isOk: true, name: 'Khung hàm' },
     { key: 'left_eyebrow', isClosed: false, isOk: partsStatus.left_eyebrow !== false, name: 'Chân mày trái' },
@@ -628,11 +641,11 @@ function drawBiometricMesh(keypoints, partsStatus = {}, occludedPartName = null,
     meshCtx.save();
     const isOk = part.isOk;
     meshCtx.strokeStyle = isOk ? defaultStroke : occludedStroke;
-    meshCtx.lineWidth = isOk ? 1.6 : 2.6;
+    meshCtx.lineWidth = isOk ? 0.95 : 1.6;
     meshCtx.shadowColor = isOk ? defaultShadow : occludedShadow;
-    meshCtx.shadowBlur = isOk ? 6 : 14;
+    meshCtx.shadowBlur = isOk ? 3 : 8;
 
-    // Vẽ đường bao
+    // Vẽ đường viền ngũ quan mượt mà
     meshCtx.beginPath();
     const [startPx, startPy] = toPx(pts[0]);
     meshCtx.moveTo(startPx, startPy);
@@ -645,101 +658,76 @@ function drawBiometricMesh(keypoints, partsStatus = {}, occludedPartName = null,
     }
     meshCtx.stroke();
 
-    // Vẽ các điểm mốc (Landmarks)
+    // Micro-landmarks (tinh tế, không che lấp khuôn mặt người dùng)
     meshCtx.fillStyle = isOk ? defaultFill : occludedFill;
     for (let i = 0; i < pts.length; i++) {
       const [px, py] = toPx(pts[i]);
       meshCtx.beginPath();
-      meshCtx.arc(px, py, isOk ? 2.2 : 3.4, 0, Math.PI * 2);
+      meshCtx.arc(px, py, isOk ? 1.25 : 1.9, 0, Math.PI * 2);
       meshCtx.fill();
-    }
-
-    // Nếu bộ phận bị che khuất -> vẽ khung cảnh báo tech brackets
-    if (!isOk) {
-      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-      pts.forEach((pt) => {
-        const [px, py] = toPx(pt);
-        if (px < minX) minX = px;
-        if (px > maxX) maxX = px;
-        if (py < minY) minY = py;
-        if (py > maxY) maxY = py;
-      });
-      const pad = 10;
-      minX -= pad; minY -= pad; maxX += pad; maxY += pad;
-
-      meshCtx.lineWidth = 2.0;
-      meshCtx.strokeStyle = '#ef4444';
-      meshCtx.shadowColor = '#ef4444';
-      meshCtx.shadowBlur = 10;
-      const bLen = 8;
-
-      // Góc trên trái
-      meshCtx.beginPath();
-      meshCtx.moveTo(minX, minY + bLen); meshCtx.lineTo(minX, minY); meshCtx.lineTo(minX + bLen, minY);
-      // Góc trên phải
-      meshCtx.moveTo(maxX - bLen, minY); meshCtx.lineTo(maxX, minY); meshCtx.lineTo(maxX, minY + bLen);
-      // Góc dưới trái
-      meshCtx.moveTo(minX, maxY - bLen); meshCtx.lineTo(minX, maxY); meshCtx.lineTo(minX + bLen, maxY);
-      // Góc dưới phải
-      meshCtx.moveTo(maxX - bLen, maxY); meshCtx.lineTo(maxX, maxY); meshCtx.lineTo(maxX, maxY - bLen);
-      meshCtx.stroke();
-
-      meshCtx.font = 'bold 11px system-ui, sans-serif';
-      meshCtx.fillStyle = '#fee2e2';
-      meshCtx.shadowBlur = 4;
-      meshCtx.fillText(`[ ! ] ${part.name.toUpperCase()} BỊ CHE`, minX, Math.max(14, minY - 4));
     }
 
     meshCtx.restore();
   });
 
-  // 3. Hiển thị HUD Alert Banner nếu phát hiện tấn công giả mạo, tay che hoặc ngũ quan bị cản trở
+  // 3. Floating Security Alert Capsule (Apple Glassmorphism Design)
   let alertText = null;
   if (antiSpoof && antiSpoof.is_real === false) {
     if (antiSpoof.spoof_type === 'print_attack' || antiSpoof.spoof_type === 'planar_2d') {
-      alertText = '⚠️ CẢNH BÁO: PHÁT HIỆN ẢNH IN 2D';
+      alertText = 'Phát hiện ảnh in 2D • Yêu cầu người thật';
     } else if (antiSpoof.spoof_type === 'replay_attack' || antiSpoof.spoof_type === 'screen_moire') {
-      alertText = '⚠️ CẢNH BÁO: PHÁT HIỆN MÀN HÌNH / VIDEO';
+      alertText = 'Phát hiện màn hình / video • Yêu cầu người thật';
     } else {
-      alertText = '⚠️ CẢNH BÁO: TẤN CÔNG GIẢ MẠO';
+      alertText = 'Phát hiện dấu hiệu giả mạo sinh trắc';
     }
   } else if (isUpsideDown) {
-    alertText = '⚠️ CẢNH BÁO: ĐẦU BỊ LẬT NGƯỢC';
+    alertText = 'Vui lòng giữ thẳng khuôn mặt';
   } else if (hasHandOcclusion) {
-    alertText = '⚠️ PHÁT HIỆN TAY TRÊN KHUÔN MẶT';
+    alertText = 'Vui lòng không để tay che khuôn mặt';
   } else if (occludedPartName) {
-    alertText = `⚠️ BỊ CHE KHUẤT: ${occludedPartName.toUpperCase()}`;
+    alertText = `Khuôn mặt bị che: ${occludedPartName}`;
   }
 
   if (alertText) {
     meshCtx.save();
-    meshCtx.font = 'bold 12px system-ui, sans-serif';
+    meshCtx.font = '600 12px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
     const textMetrics = meshCtx.measureText(alertText);
-    const boxW = textMetrics.width + 28;
-    const boxH = 30;
+    const boxW = Math.min(w - 32, textMetrics.width + 42);
+    const boxH = 34;
     const boxX = (w - boxW) / 2;
-    const boxY = 48;
+    const boxY = 56;
 
-    meshCtx.fillStyle = 'rgba(185, 28, 28, 0.92)';
-    meshCtx.shadowColor = '#ef4444';
+    // Nền Frosted Glass Capsule sang trọng
+    meshCtx.fillStyle = 'rgba(15, 23, 42, 0.88)';
+    meshCtx.shadowColor = 'rgba(0, 0, 0, 0.35)';
     meshCtx.shadowBlur = 16;
     meshCtx.beginPath();
     if (meshCtx.roundRect) {
-      meshCtx.roundRect(boxX, boxY, boxW, boxH, 8);
+      meshCtx.roundRect(boxX, boxY, boxW, boxH, 17);
     } else {
       meshCtx.rect(boxX, boxY, boxW, boxH);
     }
     meshCtx.fill();
 
-    meshCtx.strokeStyle = '#fecaca';
-    meshCtx.lineWidth = 1.5;
+    // Viền hairline cảnh báo
+    meshCtx.strokeStyle = 'rgba(239, 68, 68, 0.55)';
+    meshCtx.lineWidth = 1;
     meshCtx.stroke();
 
-    meshCtx.fillStyle = '#ffffff';
-    meshCtx.textAlign = 'center';
+    // Chấm đỏ breathing status indicator
+    meshCtx.fillStyle = '#ef4444';
+    meshCtx.shadowColor = '#ef4444';
+    meshCtx.shadowBlur = 6;
+    meshCtx.beginPath();
+    meshCtx.arc(boxX + 18, boxY + boxH / 2, 4, 0, Math.PI * 2);
+    meshCtx.fill();
+
+    // Chữ thông báo hiện đại
+    meshCtx.fillStyle = '#f8fafc';
+    meshCtx.textAlign = 'left';
     meshCtx.textBaseline = 'middle';
-    meshCtx.shadowBlur = 4;
-    meshCtx.fillText(alertText, w / 2, boxY + boxH / 2);
+    meshCtx.shadowBlur = 0;
+    meshCtx.fillText(alertText, boxX + 30, boxY + boxH / 2);
     meshCtx.restore();
   }
 }
@@ -805,15 +793,15 @@ function renderFeedback(data) {
   const pct = Math.round((data.progress || 0) * 100);
   holdProgressBar.style.width = `${pct}%`;
   if (data.stage === 'flashing') {
-    holdLabel.textContent = `🌈 Đang quét quang phổ: ${pct}%`;
+    holdLabel.textContent = `Đang quét quang phổ ánh sáng • ${pct}%`;
   } else if (data.stage === 'zoom_in') {
-    holdLabel.textContent = `🔍 Tiến gần Oval lớn: ${pct}%`;
+    holdLabel.textContent = `Đưa khuôn mặt lại gần hơn • ${pct}%`;
   } else if (data.stage.startsWith('turn_')) {
-    holdLabel.textContent = `🔄 Giữ góc quay đầu: ${pct}%`;
+    holdLabel.textContent = `Giữ nguyên góc quay đầu • ${pct}%`;
   } else if (data.stage === 'face_quality') {
-    holdLabel.textContent = `🎯 Giữ yên khuôn mặt: ${pct}%`;
+    holdLabel.textContent = `Căn chỉnh & giữ yên khuôn mặt • ${pct}%`;
   } else {
-    holdLabel.textContent = `🎯 Tiến độ: ${pct}%`;
+    holdLabel.textContent = `Tiến độ xác thực • ${pct}%`;
   }
 
   // Cập nhật badge thông số trên video
@@ -1017,6 +1005,17 @@ function updateBackendStatus(isOnline) {
 // 5. CHỤP CHÂN DUNG HD VÀ HIỂN THỊ MODAL TỔNG KẾT
 // -----------------------------------------------------------------------------
 
+function showRejectionModal(reason) {
+  const modal = document.getElementById('rejectionModal');
+  const reasonEl = document.getElementById('rejectionReason');
+  if (modal && reasonEl) {
+    reasonEl.textContent = reason || 'Khuôn mặt không đạt tiêu chuẩn an toàn sinh trắc học.';
+    modal.classList.remove('hidden');
+  } else {
+    restartSession();
+  }
+}
+
 async function captureHdAndVerify(initialSummary = {}) {
   // 1. Tạo canvas độ phân giải gốc của camera để chụp ảnh chân dung HD
   const hdCanvas = document.createElement('canvas');
@@ -1035,7 +1034,7 @@ async function captureHdAndVerify(initialSummary = {}) {
 
   // 2. Hiển thị trạng thái đang kiểm định an ninh backend
   bottomPill.className = 'bottom-guidance-pill yellow';
-  bottomPill.textContent = '🛡️ Đang kiểm định toàn vẹn khuôn mặt & chống giả mạo chân dung...';
+  bottomPill.textContent = 'Đang kiểm định toàn vẹn khuôn mặt & chống giả mạo chân dung...';
 
   try {
     const res = await fetch(`${API_BASE}/api/enroll/verify_capture`, {
@@ -1084,23 +1083,21 @@ async function captureHdAndVerify(initialSummary = {}) {
       // Hiển thị modal hoàn tất
       summaryModal.classList.remove('hidden');
     } else {
-      // Từ chối đăng ký và bắt buộc làm lại
+      // Từ chối đăng ký và mở Modal cảnh báo hiện đại
       bottomPill.className = 'bottom-guidance-pill red';
-      bottomPill.textContent = `❌ TỪ CHỐI ĐĂNG KÝ: ${data.message}`;
+      bottomPill.textContent = `Không đạt: ${data.message}`;
 
       setTimeout(() => {
-        alert(`❌ ĐĂNG KÝ BỊ TỪ CHỐI!\n\nLý do: ${data.message}\n\nHệ thống phát hiện khuôn mặt không toàn vẹn hoặc nghi vấn giả mạo. Vui lòng thực hiện đăng ký lại từ đầu.`);
-        restartSession();
-      }, 400);
+        showRejectionModal(data.message);
+      }, 300);
     }
   } catch (err) {
     console.error('Lỗi kiểm định capture:', err);
     bottomPill.className = 'bottom-guidance-pill red';
-    bottomPill.textContent = `❌ Lỗi kiểm tra: ${err.message}`;
+    bottomPill.textContent = `Lỗi kiểm tra bảo mật: ${err.message}`;
     setTimeout(() => {
-      alert(`❌ Lỗi kiểm định bảo mật: ${err.message}\nVui lòng thực hiện lại từ đầu.`);
-      restartSession();
-    }, 400);
+      showRejectionModal(err.message);
+    }, 300);
   }
 }
 

@@ -170,6 +170,39 @@ def test_pillar_4_occlusion():
     assert sev == "error"
     assert "che khuất" in msg.lower()
 
+    # Che miệng / Khăn giấy / Vật cản che mặt -> Báo Đỏ
+    face_mouth = create_valid_face()
+    face_mouth.parts_status["mouth"] = False
+    face_mouth.occluded_part_name = "Vùng Miệng (phát hiện vật cản / giấy che mặt)"
+    face_mouth.mask_detected = True
+    checks, msg, sev = quality_checks(face_mouth)
+    assert checks["has_mouth"] is False
+    assert checks["no_mask"] is False
+    assert sev == "error"
+    assert "che khuất" in msg.lower() or "khẩu trang" in msg.lower()
+
+    cont_ok, cont_msg, cont_sev = check_continuous_face_quality(face_mouth)
+    assert cont_ok is False
+    assert cont_sev == "error"
+
+
+def test_real_tissue_paper_occlusion_image():
+    tissue_img_path = r"C:\Users\Admin\.gemini\antigravity\brain\0ed4fda9-7d9a-4a29-afb5-d05aacfa3031\.user_uploaded\media_1791199393546.png"
+    if os.path.exists(tissue_img_path):
+        import cv2
+        from face_analyzer import FaceAnalyzer
+        analyzer = FaceAnalyzer()
+        frame = cv2.imread(tissue_img_path)
+        oval = {"cx": 0.5, "cy": 0.5, "rx": 0.22, "ry": 0.32}
+        res = analyzer.analyze(frame, oval)
+        assert res.detected is True
+        assert res.parts_status.get("mouth") is False
+        assert res.mask_detected is True
+        assert res.occluded_part_name is not None
+        c_ok, c_msg, c_sev = check_continuous_face_quality(res)
+        assert c_ok is False
+        assert c_sev == "error"
+
 
 def test_continuous_quality_during_turning():
     # Khi xoay đầu: cho phép độ nét thấp hơn (35 thay vì 60) và bỏ qua backlight

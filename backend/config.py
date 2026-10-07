@@ -70,6 +70,9 @@ MAX_ATTEMPTS = 3
 ZOOM_MIN_GROWTH = 1.25                 # chiều cao mặt phải tăng >= 25% so với mốc ở bước (b)
 ZOOM_TIMEOUT_SEC = 12.0
 
+# Ảnh chân dung cuối cùng (verify_final_capture) cho phép lệch tư thế nhiều hơn bước FQA một chút
+FINAL_MAX_POSE = dict(yaw=16.0, pitch=16.0, roll=12.0)
+
 # ---------------------------------------------------------------------------
 # (e) CHỐNG GIẢ MẠO ẢNH & VIDEO (PASSIVE ANTI-SPOOFING / PAD)
 # ---------------------------------------------------------------------------

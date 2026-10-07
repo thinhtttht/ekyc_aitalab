@@ -140,6 +140,24 @@ def test_full_enrollment_pipeline(monkeypatch):
     assert sess.history["zoom"]["growth_ratio"] >= 1.25
 
 
+def test_turn_timeout_returns_to_fqa_then_fails():
+    sess = EnrollmentSession("test-timeout-session")
+    sess.face_analyzer = MockFaceAnalyzer(mode="dynamic")
+    stats = ClientStats(fps=30.0, width=1280, height=720, frame_advancing=True)
+    frame = np.full((600, 480, 3), 130, dtype=np.uint8)
+
+    for attempt in range(1, C.MAX_ATTEMPTS + 1):
+        sess.stage = sess.challenge_sequence[0]
+        sess.stage_start_time = time.time() - C.CHALLENGE_TIMEOUT_SEC - 1
+        res = sess.process_frame(frame, stats)
+        if attempt < C.MAX_ATTEMPTS:
+            assert sess.stage == Stage.FACE_QUALITY
+            assert f"lần {attempt}/{C.MAX_ATTEMPTS}" in res["message"]
+        else:
+            assert sess.stage == Stage.FAILED
+            assert res["color"] == "red"
+
+
 def test_hand_occlusion_rejection():
     sess = EnrollmentSession("test-hand-session")
     sess.stage = Stage.FACE_QUALITY

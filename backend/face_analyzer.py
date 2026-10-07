@@ -1,6 +1,6 @@
 """(b) Đánh giá chất lượng khuôn mặt (FQA) bằng MediaPipe FaceMesh + OpenCV.
 
-Trả về FaceResult chứa số liệu thô; hàm `quality_checks` áp ngưỡng để ra checks/thông báo.
+Trả về FaceResult chứa số liệu thô; hàm `evaluate_face` áp ngưỡng để ra checks/thông báo.
 Lưu ý: frontend lật gương ảnh TRƯỚC khi gửi lên, nên trục x của ảnh trùng với màn hình người
 dùng đang nhìn: x nhỏ = bên trái màn hình = bên trái của người dùng (như soi gương).
 """
@@ -482,161 +482,167 @@ def analyze_landmarks(frame_bgr: np.ndarray, lm3: np.ndarray, oval: dict, out: F
     return out
 
 
-def check_continuous_face_quality(face: Optional[FaceResult], is_turning: bool = False) -> tuple[bool, str, str]:
-    """Kiểm tra các tiêu chuẩn chất lượng khuôn mặt liên tục trong suốt mọi giai đoạn của quy trình.
-    Trả về: (is_ok, error_message, severity: 'ok' | 'warn' | 'error')
-    """
-    if face is None or not face.detected:
-        return False, "Vui lòng đưa mặt vào khung hình", "warn"
+# ---------------------------------------------------------------------------
+# ĐÁNH GIÁ CHẤT LƯỢNG (FQA) - chạy một lần cho mỗi frame
+# ---------------------------------------------------------------------------
 
-    if face.face_count > 1:
-        return False, "Phát hiện nhiều khuôn mặt – chỉ một người duy nhất trong khung hình", "error"
+Issue = Optional[tuple]  # (message, severity) hoặc None nếu không có lỗi
 
-    # KIỂM TRA CHỐNG GIẢ MẠO ẢNH & VIDEO (PASSIVE ANTI-SPOOFING / PAD)
-    if face.anti_spoof and not face.anti_spoof.is_real:
-        return False, face.anti_spoof.message, face.anti_spoof.severity
 
-    # KIỂM TRA LẬT NGƯỢC ĐẦU (MẮT Ở DƯỚI, MIỆNG Ở TRÊN)
-    if face.is_upside_down:
-        return False, "Khuôn mặt bị lật ngược – Vui lòng giữ thẳng đầu (mắt ở trên, miệng ở dưới)", "error"
+@dataclass
+class FaceVerdict:
+    checks: dict
+    message: str
+    severity: str        # ok | warn | error
+    continuous_ok: bool  # đạt các tiêu chí phải giữ suốt quy trình (giả mạo, che khuất, ánh sáng)
 
-    if face.hand_occlusion:
-        return False, "Vui lòng bỏ tay ra khỏi khuôn mặt", "error"
+    @property
+    def all_ok(self) -> bool:
+        return bool(self.checks) and all(self.checks.values())
 
-    if face.occluded_part_name:
-        return False, f"Phát hiện che khuất {face.occluded_part_name} – Vui lòng để lộ toàn bộ khuôn mặt", "error"
 
-    if face.mask_detected:
-        return False, "Vui lòng tháo khẩu trang để tiếp tục", "error"
+def evaluate_face(face: Optional[FaceResult], require_oval: bool = True, is_turning: bool = False) -> FaceVerdict:
+    """Áp toàn bộ ngưỡng FQA, trả về checks hiển thị và một thông báo có độ ưu tiên cao nhất."""
+    if face is None:
+        return FaceVerdict({}, "Vui lòng đưa mặt vào khung hình", "warn", False)
 
-    if face.sunglasses_detected:
-        return False, "Vui lòng tháo kính râm / kính đen để tiếp tục", "error"
-
-    if face.glare_detected:
-        return False, "Nghiêng mặt nhẹ để tránh lóa kính", "warn"
-
-    # Kiểm tra ánh sáng khuôn mặt (Illumination)
-    if face.brightness_mean < C.FACE_BRIGHTNESS_MIN:
-        return False, "Không gian quá tối – hãy tăng thêm ánh sáng", "error"
-    if face.brightness_mean > C.FACE_BRIGHTNESS_MAX:
-        return False, "Ánh sáng quá mạnh – tránh đèn chiếu thẳng vào mặt", "error"
-    if face.brightness_std < C.FACE_BRIGHTNESS_STD_MIN and not is_turning:
-        return False, "Khuôn mặt bị ngược sáng / thiếu chi tiết", "warn"
-
-    return True, "", "ok"
+    checks = _build_checks(face, require_oval, is_turning)
+    continuous = _continuous_issue(face, is_turning)
+    issue = (
+        continuous
+        or (require_oval and _framing_issue(face, checks))
+        or (not checks["head_straight"] and _pose_issue(face))
+        or (not checks["sharpness_ok"] and ("Hình ảnh bị mờ – Giữ yên đầu và camera", "warn"))
+    )
+    message, severity = issue or ("Khuôn mặt hợp lệ! Giữ yên...", "ok")
+    return FaceVerdict(checks, message, severity, continuous_ok=continuous is None)
 
 
 def quality_checks(face: FaceResult, require_oval: bool = True, is_turning: bool = False) -> tuple[dict, str, str]:
-    """Áp ngưỡng FQA theo tài liệu thiết kế chi tiết 4 tiêu chí.
-    Trả về (checks, message, severity: ok|warn|error).
-    """
-    has_eyes = bool(face.parts_status.get("left_eye", True) and face.parts_status.get("right_eye", True))
-    has_nose = bool(face.parts_status.get("nose", True))
-    has_mouth = bool(face.parts_status.get("mouth", True))
-    has_eyebrows = bool(face.parts_status.get("left_eyebrow", True) and face.parts_status.get("right_eyebrow", True))
-    all_features_detected = bool(face.detected and not face.occluded_part_name and not face.hand_occlusion)
+    """Trả về (checks, message, severity) – dạng tuple của `evaluate_face`."""
+    v = evaluate_face(face, require_oval, is_turning)
+    return v.checks, v.message, v.severity
 
-    head_straight = (
-        face.detected and not face.is_upside_down and face.yaw is not None
+
+def check_continuous_face_quality(face: Optional[FaceResult], is_turning: bool = False) -> tuple[bool, str, str]:
+    """Trả về (is_ok, message, severity) cho các tiêu chí phải giữ suốt quy trình."""
+    issue = _continuous_issue(face, is_turning)
+    return (True, "", "ok") if issue is None else (False, *issue)
+
+
+def _build_checks(face: FaceResult, require_oval: bool, is_turning: bool) -> dict:
+    detected = face.detected
+    parts = face.parts_status
+    spoof = face.anti_spoof
+    spoof_type = spoof.spoof_type if spoof else "real"
+
+    head_straight = True if is_turning else bool(
+        detected and not face.is_upside_down and face.yaw is not None
         and abs(face.yaw) <= C.MAX_STRAIGHT["yaw"]
         and abs(face.pitch) <= C.MAX_STRAIGHT["pitch"]
         and abs(face.roll) <= C.MAX_STRAIGHT["roll"]
-    ) if not is_turning else True
-
+    )
     min_sharpness = C.MIN_FACE_SHARPNESS_TURNING if is_turning else C.MIN_FACE_SHARPNESS
-    sharpness_ok = bool(face.detected and (not C.SHARPNESS_CHECK_ENABLED or face.sharpness >= min_sharpness))
-
-    scale_ok = face.detected and (C.FACE_SCALE_RANGE[0] <= face.scale_ratio <= C.FACE_SCALE_RANGE[1])
-    illumination_ok = face.detected and (C.FACE_BRIGHTNESS_MIN <= face.brightness_mean <= C.FACE_BRIGHTNESS_MAX)
-    no_backlight = face.detected and (face.brightness_std >= C.FACE_BRIGHTNESS_STD_MIN)
-
-    # Chống giả mạo ảnh & video
-    anti_spoof_ok = bool(face.detected and (not face.anti_spoof or face.anti_spoof.is_real))
-    no_print_attack = bool(face.detected and (not face.anti_spoof or (face.anti_spoof.spoof_type != "print_attack" and face.anti_spoof.spoof_type != "planar_2d")))
-    no_screen_attack = bool(face.detected and (not face.anti_spoof or (face.anti_spoof.spoof_type != "replay_attack" and face.anti_spoof.spoof_type != "screen_moire")))
-    depth_3d_ok = bool(face.detected and (not face.anti_spoof or face.anti_spoof.depth_3d_ok))
 
     checks = {
-        "face_detected": face.detected,
+        "face_detected": detected,
         "single_face": face.face_count == 1,
-        "not_upside_down": bool(face.detected and not face.is_upside_down),
-        "anti_spoof_ok": anti_spoof_ok,
-        "no_print_attack": no_print_attack,
-        "no_screen_attack": no_screen_attack,
-        "depth_3d_ok": depth_3d_ok,
-        "all_features_detected": all_features_detected,
-        "has_eyes": has_eyes,
-        "has_nose": has_nose,
-        "has_mouth": has_mouth,
-        "has_eyebrows": has_eyebrows,
-        "no_mask": face.detected and not face.mask_detected,
-        "no_sunglasses": face.detected and not face.sunglasses_detected,
-        "no_glare": face.detected and not face.glare_detected,
-        "no_hand_occlusion": face.detected and not face.hand_occlusion,
-        "scale_ok": scale_ok,
-        "inside_oval": face.detected and face.oval_dist <= C.OVAL_INSIDE_TOL,
-        "centered_ok": face.detected and abs(face.offset[0]) <= C.MAX_CENTER_OFFSET and abs(face.offset[1]) <= C.MAX_CENTER_OFFSET,
+        "not_upside_down": bool(detected and not face.is_upside_down),
+        "anti_spoof_ok": bool(detected and (not spoof or spoof.is_real)),
+        "no_print_attack": bool(detected and spoof_type not in ("print_attack", "planar_2d")),
+        "no_screen_attack": bool(detected and spoof_type not in ("replay_attack", "screen_moire")),
+        "depth_3d_ok": bool(detected and (not spoof or spoof.depth_3d_ok)),
+        "all_features_detected": bool(detected and not face.occluded_part_name and not face.hand_occlusion),
+        "has_eyes": bool(parts.get("left_eye", True) and parts.get("right_eye", True)),
+        "has_nose": bool(parts.get("nose", True)),
+        "has_mouth": bool(parts.get("mouth", True)),
+        "has_eyebrows": bool(parts.get("left_eyebrow", True) and parts.get("right_eyebrow", True)),
+        "no_mask": detected and not face.mask_detected,
+        "no_sunglasses": detected and not face.sunglasses_detected,
+        "no_glare": detected and not face.glare_detected,
+        "no_hand_occlusion": detected and not face.hand_occlusion,
+        "scale_ok": detected and C.FACE_SCALE_RANGE[0] <= face.scale_ratio <= C.FACE_SCALE_RANGE[1],
+        "inside_oval": detected and face.oval_dist <= C.OVAL_INSIDE_TOL,
+        "centered_ok": detected and abs(face.offset[0]) <= C.MAX_CENTER_OFFSET and abs(face.offset[1]) <= C.MAX_CENTER_OFFSET,
         "head_straight": head_straight,
-        "illumination_ok": illumination_ok,
-        "no_backlight": no_backlight,
-        "sharpness_ok": sharpness_ok,
-        "distance_ok": scale_ok,  # Alias cho tương thích
+        "illumination_ok": detected and C.FACE_BRIGHTNESS_MIN <= face.brightness_mean <= C.FACE_BRIGHTNESS_MAX,
+        "no_backlight": detected and face.brightness_std >= C.FACE_BRIGHTNESS_STD_MIN,
+        "sharpness_ok": bool(detected and (not C.SHARPNESS_CHECK_ENABLED or face.sharpness >= min_sharpness)),
     }
     if not require_oval:
-        checks["inside_oval"] = checks["centered_ok"] = checks["scale_ok"] = checks["distance_ok"] = face.detected
+        checks["inside_oval"] = checks["centered_ok"] = checks["scale_ok"] = detected
+    return checks
 
-    # 1. Kiểm tra tiêu chuẩn chất lượng liên tục trước (Vật cản, Khẩu trang, Kính, Ánh sáng, Độ nét, Lật ngược đầu)
-    cont_ok, cont_msg, cont_sev = check_continuous_face_quality(face, is_turning=is_turning)
-    if not cont_ok:
-        return checks, cont_msg, cont_sev
 
-    # 2. Kiểm tra Framing & Khung Oval (Geometry & Scale - Hướng dẫn cự ly tiến lại gần / lùi ra xa)
-    if require_oval:
-        if not checks["scale_ok"]:
-            if face.scale_ratio < C.FACE_SCALE_RANGE[0]:
-                return checks, "Hãy tiến lại gần camera hơn", "warn"
-            return checks, "Hãy lùi ra xa camera một chút", "warn"
-        if not checks["inside_oval"]:
-            dx, dy = face.offset
-            off_center = abs(dx) > 0.20 or abs(dy) > 0.20
-            # Chỉ báo "lùi ra xa" khi mặt thực sự quá lớn (chiều cao gần chạm/vượt oval)
-            # và KHÔNG phải do lệch tâm gây ra.
-            if face.fill > C.FACE_FILL[1] or (not off_center and face.scale_ratio > 0.72):
-                return checks, "Khuôn mặt tràn khung – Hãy lùi ra xa camera một chút và căn vào giữa khung Oval", "warn"
-            if face.scale_ratio < 0.48 or face.fill < 0.52:
-                return checks, "Khuôn mặt quá nhỏ – Hãy tiến lại gần camera hơn và căn vào giữa khung Oval", "warn"
-            if abs(dx) > 0.20:
-                return checks, _shift_hint(dx, dy), "warn"
-            if abs(dy) > 0.20:
-                return checks, ("Hạ mặt xuống một chút" if dy < 0 else "Nâng mặt lên một chút") + " vào giữa khung Oval", "warn"
-            return checks, "Đưa toàn bộ khuôn mặt vào giữa khung Oval", "warn"
-        if not checks["centered_ok"]:
-            return checks, _shift_hint(*face.offset), "warn"
+def _continuous_issue(face: Optional[FaceResult], is_turning: bool) -> Issue:
+    """Giả mạo, che khuất, ánh sáng: phải đạt ở MỌI giai đoạn của quy trình."""
+    if face is None or not face.detected:
+        return "Vui lòng đưa mặt vào khung hình", "warn"
+    if face.face_count > 1:
+        return "Phát hiện nhiều khuôn mặt – chỉ một người duy nhất trong khung hình", "error"
+    if face.anti_spoof and not face.anti_spoof.is_real:
+        return face.anti_spoof.message, face.anti_spoof.severity
+    if face.is_upside_down:
+        return "Khuôn mặt bị lật ngược – Vui lòng giữ thẳng đầu (mắt ở trên, miệng ở dưới)", "error"
+    if face.hand_occlusion:
+        return "Vui lòng bỏ tay ra khỏi khuôn mặt", "error"
+    if face.occluded_part_name:
+        return f"Phát hiện che khuất {face.occluded_part_name} – Vui lòng để lộ toàn bộ khuôn mặt", "error"
+    if face.mask_detected:
+        return "Vui lòng tháo khẩu trang để tiếp tục", "error"
+    if face.sunglasses_detected:
+        return "Vui lòng tháo kính râm / kính đen để tiếp tục", "error"
+    if face.glare_detected:
+        return "Nghiêng mặt nhẹ để tránh lóa kính", "warn"
+    if face.brightness_mean < C.FACE_BRIGHTNESS_MIN:
+        return "Không gian quá tối – hãy tăng thêm ánh sáng", "error"
+    if face.brightness_mean > C.FACE_BRIGHTNESS_MAX:
+        return "Ánh sáng quá mạnh – tránh đèn chiếu thẳng vào mặt", "error"
+    if face.brightness_std < C.FACE_BRIGHTNESS_STD_MIN and not is_turning:
+        return "Khuôn mặt bị ngược sáng / thiếu chi tiết", "warn"
+    return None
 
-    # 3. Kiểm tra nhìn thẳng & độ nghiêng đầu (Roll / Pitch / Yaw)
-    if not checks["head_straight"]:
-        if face.is_upside_down:
-            return checks, "Khuôn mặt bị lật ngược – Vui lòng giữ thẳng đầu (mắt ở trên, miệng ở dưới)", "error"
-        if face.roll is not None and abs(face.roll) > C.MAX_STRAIGHT["roll"]:
-            if abs(face.roll) > 25.0:
-                return checks, "Đang nghiêng đầu quá nhiều – Vui lòng giữ thẳng đầu", "warn"
-            if face.roll > C.MAX_STRAIGHT["roll"]:
-                return checks, "Đang nghiêng đầu sang trái – Vui lòng giữ thẳng đầu", "warn"
-            return checks, "Đang nghiêng đầu sang phải – Vui lòng giữ thẳng đầu", "warn"
-        if face.pitch is not None and abs(face.pitch) > C.MAX_STRAIGHT["pitch"]:
-            if face.pitch > C.MAX_STRAIGHT["pitch"]:
-                return checks, "Đang ngẩng đầu quá cao – Hãy hạ cằm xuống và nhìn thẳng", "warn"
-            return checks, "Đang cúi đầu quá thấp – Hãy nâng cằm lên và nhìn thẳng", "warn"
-        if face.yaw is not None and abs(face.yaw) > C.MAX_STRAIGHT["yaw"]:
-            if face.yaw > C.MAX_STRAIGHT["yaw"]:
-                return checks, "Đang quay mặt sang trái – Hãy nhìn thẳng vào camera", "warn"
-            return checks, "Đang quay mặt sang phải – Hãy nhìn thẳng vào camera", "warn"
-        return checks, "Hãy nhìn thẳng vào camera", "warn"
 
-    if not checks["sharpness_ok"]:
-        return checks, "Hình ảnh bị mờ – Giữ yên đầu và camera", "warn"
+def _framing_issue(face: FaceResult, checks: dict) -> Issue:
+    """Cự ly và vị trí mặt so với khung Oval."""
+    if not checks["scale_ok"]:
+        if face.scale_ratio < C.FACE_SCALE_RANGE[0]:
+            return "Hãy tiến lại gần camera hơn", "warn"
+        return "Hãy lùi ra xa camera một chút", "warn"
+    if not checks["inside_oval"]:
+        dx, dy = face.offset
+        off_center = abs(dx) > 0.20 or abs(dy) > 0.20
+        # Chỉ báo "lùi ra xa" khi mặt thực sự quá lớn và KHÔNG phải do lệch tâm gây ra.
+        if face.fill > C.FACE_FILL[1] or (not off_center and face.scale_ratio > 0.72):
+            return "Khuôn mặt tràn khung – Hãy lùi ra xa camera một chút và căn vào giữa khung Oval", "warn"
+        if face.scale_ratio < 0.48 or face.fill < 0.52:
+            return "Khuôn mặt quá nhỏ – Hãy tiến lại gần camera hơn và căn vào giữa khung Oval", "warn"
+        if off_center:
+            return _shift_hint(dx, dy), "warn"
+        return "Đưa toàn bộ khuôn mặt vào giữa khung Oval", "warn"
+    if not checks["centered_ok"]:
+        return _shift_hint(*face.offset), "warn"
+    return None
 
-    return checks, "Khuôn mặt hợp lệ! Giữ yên...", "ok"
+
+def _pose_issue(face: FaceResult) -> tuple:
+    """Nhìn thẳng & độ nghiêng đầu (Roll / Pitch / Yaw)."""
+    lim = C.MAX_STRAIGHT
+    if face.is_upside_down:
+        return "Khuôn mặt bị lật ngược – Vui lòng giữ thẳng đầu (mắt ở trên, miệng ở dưới)", "error"
+    if face.roll is not None and abs(face.roll) > lim["roll"]:
+        if abs(face.roll) > 25.0:
+            return "Đang nghiêng đầu quá nhiều – Vui lòng giữ thẳng đầu", "warn"
+        side = "trái" if face.roll > 0 else "phải"
+        return f"Đang nghiêng đầu sang {side} – Vui lòng giữ thẳng đầu", "warn"
+    if face.pitch is not None and abs(face.pitch) > lim["pitch"]:
+        if face.pitch > 0:
+            return "Đang ngẩng đầu quá cao – Hãy hạ cằm xuống và nhìn thẳng", "warn"
+        return "Đang cúi đầu quá thấp – Hãy nâng cằm lên và nhìn thẳng", "warn"
+    if face.yaw is not None and abs(face.yaw) > lim["yaw"]:
+        side = "trái" if face.yaw > 0 else "phải"
+        return f"Đang quay mặt sang {side} – Hãy nhìn thẳng vào camera", "warn"
+    return "Hãy nhìn thẳng vào camera", "warn"
 
 
 def _shift_hint(dx: float, dy: float) -> str:
@@ -646,3 +652,4 @@ def _shift_hint(dx: float, dy: float) -> str:
     else:
         direction = "Hạ mặt xuống một chút" if dy < 0 else "Nâng mặt lên một chút"
     return direction + " vào giữa khung Oval"
+

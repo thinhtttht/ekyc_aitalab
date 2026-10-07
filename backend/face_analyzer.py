@@ -133,11 +133,12 @@ def _is_skin(cr: float, cb: float) -> bool:
 class FaceAnalyzer:
     """Bọc MediaPipe FaceMesh (chế độ video - có tracking), mỗi phiên một instance.
 
-    smooth_anti_spoof=True: MiniFASNet chạy mỗi ANTISPOOF_EVERY_N_FRAMES frame và được làm mượt theo phiên.
-    Chỉ bật cho luồng video của một người dùng; analyzer dùng chung cho ảnh đơn lẻ phải để False.
+    stream=True (luồng video của MỘT người dùng): MiniFASNet chạy mỗi ANTISPOOF_EVERY_N_FRAMES frame và được
+    làm mượt, MediaPipe Hands chạy mỗi HAND_DETECTION_EVERY_N_FRAMES frame. Analyzer dùng chung cho các ảnh
+    đơn lẻ không liên quan nhau phải để stream=False để không dùng lại kết quả của request khác.
     """
 
-    def __init__(self, smooth_anti_spoof: bool = False) -> None:
+    def __init__(self, stream: bool = False) -> None:
         if mp is None:
             raise RuntimeError("mediapipe chưa được cài đặt")
         self._mesh = mp.solutions.face_mesh.FaceMesh(
@@ -152,24 +153,35 @@ class FaceAnalyzer:
             max_num_hands=2,
             min_detection_confidence=0.5,
             min_tracking_confidence=0.5,
-        )
+        ) if C.HAND_DETECTION_ENABLED else None
+        self._stream = stream
+        self._frame_idx = 0
+        self._last_hands: list = []
         self._spoof_sampler = (
             AntiSpoofSampler(get_anti_spoof_detector(), C.ANTISPOOF_EVERY_N_FRAMES, C.ANTISPOOF_SMOOTH_WINDOW)
-            if smooth_anti_spoof else None
+            if stream else None
         )
 
     def close(self) -> None:
         self._mesh.close()
-        self._hands.close()
+        if self._hands is not None:
+            self._hands.close()
 
-    def analyze(self, frame_bgr: np.ndarray, oval: dict, fresh_anti_spoof: bool = False) -> FaceResult:
-        """fresh_anti_spoof=True: bỏ qua bộ đệm, chạy PAD mới trên đúng frame này (dùng cho ảnh chụp cuối)."""
-        h, w = frame_bgr.shape[:2]
+    def _detect_hands(self, rgb: np.ndarray, fresh: bool) -> list:
+        if self._hands is None:
+            return []
+        every_n = max(1, C.HAND_DETECTION_EVERY_N_FRAMES) if self._stream else 1
+        if fresh or self._frame_idx % every_n == 0:
+            self._last_hands = self._hands.process(rgb).multi_hand_landmarks or []
+        return self._last_hands
+
+    def analyze(self, frame_bgr: np.ndarray, oval: dict, fresh: bool = False) -> FaceResult:
+        """fresh=True: bỏ qua mọi bộ đệm, phân tích đầy đủ đúng frame này (dùng cho ảnh chụp cuối)."""
         rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
         res = self._mesh.process(rgb)
-        hands_res = self._hands.process(rgb)
+        hands = self._detect_hands(rgb, fresh)
+        self._frame_idx += 1
         faces = res.multi_face_landmarks or []
-        hands = hands_res.multi_hand_landmarks or []
         if not faces:
             return FaceResult(face_count=0)
 
@@ -194,7 +206,7 @@ class FaceAnalyzer:
         face = primary_face
         lm = np.array([[p.x, p.y, p.z] for p in face.landmark], dtype=np.float64)   # chuẩn hoá
         out = analyze_landmarks(frame_bgr, lm, oval, out,
-                                anti_spoof=None if fresh_anti_spoof else self._spoof_sampler)
+                                anti_spoof=None if fresh else self._spoof_sampler)
 
         # Phát hiện bàn tay che mặt hoặc đè vào vùng Oval
         if hands and out.bbox:
@@ -565,7 +577,6 @@ def _build_checks(face: FaceResult, require_oval: bool, is_turning: bool) -> dic
         "anti_spoof_ok": bool(detected and (not spoof or spoof.is_real)),
         "no_print_attack": bool(detected and spoof_type not in ("print_attack", "planar_2d")),
         "no_screen_attack": bool(detected and spoof_type not in ("replay_attack", "screen_moire")),
-        "depth_3d_ok": bool(detected and (not spoof or spoof.depth_3d_ok)),
         "all_features_detected": bool(detected and not face.occluded_part_name and not face.hand_occlusion),
         "has_eyes": bool(parts.get("left_eye", True) and parts.get("right_eye", True)),
         "has_nose": bool(parts.get("nose", True)),
@@ -583,6 +594,8 @@ def _build_checks(face: FaceResult, require_oval: bool, is_turning: bool) -> dic
         "no_backlight": detected and face.brightness_std >= C.FACE_BRIGHTNESS_STD_MIN,
         "sharpness_ok": bool(detected and (not C.SHARPNESS_CHECK_ENABLED or face.sharpness >= min_sharpness)),
     }
+    if C.ANTISPOOF_USE_DEPTH:
+        checks["depth_3d_ok"] = bool(detected and (not spoof or spoof.depth_3d_ok))
     if not require_oval:
         checks["inside_oval"] = checks["centered_ok"] = checks["scale_ok"] = detected
     return checks

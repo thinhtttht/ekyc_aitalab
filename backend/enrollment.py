@@ -86,7 +86,7 @@ class EnrollmentSession:
 
     def _get_analyzer(self) -> FaceAnalyzer:
         if self.face_analyzer is None:
-            self.face_analyzer = FaceAnalyzer(smooth_anti_spoof=True)
+            self.face_analyzer = FaceAnalyzer(stream=True)
         return self.face_analyzer
 
     def close(self) -> None:
@@ -353,7 +353,7 @@ class EnrollmentSession:
 
     def verify_final_capture(self, frame_bgr: np.ndarray) -> Dict[str, Any]:
         """Kiểm định ảnh chân dung cuối cùng; không đạt -> FAILED, bắt buộc đăng ký lại từ đầu."""
-        face = self._get_analyzer().analyze(frame_bgr, C.OVAL_NORMAL, fresh_anti_spoof=True)
+        face = self._get_analyzer().analyze(frame_bgr, C.OVAL_NORMAL, fresh=True)
 
         issue = _final_capture_issue(face)
         if issue is not None:
@@ -438,7 +438,6 @@ class EnrollmentSession:
                 "print_prob": round(spoof.print_prob, 3),
                 "replay_prob": round(spoof.replay_prob, 3),
                 "spoof_type": spoof.spoof_type,
-                "depth_3d_ok": spoof.depth_3d_ok,
                 "message": spoof.message,
                 "severity": spoof.severity,
             } if spoof else None,
@@ -452,30 +451,36 @@ class EnrollmentSession:
 
 
 def _face_metrics(face: FaceResult) -> Dict[str, Any]:
+    """Các chỉ số web/app.js hiển thị; EKYC_DEBUG=1 trả thêm chỉ số thô để tinh chỉnh ngưỡng."""
+    s = face.anti_spoof
     m: Dict[str, Any] = {
         "face_count": face.face_count,
         "yaw": face.yaw,
         "pitch": face.pitch,
         "roll": face.roll,
         "is_upside_down": face.is_upside_down,
-        "fill": round(face.fill, 2),
         "scale_ratio": round(face.scale_ratio, 2),
-        "corners_inside": face.corners_inside,
-        "brightness": round(face.brightness, 1),
+        "oval_dist": round(face.oval_dist, 2),
         "brightness_mean": round(face.brightness_mean, 1),
         "brightness_std": round(face.brightness_std, 1),
         "sharpness": round(face.sharpness, 1),
-        "oval_dist": round(face.oval_dist, 2),
+        "anti_spoof_real_prob": round(s.real_prob, 3) if s else None,
+    }
+    if not C.DEBUG_METRICS:
+        return m
+
+    m.update({
+        "fill": round(face.fill, 2),
+        "corners_inside": face.corners_inside,
+        "brightness": round(face.brightness, 1),
         "mask_detected": face.mask_detected,
         "sunglasses_detected": face.sunglasses_detected,
         "glare_detected": face.glare_detected,
         "hand_occlusion": face.hand_occlusion,
         "perspective_ratio": face.perspective_ratio,
-    }
-    s = face.anti_spoof
+    })
     if s:
         m.update({
-            "anti_spoof_real_prob": round(s.real_prob, 3),
             "anti_spoof_print_prob": round(s.print_prob, 3),
             "anti_spoof_replay_prob": round(s.replay_prob, 3),
             "anti_spoof_type": s.spoof_type,

@@ -49,6 +49,8 @@ GLARE_PIXEL_THRESH = 240               # Điểm ảnh > 240 trong vùng mắt
 GLARE_AREA_RATIO_MAX = 0.30            # Glare > 30% diện tích mắt -> Báo Vàng ("Nghiêng mặt nhẹ để tránh lóa kính")
 MASK_CHROMA_DIST = 32.0                # Chênh lệch sắc độ má dưới so với trán (khi mũi/miệng bị che)
 MASK_DARK_RATIO = 0.40                 # Độ sáng má dưới / trán
+HAND_DETECTION_ENABLED = True          # MediaPipe Hands tốn gần bằng FaceMesh; tắt nếu máy yếu
+HAND_DETECTION_EVERY_N_FRAMES = 2      # Chạy Hands mỗi N frame, các frame giữa dùng lại kết quả gần nhất
 
 # 5. Consecutive Frames Smoothing (Bộ lọc ổn định)
 FQA_CONSECUTIVE_FRAMES = 6             # 6 frames liên tiếp (~0.25s) đạt chuẩn để chuyển sang Active Liveness (nhạy bén, không delay)
@@ -100,4 +102,6 @@ FLASH_AWB_GAMMA = 0.45                  # Hệ số bù trừ độ lệch cân 
 FLASH_CHALLENGE_TIMEOUT_SEC = 15.0      # Thời gian sống của Token thách thức (giây)
 
 SESSION_TTL_SEC = 600
+# EKYC_DEBUG=1: trả thêm toàn bộ chỉ số thô (xác suất PAD chi tiết, heuristic, fill, perspective...) mỗi frame
+DEBUG_METRICS = os.environ.get("EKYC_DEBUG", "0") == "1"
 CORS_ORIGINS = ["http://127.0.0.1:8000", "http://localhost:8000"]

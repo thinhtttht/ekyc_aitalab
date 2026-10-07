@@ -248,7 +248,7 @@ def test_anti_spoof_real_face_pass():
     assert checks["anti_spoof_ok"] is True
     assert checks["no_print_attack"] is True
     assert checks["no_screen_attack"] is True
-    assert checks["depth_3d_ok"] is True
+    assert "depth_3d_ok" not in checks   # heuristic độ sâu đang tắt
     assert sev == "ok"
 
 

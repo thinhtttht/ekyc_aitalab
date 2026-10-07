@@ -975,7 +975,9 @@ function updateChecklist(camChk = {}, camMet = {}, faceChk = {}, faceMet = {}, s
   setRow('chk-anti-spoof-real', 'val-anti-spoof-real', faceChk.anti_spoof_ok, (faceMet.anti_spoof_real_prob !== undefined && faceMet.anti_spoof_real_prob !== null) ? `${Math.round(faceMet.anti_spoof_real_prob * 100)}%` : '--');
   setRow('chk-anti-print', 'val-anti-print', faceChk.no_print_attack, faceChk.no_print_attack ? 'Không có' : 'Phát hiện ảnh in');
   setRow('chk-anti-replay', 'val-anti-replay', faceChk.no_screen_attack, faceChk.no_screen_attack ? 'Không có' : 'Phát hiện màn hình');
-  setRow('chk-3d-depth', 'val-3d-depth', faceChk.depth_3d_ok, faceChk.depth_3d_ok ? 'Đạt chuẩn 3D' : 'Mặt phẳng 2D');
+  // depth_3d_ok chỉ có khi backend bật ANTISPOOF_USE_DEPTH
+  const depthText = faceChk.depth_3d_ok === undefined ? 'Không bật' : (faceChk.depth_3d_ok ? 'Đạt chuẩn 3D' : 'Mặt phẳng 2D');
+  setRow('chk-3d-depth', 'val-3d-depth', faceChk.depth_3d_ok, depthText);
 
   // Nhóm 3: Khuôn mặt (FQA - 4 Tiêu chí Cốt lõi)
   setRow('chk-face-count', 'val-face-count', faceChk.single_face, faceMet.face_count !== undefined ? `${faceMet.face_count} người` : 'Chưa có');

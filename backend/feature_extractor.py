@@ -53,7 +53,7 @@ class ArcFaceExtractor:
 
     def _init_session(self):
         if not os.path.exists(self.model_path):
-            print(f"[ArcFace] Cảnh báo: Chưa tìm thấy model tại {self.model_path}")
+            print(f"[ArcFace] Canh bao: chua tim thay model tai {self.model_path}")
             return
 
         opts = ort.SessionOptions()

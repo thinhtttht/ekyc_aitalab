@@ -96,19 +96,19 @@ class AntiSpoofDetector:
 
     def _init_model(self) -> None:
         if not HAS_ORT:
-            print("[AntiSpoof] onnxruntime không có sẵn.")
+            print("[AntiSpoof] onnxruntime khong co san.")
             return
         if not os.path.exists(self.model_path):
-            print(f"[AntiSpoof] Không tìm thấy file model tại {self.model_path}")
+            print(f"[AntiSpoof] Khong tim thay file model tai {self.model_path}")
             return
         try:
             opts = ort.SessionOptions()
             opts.intra_op_num_threads = 2
             opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
             self.session = ort.InferenceSession(self.model_path, sess_options=opts, providers=["CPUExecutionProvider"])
-            print(f"[AntiSpoof] Đã khởi tạo MiniFASNet ONNX: {self.model_path}")
+            print(f"[AntiSpoof] Da khoi tao MiniFASNet ONNX: {self.model_path}")
         except Exception as e:
-            print(f"[AntiSpoof] Lỗi khởi tạo MiniFASNet: {e}")
+            print(f"[AntiSpoof] Loi khoi tao MiniFASNet: {e}")
             self.session = None
 
     # --- Heuristic tuỳ chọn ------------------------------------------------

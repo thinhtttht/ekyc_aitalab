@@ -1,12 +1,9 @@
 """Ngưỡng cấu hình tập trung cho luồng Đăng ký khuôn mặt (Enrollment).
 
-Mọi toạ độ Oval được chuẩn hoá theo khung phân tích tỉ lệ 4:5 (mặc định 480x600):
+Mọi toạ độ Oval được chuẩn hoá theo khung phân tích tỉ lệ 4:5 mà frontend gửi lên (480x600):
 x, rx tính theo chiều rộng; y, ry tính theo chiều cao.
 """
 import os
-
-# Kích thước khung phân tích mà frontend gửi lên (cắt giữa theo đúng phần đang hiển thị)
-ANALYSIS_W, ANALYSIS_H = 480, 600
 
 # ---------------------------------------------------------------------------
 # (a) KIỂM TRA CHẤT LƯỢNG CAMERA
@@ -48,10 +45,8 @@ SUNGLASSES_EYE_MEAN_MAX = 30.0         # Eye ROI Mean < 30 VÀ Std < 10 -> Kính
 SUNGLASSES_EYE_STD_MAX = 10.0
 GLARE_PIXEL_THRESH = 240               # Điểm ảnh > 240 trong vùng mắt
 GLARE_AREA_RATIO_MAX = 0.30            # Glare > 30% diện tích mắt -> Báo Vàng ("Nghiêng mặt nhẹ để tránh lóa kính")
-MASK_CHROMA_DIST = 18.0                # Chênh lệch sắc độ cằm so với trán
-MASK_DARK_RATIO = 0.45                 # Độ sáng nửa dưới / trán
-SUNGLASS_EYE_RATIO = 0.42
-SUNGLASS_EYE_STD = 22.0
+MASK_CHROMA_DIST = 32.0                # Chênh lệch sắc độ má dưới so với trán (khi mũi/miệng bị che)
+MASK_DARK_RATIO = 0.40                 # Độ sáng má dưới / trán
 
 # 5. Consecutive Frames Smoothing (Bộ lọc ổn định)
 FQA_CONSECUTIVE_FRAMES = 6             # 6 frames liên tiếp (~0.25s) đạt chuẩn để chuyển sang Active Liveness (nhạy bén, không delay)
@@ -65,7 +60,6 @@ TURN_HOLD_FRAMES = 3
 RECENTER_YAW_DEG = 10.0
 CHALLENGE_TIMEOUT_SEC = 10.0
 MAX_LOST_FRAMES = 6                    # cho phép mất mặt ngắn khi quay góc lớn
-MAX_CENTER_JUMP = 0.18                 # tâm mặt nhảy > 18% khung giữa 2 frame -> nghi đổi mặt
 MAX_ATTEMPTS = 3
 
 # ---------------------------------------------------------------------------
@@ -94,3 +88,4 @@ FLASH_AWB_GAMMA = 0.45                  # Hệ số bù trừ độ lệch cân 
 FLASH_CHALLENGE_TIMEOUT_SEC = 15.0      # Thời gian sống của Token thách thức (giây)
 
 SESSION_TTL_SEC = 600
+CORS_ORIGINS = ["http://127.0.0.1:8000", "http://localhost:8000"]

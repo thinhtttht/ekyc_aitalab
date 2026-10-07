@@ -11,12 +11,21 @@ from typing import Optional, Tuple
 import cv2
 import numpy as np
 import onnxruntime as ort
-import insightface.utils.face_align as face_align
 
-try:
-    import config as C
-except ImportError:
-    from backend import config as C
+# Toạ độ 5 mốc chuẩn ArcFace trên ảnh 112x112 (giống insightface.utils.face_align)
+_ARCFACE_DST = np.array(
+    [[38.2946, 51.6963], [73.5318, 51.5014], [56.0252, 71.7366], [41.5493, 92.3655], [70.7299, 92.2041]],
+    dtype=np.float32,
+)
+
+
+def norm_crop(image_bgr: np.ndarray, kps: np.ndarray, image_size: int = 112) -> np.ndarray:
+    """Căn chỉnh mặt bằng phép biến đổi tương tự (similarity) về 5 mốc chuẩn ArcFace."""
+    dst = _ARCFACE_DST * (image_size / 112.0)
+    M, _ = cv2.estimateAffinePartial2D(kps.astype(np.float32), dst, method=cv2.LMEDS)
+    if M is None:
+        return cv2.resize(image_bgr, (image_size, image_size), interpolation=cv2.INTER_AREA)
+    return cv2.warpAffine(image_bgr, M, (image_size, image_size), borderValue=0.0)
 
 
 class ArcFaceExtractor:
@@ -77,8 +86,7 @@ class ArcFaceExtractor:
         if kps[3, 0] > kps[4, 0]:
             kps[[3, 4]] = kps[[4, 3]]
 
-        warped = face_align.norm_crop(image_bgr, kps, image_size=image_size)
-        return warped
+        return norm_crop(image_bgr, kps, image_size=image_size)
 
     def extract_from_aligned(self, aligned_bgr: np.ndarray) -> np.ndarray:
         """Trích xuất vector 512D từ ảnh khuôn mặt 112x112 đã căn chỉnh."""

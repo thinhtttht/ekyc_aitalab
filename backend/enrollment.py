@@ -42,7 +42,6 @@ class EnrollmentSession:
         self.session_id = session_id
         self.created_at = time.time()
         self.stage = Stage.CAMERA_CHECK
-        self.previous_stage = Stage.CAMERA_CHECK
 
         # Bộ thử thách quay đầu ngẫu nhiên: [TURN_LEFT, TURN_RIGHT] hoặc [TURN_RIGHT, TURN_LEFT]
         turns = [Stage.TURN_LEFT, Stage.TURN_RIGHT]
@@ -63,9 +62,6 @@ class EnrollmentSession:
         # Dữ liệu ghi nhận
         self.baseline_face_h: Optional[float] = None
         self.baseline_persp: Optional[float] = None
-        self.max_left_yaw = 0.0
-        self.max_right_yaw = 0.0
-        self.max_zoom_growth = 1.0
         self.enrolled_image_bgr: Optional[np.ndarray] = None
         self.enrolled_face: Optional[FaceResult] = None
         self.final_embedding: Optional[np.ndarray] = None
@@ -254,12 +250,7 @@ class EnrollmentSession:
                 )
             self.lost_face_counter = 0
 
-            # Cập nhật số đo góc quay lớn nhất đạt được
             yaw = face_res.yaw
-            if yaw > 0:
-                self.max_left_yaw = max(self.max_left_yaw, yaw)
-            else:
-                self.max_right_yaw = max(self.max_right_yaw, abs(yaw))
 
             # Kiểm tra góc quay đúng hướng
             target_reached = (
@@ -381,7 +372,6 @@ class EnrollmentSession:
             # Tính mức tăng trưởng chiều cao khuôn mặt so với mốc ban đầu
             base_h = self.baseline_face_h or 0.3
             growth = face_res.face_h / max(0.05, base_h)
-            self.max_zoom_growth = max(self.max_zoom_growth, growth)
             growth_ok = growth >= C.ZOOM_MIN_GROWTH
 
             # Điều kiện hoàn thành Zoom:

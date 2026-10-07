@@ -5,7 +5,4 @@ mediapipe==0.10.14
 protobuf>=4.25.3,<5
 numpy>=1.26.0,<2.3.0
 pydantic>=2.6.0
-python-multipart>=0.0.9
-pytest>=8.0.0
-requests>=2.31.0
 onnxruntime>=1.16.0

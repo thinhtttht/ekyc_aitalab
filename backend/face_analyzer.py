@@ -409,7 +409,10 @@ def analyze_landmarks(frame_bgr: np.ndarray, lm3: np.ndarray, oval: dict, out: F
         elif not upper_skin and not lower_skin:
             out.mask_detected = True
         else:
-            out.mask_detected = bool(chroma > 32.0 or y_ratio < 0.40 or (cbl > 135 and crl < 125) or lower_face_occluded or not has_mouth)
+            out.mask_detected = bool(
+                chroma > C.MASK_CHROMA_DIST or y_ratio < C.MASK_DARK_RATIO
+                or (cbl > 135 and crl < 125) or lower_face_occluded or not has_mouth
+            )
 
     # Vùng mắt: kiểm tra Kính râm đen (Black Sunglasses) và Kính bị lóa (Glare)
     eye_rois = []

@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import base64
 import os
-import sys
 import time
 import uuid
 from typing import Dict, Optional
@@ -41,11 +40,9 @@ app = FastAPI(
     version="1.0.0",
 )
 
-# Cho phép CORS linh hoạt
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=C.CORS_ORIGINS,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -77,6 +74,32 @@ def cleanup_expired_sessions() -> None:
         except Exception:
             pass
         sessions.pop(sid, None)
+
+
+def get_session(session_id: str) -> EnrollmentSession:
+    cleanup_expired_sessions()
+    sess = sessions.get(session_id)
+    if sess is None:
+        raise HTTPException(status_code=404, detail="Phiên làm việc không tồn tại hoặc đã hết hạn")
+    return sess
+
+
+def decode_base64_image(raw_b64: str) -> np.ndarray:
+    """Giải mã ảnh base64 (hỗ trợ cả Data URL và chuỗi thuần)."""
+    if "," in raw_b64:
+        raw_b64 = raw_b64.split(",", 1)[1]
+    img_bytes = base64.b64decode(raw_b64)
+    frame = cv2.imdecode(np.frombuffer(img_bytes, np.uint8), cv2.IMREAD_COLOR)
+    if frame is None:
+        raise ValueError("Không thể decode ảnh JPEG")
+    return frame
+
+
+def decode_or_400(raw_b64: str) -> np.ndarray:
+    try:
+        return decode_base64_image(raw_b64)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Dữ liệu ảnh không hợp lệ: {e}")
 
 
 class StartResponse(BaseModel):
@@ -120,25 +143,8 @@ def enroll_start():
 
 @app.post("/api/enroll/frame")
 def enroll_frame(payload: FramePayload):
-    sess = sessions.get(payload.session_id)
-    if sess is None:
-        raise HTTPException(status_code=404, detail="Phiên làm việc không tồn tại hoặc đã hết hạn")
-
-    # Giải mã ảnh base64
-    raw_b64 = payload.image
-    if "," in raw_b64:
-        raw_b64 = raw_b64.split(",", 1)[1]
-
-    try:
-        img_bytes = base64.b64decode(raw_b64)
-        nparr = np.frombuffer(img_bytes, np.uint8)
-        frame_bgr = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-        if frame_bgr is None:
-            raise ValueError("Không thể decode ảnh JPEG")
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Dữ liệu ảnh không hợp lệ: {e}")
-
-    # Chuyển đổi payload client stats
+    sess = get_session(payload.session_id)
+    frame_bgr = decode_or_400(payload.image)
     stats = ClientStats(
         fps=payload.client_stats.fps,
         width=payload.client_stats.width,
@@ -180,10 +186,7 @@ class ColorVerifyRequest(BaseModel):
 
 @app.post("/api/enroll/color_challenge")
 def enroll_color_challenge(payload: ColorChallengeRequest):
-    sess = sessions.get(payload.session_id)
-    if sess is None:
-        raise HTTPException(status_code=404, detail="Phiên làm việc không tồn tại hoặc đã hết hạn")
-
+    get_session(payload.session_id)
     challenge = challenge_manager.create_challenge(payload.session_id, length=3)
     return {
         "session_id": payload.session_id,
@@ -205,10 +208,7 @@ def enroll_color_challenge(payload: ColorChallengeRequest):
 
 @app.post("/api/enroll/color_verify")
 def enroll_color_verify(payload: ColorVerifyRequest):
-    sess = sessions.get(payload.session_id)
-    if sess is None:
-        raise HTTPException(status_code=404, detail="Phiên làm việc không tồn tại hoặc đã hết hạn")
-
+    sess = get_session(payload.session_id)
     is_valid, challenge_data, reason = challenge_manager.verify_token(
         payload.session_id, payload.challenge_token
     )
@@ -221,20 +221,7 @@ def enroll_color_verify(payload: ColorVerifyRequest):
             detail=f"Số lượng khung hình ({len(payload.frames)}) không khớp với chuỗi thách thức ({len(challenge_data.sequence)})",
         )
 
-    frames_bgr = []
-    for item in payload.frames:
-        raw_b64 = item.image
-        if "," in raw_b64:
-            raw_b64 = raw_b64.split(",", 1)[1]
-        try:
-            img_bytes = base64.b64decode(raw_b64)
-            nparr = np.frombuffer(img_bytes, np.uint8)
-            f_bgr = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-            if f_bgr is None:
-                raise ValueError(f"Không thể decode ảnh frame {item.color_index}")
-            frames_bgr.append(f_bgr)
-        except Exception as e:
-            raise HTTPException(status_code=400, detail=f"Dữ liệu ảnh không hợp lệ: {e}")
+    frames_bgr = [decode_or_400(item.image) for item in payload.frames]
 
     expected_colors = [tuple(step.rgb) for step in challenge_data.sequence]
     res = optical_analyzer.analyze_sequence(
@@ -291,42 +278,13 @@ class FinalCaptureRequest(BaseModel):
 
 @app.post("/api/enroll/verify_capture")
 def enroll_verify_capture(payload: FinalCaptureRequest):
-    sess = sessions.get(payload.session_id)
-    if sess is None:
-        raise HTTPException(status_code=404, detail="Phiên làm việc không tồn tại hoặc đã hết hạn")
-
-    # Giải mã ảnh base64
-    raw_b64 = payload.image
-    if "," in raw_b64:
-        raw_b64 = raw_b64.split(",", 1)[1]
-
-    try:
-        img_bytes = base64.b64decode(raw_b64)
-        nparr = np.frombuffer(img_bytes, np.uint8)
-        frame_bgr = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-        if frame_bgr is None:
-            raise ValueError("Không thể decode ảnh chụp chân dung")
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Dữ liệu ảnh chụp không hợp lệ: {e}")
-
-    result = sess.verify_final_capture(frame_bgr)
-    return result
+    sess = get_session(payload.session_id)
+    return sess.verify_final_capture(decode_or_400(payload.image))
 
 
 # ---------------------------------------------------------------------------
 # QUẢN LÝ NGƯỜI DÙNG & XÁC THỰC SINH TRẮC HỌC (ARCFACE RECOGNITION & DB)
 # ---------------------------------------------------------------------------
-
-def decode_base64_image(raw_b64: str) -> np.ndarray:
-    """Giải mã ảnh base64 (hỗ trợ cả Data URL và chuỗi thuần)."""
-    if "," in raw_b64:
-        raw_b64 = raw_b64.split(",", 1)[1]
-    img_bytes = base64.b64decode(raw_b64)
-    nparr = np.frombuffer(img_bytes, np.uint8)
-    frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-    if frame is None:
-        raise ValueError("Không thể decode ảnh JPEG")
-    return frame
 
 
 class UserEnrollPayload(BaseModel):
@@ -346,10 +304,7 @@ class FaceVerifyPayload(BaseModel):
 @app.post("/api/users/enroll")
 def enroll_user(payload: UserEnrollPayload):
     """Lưu hồ sơ người dùng kèm vector ArcFace 512D vào cơ sở dữ liệu."""
-    try:
-        frame_bgr = decode_base64_image(payload.image)
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Dữ liệu ảnh không hợp lệ: {e}")
+    frame_bgr = decode_or_400(payload.image)
 
     # 1. Nếu có session_id và đã có final_embedding thì ưu tiên sử dụng
     sess = sessions.get(payload.session_id) if payload.session_id else None
@@ -425,10 +380,7 @@ def delete_user_record(user_id: str):
 @app.post("/api/verify/face")
 def verify_face_biometrics(payload: FaceVerifyPayload):
     """Xác thực khuôn mặt thời gian thực (hỗ trợ 1:1 đích danh và 1:N nhận diện)."""
-    try:
-        frame_bgr = decode_base64_image(payload.image)
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Dữ liệu ảnh không hợp lệ: {e}")
+    frame_bgr = decode_or_400(payload.image)
 
     start_t = time.time()
     face_res = verifier_analyzer.analyze(frame_bgr, oval=C.OVAL_NORMAL)
@@ -505,9 +457,5 @@ def verify_face_biometrics(payload: FaceVerifyPayload):
     }
 
 
-# Gắn frontend tĩnh tại `d:\EKYC\web`
 WEB_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "web"))
-if not os.path.exists(WEB_DIR):
-    os.makedirs(WEB_DIR, exist_ok=True)
-
 app.mount("/", StaticFiles(directory=WEB_DIR, html=True), name="web")

@@ -1,115 +1,112 @@
-# Smart-eKYC: Hệ Thống Định Danh Sinh Trắc Học Đa Tầng (Biometric Authentication PoC)
+# Smart-eKYC – Đăng ký & xác thực khuôn mặt (PoC)
 
-Hệ thống eKYC sinh trắc học khuôn mặt chuẩn ngân hàng số, kết hợp kiểm định chất lượng hình ảnh (FQA - Face Quality Assessment), thử thách chuyển động chủ động (Active Liveness) và phòng thủ chống tấn công giả mạo đa tầng (Passive Presentation Attack Detection - PAD theo chuẩn ISO/IEC 30107-3).
+Bản thử nghiệm eKYC khuôn mặt chạy trên trình duyệt: kiểm tra camera và chất lượng ảnh mặt, thử thách
+chủ động (quay đầu, tiến gần, nháy màu), chống giả mạo thụ động bằng MiniFASNet, trích xuất vector ArcFace
+512 chiều, lưu SQLite và so khớp 1:1 / 1:N.
 
----
-
-## 🌟 Tính Năng Nổi Bật (Features)
-
-1. **Kiểm Tra Thiết Bị & Camera (Camera Quality)**:
-   - Tự động nhận diện độ phân giải video ($\ge 640\times 480$).
-   - Phát hiện mất tín hiệu, khung hình đen hoặc camera bị đóng băng/treo.
-   - Cơ chế Early Gatekeeper: Khóa chặn giả mạo ngay từ Frame 0.
-
-2. **Căn Chỉnh Khuôn Mặt Thông Minh (Smart Oval FQA)**:
-   - Khung Oval SVG động phản hồi thời gian thực theo tỷ lệ chuẩn.
-   - Kiểm tra định vị khuôn mặt: Cự ly, lọt khung, lệch tâm, xoay thẳng.
-   - Kiểm tra điều kiện ánh sáng (độ sáng trung bình, chống ngược sáng).
-   - Kiểm tra che khuất: Tự động phát hiện khẩu trang, kính râm đen, kính lóa phản quang, tay che mặt.
-
-3. **Thử Thách Chuyển Động Chủ Động (Active Liveness 3D)**:
-   - Thử thách ngẫu nhiên quay đầu Trái / Phải ($20^\circ$) theo chuẩn Selfie phản chiếu gương.
-   - Thử thách tiến gần (Zoom in $\ge 125\%$) kiểm tra hiệu ứng biến thiên phối cảnh thực tế.
-
-4. **Phòng Thủ Chống Giả Mạo Đa Tầng (Multi-Layer PAD / ISO/IEC 30107-3)**:
-   - **MiniFASNetV2 (Silent-Face-Anti-Spoofing)**: Chạy ONNX Runtime phân loại 3 lớp (Người thật, Ảnh in 2D, Màn hình phát lại video).
-   - **Độ sâu hình học 3D**: Trích xuất độ nhô sống mũi từ 468 điểm MediaPipe FaceMesh ($\Delta Z = Z_{eyes} - Z_{nose} \ge 0.025$).
-   - **Phổ tần số cao 2D Fourier (FFT)**: Bóc tách năng lượng vân Moiré quang học của màn hình điện thoại/laptop.
-   - **Nhận diện viền thiết bị**: Canny Edge + Hough Lines phát hiện cạnh viền điện thoại hoặc mép giấy in.
-
-5. **Chụp Chân Dung HD Tự Động (HD Snapshot & Report)**:
-   - Tự động chụp ảnh chân dung độ nét cao khi hoàn thành quy trình.
-   - Bảng tổng kết số liệu kỹ thuật chi tiết.
+> Đây là PoC phục vụ nghiên cứu, chưa đạt chuẩn production (chưa có xác thực API, ngưỡng chưa hiệu chỉnh
+> trên dữ liệu thật). Những gì còn thiếu được liệt kê trong [ROADMAP.md](ROADMAP.md).
 
 ---
 
-## 🚀 Khởi Động Nhanh (Quick Start)
+## Tính năng hiện có
 
-### Cách 1: Chạy 1-Click (Khuyến nghị trên Windows)
-Nhấp đúp chuột vào file `run.bat` tại thư mục dự án:
-```powershell
-.\run.bat
-```
-File script sẽ tự động kích hoạt môi trường ảo Python `.venv`, khởi động FastAPI server và tự động mở trình duyệt web tại `http://127.0.0.1:8000`.
+| Bước | Nội dung | Mã nguồn |
+| --- | --- | --- |
+| Camera | Độ phân giải tối thiểu, mất tín hiệu / đóng băng, độ sáng, nhiễu. FPS thấp chỉ cảnh báo | `camera_quality.py` |
+| Chất lượng mặt (FQA) | Một mặt duy nhất, cự ly, lọt Oval, đầu thẳng, ánh sáng, ngược sáng, độ nét, khẩu trang / kính râm / lóa kính / tay che / ngũ quan bị che | `face_analyzer.py` (`evaluate_face`) |
+| Quay đầu | Trái / phải theo thứ tự ngẫu nhiên, mỗi bên ≥ 20°, rồi quay lại chính diện | `enrollment.py` |
+| Tiến gần | Mặt phải to thêm ≥ 25% trong Oval phóng to | `enrollment.py` |
+| Nháy màu | Màn hình chiếu chuỗi màu ngẫu nhiên, đo phản xạ trên da (tương quan Pearson) | `color_challenge.py`, `optical_analyzer.py` |
+| Chống giả mạo thụ động | MiniFASNetV2 (ONNX) phân loại người thật / ảnh in / màn hình. Trong phiên chạy mỗi 3 frame, lấy trung bình 5 lần gần nhất | `anti_spoofing.py` |
+| Ảnh chân dung cuối | Kiểm tra lại toàn bộ trên ảnh HD (PAD chạy mới, không dùng bộ đệm) rồi trích xuất ArcFace | `enrollment.py` (`verify_final_capture`) |
+| Nhận diện | ArcFace w600k_r50 (ONNX), căn mặt 112×112 bằng OpenCV, cosine similarity (mặc định ngưỡng 0.45) | `feature_extractor.py` |
+| Lưu trữ | SQLite `backend/data/ekyc.db`: vector float32 + ảnh chân dung base64 | `database.py` |
 
-### Cách 2: Khởi động thủ công qua Terminal
+Ảnh được lật gương ở trình duyệt trước khi gửi lên, nên "trái / phải" trong backend khớp với những gì người dùng thấy trên màn hình.
+
+---
+
+## Chạy dự án
+
+Yêu cầu Python 3.11 (mediapipe 0.10.14 chưa hỗ trợ 3.12+). Hai file model nằm trong `backend/models/`.
+`w600k_r50.onnx` được lưu bằng Git LFS, nên cần chạy `git lfs pull` sau khi clone.
+
 ```powershell
-# 1. Kích hoạt môi trường ảo
+py -3.11 -m venv .venv
 .\.venv\Scripts\activate
+pip install -r backend/requirements.txt          # chạy app
+pip install -r backend/requirements-dev.txt      # thêm pytest + httpx để chạy test
 
-# 2. Cài đặt thư viện (nếu cài mới)
-pip install -r backend/requirements.txt
-
-# 3. Khởi chạy FastAPI Server (Backend + Giao diện Web)
+.\run.bat                                         # hoặc:
 python -m uvicorn app:app --app-dir backend --host 127.0.0.1 --port 8000 --reload
 ```
-Sau đó truy cập: [http://127.0.0.1:8000](http://127.0.0.1:8000) trên trình duyệt (Chrome, Edge) và cho phép quyền truy cập Camera.
 
----
+Mở [http://127.0.0.1:8000](http://127.0.0.1:8000) bằng Chrome / Edge và cho phép dùng camera. Nếu báo
+"Camera đang bị chiếm giữ", hãy đóng các ứng dụng khác đang mở webcam (Zoom, Teams, tab trình duyệt khác).
 
-## 📁 Cấu Trúc Dự Án (Project Structure)
+Chạy test:
 
-```
-EKYC/
-├── run.bat                     # Script khởi động tự động 1-click
-├── README.md                   # Tài liệu hướng dẫn dự án
-├── RFC_BIOMETRIC_PAD_SYSTEM.md # Tài liệu Thiết kế Kỹ thuật Chi tiết (RFC-004)
-├── PIPELINE.md                 # Sơ đồ kiến trúc 3 tầng
-├── SRS_EKYC_System.md          # Bản đặc tả yêu cầu hệ thống
-│
-├── web/                        # Giao diện người dùng Web (Vanilla JS / CSS)
-│   ├── index.html              # Màn hình camera, khung Oval, checklist thời gian thực
-│   ├── styles.css              # Giao diện Dark Mode ngân hàng số hiện đại
-│   └── app.js                  # Điều khiển camera, vẽ lưới sinh trắc học, gọi API
-│
-├── backend/                    # Bộ não AI Engine (FastAPI)
-│   ├── app.py                  # API endpoints & Static server
-│   ├── config.py               # Cấu hình ngưỡng kỹ thuật trung tâm
-│   ├── camera_quality.py       # Kiểm định chất lượng thiết bị camera
-│   ├── head_pose.py            # Ước lượng tư thế đầu 3D (Yaw, Pitch, Roll)
-│   ├── face_analyzer.py        # Phân tích FQA 4 tiêu chí cốt lõi
-│   ├── anti_spoofing.py        # Phòng thủ chống giả mạo đa tầng
-│   ├── enrollment.py           # Quản lý phiên và điều phối quy trình 5 bước
-│   ├── requirements.txt        # Danh mục thư viện Python
-│   │
-│   ├── models/                 # Thư mục chứa mô hình AI
-│   │   └── minifasnet_v2.onnx  # Model MiniFASNetV2 ONNX (~1.7 MB)
-│   │
-│   └── tests/                  # Bộ kiểm thử tự động (28 unit tests)
-│       ├── test_anti_spoofing.py
-│       ├── test_api.py
-│       ├── test_camera_quality.py
-│       ├── test_enrollment_flow.py
-│       ├── test_fqa_pillars.py
-│       └── test_head_pose.py
-│
-└── frontend/                   # Ứng dụng React / TypeScript dự phòng (Vite)
-```
-
----
-
-## 🧪 Chạy Kiểm Thử Tự Động (Run Tests)
-
-Dự án đi kèm bộ kiểm thử tự động toàn diện:
 ```powershell
-pytest backend/tests
+python -m pytest backend/tests -q
 ```
-Kết quả: **28/28 bài tests pass 100%**.
 
 ---
 
-## 📜 Tài Liệu Thiết Kế (Documentation)
+## Cấu hình chính (`backend/config.py`)
 
-* [RFC-004: Biometric Presentation Attack Detection Architecture](RFC_BIOMETRIC_PAD_SYSTEM.md)
-* [PIPELINE: Sơ đồ kiến trúc phòng thủ 3 tầng](PIPELINE.md)
-* [SRS: Đặc tả yêu cầu kỹ thuật hệ thống](SRS_EKYC_System.md)
+| Cờ | Mặc định | Ý nghĩa |
+| --- | --- | --- |
+| `ANTISPOOF_REQUIRE_MODEL` | `True` | Thiếu hoặc lỗi model MiniFASNet thì từ chối, không mặc định coi là người thật |
+| `ANTISPOOF_USE_DEPTH` / `_MOIRE` / `_BEZEL` | `False` | Heuristic độ sâu Z, vân Moiré, viền thiết bị. Chưa kiểm chứng nên tắt, chỉ MiniFASNet quyết định |
+| `ANTISPOOF_EVERY_N_FRAMES` / `ANTISPOOF_SMOOTH_WINDOW` | `3` / `5` | Tần suất chạy và cửa sổ làm mượt MiniFASNet trong phiên đăng ký |
+| `HAND_DETECTION_ENABLED` / `HAND_DETECTION_EVERY_N_FRAMES` | `True` / `2` | MediaPipe Hands (phát hiện tay che mặt) |
+| `SHARPNESS_CHECK_ENABLED`, `MIN_FACE_SHARPNESS` | `True`, `15` | Chặn ảnh mờ (khi quay đầu dùng ngưỡng `MIN_FACE_SHARPNESS_TURNING`) |
+| `MIN_FPS` | `25` | Dưới mức này chỉ cảnh báo |
+| `FINAL_MAX_POSE` | yaw/pitch 16°, roll 12° | Giới hạn tư thế của ảnh chân dung cuối |
+| `CORS_ORIGINS` | `127.0.0.1:8000`, `localhost:8000` | Origin được phép gọi API |
+
+Đặt biến môi trường `EKYC_DEBUG=1` để mỗi frame trả thêm chỉ số thô (xác suất PAD chi tiết, kết quả heuristic,
+fill, perspective...) phục vụ tinh chỉnh ngưỡng.
+
+---
+
+## API
+
+| Method | Đường dẫn | Mô tả |
+| --- | --- | --- |
+| GET | `/api/health` | Kiểm tra server |
+| POST | `/api/enroll/start` · `/frame` · `/reset` | Tạo phiên, gửi từng frame, làm lại |
+| POST | `/api/enroll/color_challenge` · `/color_verify` | Nhận chuỗi màu và gửi kết quả nháy màu |
+| POST | `/api/enroll/verify_capture` | Kiểm định ảnh chân dung HD cuối và trích xuất ArcFace |
+| POST | `/api/users/enroll` | Lưu hồ sơ (tên + vector + ảnh) |
+| GET / DELETE | `/api/users`, `/api/users/{user_id}` | Danh sách, chi tiết, xoá hồ sơ |
+| POST | `/api/verify/face` | So khớp 1:1 (`target_user_id`) hoặc 1:N |
+
+---
+
+## Cấu trúc thư mục
+
+```
+ekyc_aitalab/
+├── run.bat                    # Khởi động 1-click trên Windows
+├── README.md · ROADMAP.md · PIPELINE.md
+├── *.md (SRS, RFC, PRD/FSD/TDD/RTM Color Flashing, Blueprint)   # Tài liệu thiết kế gốc (xem ghi chú đầu mỗi file)
+├── web/                       # Giao diện Vanilla JS (được FastAPI phục vụ ở "/")
+│   ├── index.html · styles.css · app.js
+└── backend/
+    ├── app.py                 # FastAPI endpoints + static web
+    ├── config.py              # Toàn bộ ngưỡng và cờ
+    ├── camera_quality.py      # Kiểm tra camera
+    ├── face_analyzer.py       # MediaPipe FaceMesh/Hands + FQA (FaceVerdict)
+    ├── head_pose.py           # Yaw / pitch / roll
+    ├── anti_spoofing.py       # MiniFASNet + heuristic tuỳ chọn + bộ lấy mẫu theo phiên
+    ├── enrollment.py          # Máy trạng thái đăng ký, mỗi bước một hàm
+    ├── color_challenge.py · optical_analyzer.py   # Nháy màu
+    ├── feature_extractor.py   # ArcFace + căn mặt
+    ├── database.py            # SQLite
+    ├── models/                # minifasnet_v2.onnx, w600k_r50.onnx (LFS)
+    ├── data/                  # ekyc.db (không commit)
+    ├── requirements.txt · requirements-dev.txt
+    └── tests/
+```

@@ -1,5 +1,7 @@
 # PRD: ACTIVE OPTICAL COLOR FLASHING LIVENESS DETECTION (PHASE 1)
 
+> **Ghi chú trạng thái (branch `quoc`):** Đây là tài liệu thiết kế mục tiêu, có thể không khớp với code hiện tại. Hiện trạng xem [README.md](README.md) và [PIPELINE.md](PIPELINE.md); phần chưa làm xem [ROADMAP.md](ROADMAP.md).
+
 > **Tài liệu Đặc tả Yêu cầu Sản phẩm (Product Requirements Document)**  
 > **Tính năng:** Xác thực sự sống bằng phản xạ ánh sáng màu chủ động (Color Flashing)  
 > **Vị trí tích hợp:** Bước 4 - "Tiến gần & Quét quang học" (Zoom & Optical Liveness)  

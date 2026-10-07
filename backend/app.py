@@ -450,7 +450,7 @@ def verify_face_biometrics(payload: FaceVerifyPayload):
         "message": "Xác thực danh tính thành công!" if is_match else "Không trùng khớp với hồ sơ khuôn mặt nào.",
         "anti_spoof": {
             "is_real": True,
-            "real_prob": round(face_res.anti_spoof.real_prob, 3) if face_res.anti_spoof else 1.0,
+            "real_prob": round(face_res.anti_spoof.real_prob, 3) if face_res.anti_spoof else None,
         },
         "match_result": match_data,
         "latency_ms": latency_ms,

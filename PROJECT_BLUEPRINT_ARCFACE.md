@@ -1,5 +1,7 @@
 # PROJECT BLUEPRINT: MODULE ĐĂNG KÝ SINH TRẮC HỌC ARCFACE & CƠ SỞ DỮ LIỆU (CỔNG 3 - BƯỚC 5)
 
+> **Ghi chú trạng thái (branch `quoc`):** Đây là tài liệu thiết kế mục tiêu, có thể không khớp với code hiện tại. Hiện trạng xem [README.md](README.md) và [PIPELINE.md](PIPELINE.md); phần chưa làm xem [ROADMAP.md](ROADMAP.md).
+
 > **Mã tài liệu:** `BLUEPRINT-ARCFACE-01`  
 > **Phiên bản:** `1.0.0`  
 > **Tiêu chuẩn áp dụng:** DO-178C / ASPICE Level 2 / ASD-STE100 / ISO/IEC 19794-5  

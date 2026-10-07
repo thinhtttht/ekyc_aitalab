@@ -1,4 +1,6 @@
 # BẢN ĐẶC TẢ YÊU CẦU PHẦN MỀM (SRS)
+
+> **Ghi chú trạng thái (branch `quoc`):** Đây là tài liệu thiết kế mục tiêu, có thể không khớp với code hiện tại. Hiện trạng xem [README.md](README.md) và [PIPELINE.md](PIPELINE.md); phần chưa làm xem [ROADMAP.md](ROADMAP.md).
 # SOFTWARE REQUIREMENTS SPECIFICATION: HỆ THỐNG eKYC & SINH TRẮC HỌC KHUÔN MẶT
 > **Đề tài:** Hệ thống eKYC Đa người dùng trên Laptop Webcam RGB với Cơ chế Phòng thủ Đa tầng  
 > **Phiên bản:** 1.0  

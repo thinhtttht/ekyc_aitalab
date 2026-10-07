@@ -1757,7 +1757,7 @@ function renderVerifyResult(data) {
   if (metLatency) metLatency.textContent = latency;
   if (metPad) {
     metPad.textContent = padOk
-      ? `✓ Người thật (${Math.round((data.anti_spoof.real_prob || 1) * 100)}%)`
+      ? `✓ Người thật (${Math.round((data.anti_spoof.real_prob ?? 0) * 100)}%)`
       : `✗ Giả mạo (${data.anti_spoof?.spoof_type || 'Attack'})`;
   }
 

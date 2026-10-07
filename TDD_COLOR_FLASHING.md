@@ -1,5 +1,7 @@
 # TDD / RFC: ACTIVE OPTICAL COLOR FLASHING ARCHITECTURE (PHASE 3)
 
+> **Ghi chú trạng thái (branch `quoc`):** Đây là tài liệu thiết kế mục tiêu, có thể không khớp với code hiện tại. Hiện trạng xem [README.md](README.md) và [PIPELINE.md](PIPELINE.md); phần chưa làm xem [ROADMAP.md](ROADMAP.md).
+
 > **Tài liệu Thiết kế Kỹ thuật (Technical Design Document / Request for Comments)**  
 > **Tính năng:** Active Optical Challenge-Response Liveness Detection  
 > **Phiên bản:** 1.0.0  

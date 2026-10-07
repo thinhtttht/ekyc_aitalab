@@ -1,5 +1,7 @@
 # FSD: ACTIVE OPTICAL COLOR FLASHING LIVENESS DETECTION (PHASE 2)
 
+> **Ghi chú trạng thái (branch `quoc`):** Đây là tài liệu thiết kế mục tiêu, có thể không khớp với code hiện tại. Hiện trạng xem [README.md](README.md) và [PIPELINE.md](PIPELINE.md); phần chưa làm xem [ROADMAP.md](ROADMAP.md).
+
 > **Tài liệu Đặc tả Chức năng (Functional Specification Document)**  
 > **Phiên bản:** 1.0.0  
 > **Tuân thủ chuẩn:** ASD-STE100 (Simplified Technical English/Vietnamese), ISO/IEC 30107-3  

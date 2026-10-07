@@ -1,5 +1,7 @@
 # RTM: REQUIREMENTS TRACEABILITY MATRIX (PHASE 4)
 
+> **Ghi chú trạng thái (branch `quoc`):** Đây là tài liệu thiết kế mục tiêu, có thể không khớp với code hiện tại. Hiện trạng xem [README.md](README.md) và [PIPELINE.md](PIPELINE.md); phần chưa làm xem [ROADMAP.md](ROADMAP.md).
+
 > **Ma trận Truy vết Yêu cầu Phần mềm (Requirements Traceability Matrix)**  
 > **Dự án:** Active Optical Color Flashing Liveness Detection  
 > **Tiêu chuẩn tuân thủ:** DO-178C / ASPICE Traceability Level 3  

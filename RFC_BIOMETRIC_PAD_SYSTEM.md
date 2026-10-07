@@ -1,4 +1,6 @@
 # RFC-004: BIOMETRIC PRESENTATION ATTACK DETECTION (PAD) & ANTI-SPOOFING ARCHITECTURE
+
+> **Ghi chú trạng thái (branch `quoc`):** Đây là tài liệu thiết kế mục tiêu, có thể không khớp với code hiện tại. Hiện trạng xem [README.md](README.md) và [PIPELINE.md](PIPELINE.md); phần chưa làm xem [ROADMAP.md](ROADMAP.md).
 > **Tài liệu Thiết kế Kỹ thuật Chi tiết (Technical Design Document - TDD / Request for Comments - RFC)**  
 > **Áp dụng cho**: Hệ thống Smart-eKYC Biometric Authentication  
 > **Tiêu chuẩn Tuân thủ**: ISO/IEC 30107-3 (Biometric Presentation Attack Detection)  

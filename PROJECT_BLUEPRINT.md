@@ -1,5 +1,7 @@
 # PROJECT BLUEPRINT: ACTIVE OPTICAL COLOR FLASHING LIVENESS DETECTION
 
+> **Ghi chú trạng thái (branch `quoc`):** Đây là tài liệu thiết kế mục tiêu, có thể không khớp với code hiện tại. Hiện trạng xem [README.md](README.md) và [PIPELINE.md](PIPELINE.md); phần chưa làm xem [ROADMAP.md](ROADMAP.md).
+
 > **Tài liệu Kế hoạch & Mục tiêu Dự án (Plan & Goal)**  
 > **Phiên bản:** 1.0.0  
 > **Trạng thái:** Chờ phê duyệt (Pending Review)  

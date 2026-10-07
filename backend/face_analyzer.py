@@ -14,7 +14,7 @@ import numpy as np
 
 import config as C
 from head_pose import estimate_head_pose
-from anti_spoofing import AntiSpoofDetector, AntiSpoofResult
+from anti_spoofing import AntiSpoofDetector, AntiSpoofResult, AntiSpoofSampler
 
 try:  # mediapipe chỉ cần khi chạy thật; unit test có thể chạy không cần
     import mediapipe as mp
@@ -131,9 +131,13 @@ def _is_skin(cr: float, cb: float) -> bool:
 
 
 class FaceAnalyzer:
-    """Bọc MediaPipe FaceMesh (chế độ video - có tracking), mỗi phiên một instance."""
+    """Bọc MediaPipe FaceMesh (chế độ video - có tracking), mỗi phiên một instance.
 
-    def __init__(self) -> None:
+    smooth_anti_spoof=True: MiniFASNet chạy mỗi ANTISPOOF_EVERY_N_FRAMES frame và được làm mượt theo phiên.
+    Chỉ bật cho luồng video của một người dùng; analyzer dùng chung cho ảnh đơn lẻ phải để False.
+    """
+
+    def __init__(self, smooth_anti_spoof: bool = False) -> None:
         if mp is None:
             raise RuntimeError("mediapipe chưa được cài đặt")
         self._mesh = mp.solutions.face_mesh.FaceMesh(
@@ -149,12 +153,17 @@ class FaceAnalyzer:
             min_detection_confidence=0.5,
             min_tracking_confidence=0.5,
         )
+        self._spoof_sampler = (
+            AntiSpoofSampler(get_anti_spoof_detector(), C.ANTISPOOF_EVERY_N_FRAMES, C.ANTISPOOF_SMOOTH_WINDOW)
+            if smooth_anti_spoof else None
+        )
 
     def close(self) -> None:
         self._mesh.close()
         self._hands.close()
 
-    def analyze(self, frame_bgr: np.ndarray, oval: dict) -> FaceResult:
+    def analyze(self, frame_bgr: np.ndarray, oval: dict, fresh_anti_spoof: bool = False) -> FaceResult:
+        """fresh_anti_spoof=True: bỏ qua bộ đệm, chạy PAD mới trên đúng frame này (dùng cho ảnh chụp cuối)."""
         h, w = frame_bgr.shape[:2]
         rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
         res = self._mesh.process(rgb)
@@ -184,7 +193,8 @@ class FaceAnalyzer:
         out = FaceResult(face_count=len(valid_faces))
         face = primary_face
         lm = np.array([[p.x, p.y, p.z] for p in face.landmark], dtype=np.float64)   # chuẩn hoá
-        out = analyze_landmarks(frame_bgr, lm, oval, out)
+        out = analyze_landmarks(frame_bgr, lm, oval, out,
+                                anti_spoof=None if fresh_anti_spoof else self._spoof_sampler)
 
         # Phát hiện bàn tay che mặt hoặc đè vào vùng Oval
         if hands and out.bbox:
@@ -203,8 +213,12 @@ class FaceAnalyzer:
         return out
 
 
-def analyze_landmarks(frame_bgr: np.ndarray, lm3: np.ndarray, oval: dict, out: FaceResult | None = None) -> FaceResult:
-    """Tính toàn bộ chỉ số từ mảng landmark chuẩn hoá (N, 3) [x, y, z]. Tách riêng để dễ test."""
+def analyze_landmarks(frame_bgr: np.ndarray, lm3: np.ndarray, oval: dict, out: FaceResult | None = None,
+                      anti_spoof: AntiSpoofDetector | AntiSpoofSampler | None = None) -> FaceResult:
+    """Tính toàn bộ chỉ số từ mảng landmark chuẩn hoá (N, 3) [x, y, z]. Tách riêng để dễ test.
+
+    anti_spoof: bộ đánh giá PAD; mặc định là detector dùng chung, chạy mới trên frame này.
+    """
     out = out or FaceResult(face_count=1)
     h, w = frame_bgr.shape[:2]
     lm = lm3[:, :2]
@@ -477,7 +491,7 @@ def analyze_landmarks(frame_bgr: np.ndarray, lm3: np.ndarray, oval: dict, out: F
 
     # --- Chống Giả Mạo Sinh Trắc Học (Passive Anti-Spoofing / PAD) ---
     if out.bbox is not None:
-        out.anti_spoof = get_anti_spoof_detector().evaluate(frame_bgr, out.bbox, landmarks_3d=lm3)
+        out.anti_spoof = (anti_spoof or get_anti_spoof_detector()).evaluate(frame_bgr, out.bbox, landmarks_3d=lm3)
 
     return out
 

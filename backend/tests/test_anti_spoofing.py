@@ -59,6 +59,59 @@ def test_missing_model_is_rejected(monkeypatch):
     assert res.spoof_type != "model_unavailable"
 
 
+def test_heuristics_off_by_default_only_model_decides(monkeypatch):
+    real_but_flat = AntiSpoofResult(real_prob=0.66, print_prob=0.2, replay_prob=0.14, model_ran=True, depth_3d_ok=False)
+    assert AntiSpoofDetector.decide(real_but_flat).is_real is True
+
+    detector = AntiSpoofDetector(model_path="khong-ton-tai.onnx")
+    frame = np.full((480, 640, 3), 120, dtype=np.uint8)
+    called = []
+    monkeypatch.setattr(detector, "check_3d_depth", lambda *a: called.append("depth") or (False, 0.0))
+    monkeypatch.setattr(detector, "check_moire_pattern", lambda *a: called.append("moire") or (True, 0.9))
+    monkeypatch.setattr(detector, "check_screen_bezel", lambda *a: called.append("bezel") or True)
+    detector.measure(frame, (0.3, 0.3, 0.7, 0.7))
+    assert called == []
+
+    monkeypatch.setattr(C, "ANTISPOOF_USE_DEPTH", True)
+    monkeypatch.setattr(C, "ANTISPOOF_USE_MOIRE", True)
+    monkeypatch.setattr(C, "ANTISPOOF_USE_BEZEL", True)
+    measured = detector.measure(frame, (0.3, 0.3, 0.7, 0.7))
+    assert called == ["depth", "moire", "bezel"]
+    assert measured.screen_detected and measured.bezel_detected and not measured.depth_3d_ok
+    assert AntiSpoofDetector.decide(real_but_flat).spoof_type == "planar_2d"
+
+
+class _FakeDetector:
+    """measure() trả lần lượt các real_prob cho trước."""
+
+    def __init__(self, real_probs):
+        self.real_probs = list(real_probs)
+        self.calls = 0
+
+    def measure(self, frame, bbox, landmarks_3d=None):
+        p = self.real_probs[self.calls]
+        self.calls += 1
+        return AntiSpoofResult(real_prob=p, print_prob=1.0 - p, replay_prob=0.0, model_ran=True)
+
+    decide = staticmethod(AntiSpoofDetector.decide)
+
+
+def test_sampler_runs_every_n_frames_and_smooths():
+    from anti_spoofing import AntiSpoofSampler
+
+    fake = _FakeDetector([0.9, 0.3, 0.9])
+    sampler = AntiSpoofSampler(fake, every_n=3, window=5)
+    frame = np.zeros((10, 10, 3), dtype=np.uint8)
+
+    results = [sampler.evaluate(frame, (0.2, 0.2, 0.8, 0.8)) for _ in range(7)]
+    assert fake.calls == 3                              # frame 0, 3, 6
+    assert results[1] is results[0]                     # các frame giữa dùng lại kết quả
+    assert results[3].real_prob == pytest.approx(0.6)   # trung bình (0.9, 0.3)
+    assert results[3].is_real is False                  # 0.6 < 0.65 và print 0.4 < 0.5 -> suspect
+    assert results[6].real_prob == pytest.approx(0.7)
+    assert results[6].is_real is True
+
+
 def test_anti_spoof_detection_print_attack():
     detector = AntiSpoofDetector()
     frame = np.full((480, 640, 3), 120, dtype=np.uint8)
@@ -227,7 +280,7 @@ def test_early_spoof_blocking_in_camera_check():
 
     # Mock analyzer trả về fake_face
     class MockAnalyzer:
-        def analyze(self, f, oval):
+        def analyze(self, f, oval, **kwargs):
             return fake_face
 
     sess.face_analyzer = MockAnalyzer()

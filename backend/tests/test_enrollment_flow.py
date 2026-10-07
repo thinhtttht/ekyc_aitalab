@@ -22,7 +22,7 @@ class MockFaceAnalyzer:
         self.face_h = 0.35
         self.fill = 0.75
 
-    def analyze(self, frame_bgr, oval):
+    def analyze(self, frame_bgr, oval, **kwargs):
         if self.mode == "no_face":
             return FaceResult(face_count=0)
 
@@ -163,7 +163,7 @@ def test_hand_occlusion_rejection():
     sess.stage = Stage.FACE_QUALITY
 
     class HandOccludedAnalyzer:
-        def analyze(self, frame_bgr, oval):
+        def analyze(self, frame_bgr, oval, **kwargs):
             return FaceResult(
                 face_count=1,
                 bbox=(0.2, 0.2, 0.8, 0.8),
@@ -200,7 +200,7 @@ def test_part_occlusion_rejection():
     sess.stage = Stage.FACE_QUALITY
 
     class MouthOccludedAnalyzer:
-        def analyze(self, frame_bgr, oval):
+        def analyze(self, frame_bgr, oval, **kwargs):
             return FaceResult(
                 face_count=1,
                 bbox=(0.2, 0.2, 0.8, 0.8),

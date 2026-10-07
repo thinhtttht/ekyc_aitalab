@@ -86,7 +86,7 @@ class EnrollmentSession:
 
     def _get_analyzer(self) -> FaceAnalyzer:
         if self.face_analyzer is None:
-            self.face_analyzer = FaceAnalyzer()
+            self.face_analyzer = FaceAnalyzer(smooth_anti_spoof=True)
         return self.face_analyzer
 
     def close(self) -> None:
@@ -353,7 +353,7 @@ class EnrollmentSession:
 
     def verify_final_capture(self, frame_bgr: np.ndarray) -> Dict[str, Any]:
         """Kiểm định ảnh chân dung cuối cùng; không đạt -> FAILED, bắt buộc đăng ký lại từ đầu."""
-        face = self._get_analyzer().analyze(frame_bgr, C.OVAL_NORMAL)
+        face = self._get_analyzer().analyze(frame_bgr, C.OVAL_NORMAL, fresh_anti_spoof=True)
 
         issue = _final_capture_issue(face)
         if issue is not None:

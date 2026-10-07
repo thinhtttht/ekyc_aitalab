@@ -81,6 +81,12 @@ ANTISPOOF_REQUIRE_MODEL = True         # Thiếu/lỗi model -> từ chối thay
 ANTISPOOF_REAL_THRESH = 0.65           # Ngưỡng tin cậy Real face của MiniFASNet (chuẩn production)
 ANTISPOOF_PRINT_THRESH = 0.50          # Ngưỡng phát hiện ảnh in 2D (nhạy bén chặn ảnh in)
 ANTISPOOF_REPLAY_THRESH = 0.50         # Ngưỡng phát hiện video/màn hình phát lại (chặn Replay)
+# Ba heuristic dưới đây chưa được kiểm chứng trên dữ liệu thật -> mặc định tắt, chỉ MiniFASNet quyết định
+ANTISPOOF_USE_DEPTH = False            # Độ sâu 3D từ trục Z MediaPipe
+ANTISPOOF_USE_MOIRE = False            # Vân Moiré (FFT)
+ANTISPOOF_USE_BEZEL = False            # Viền thiết bị / mép giấy (Hough Lines)
+ANTISPOOF_EVERY_N_FRAMES = 3           # Trong phiên đăng ký: chạy MiniFASNet mỗi N frame, các frame giữa dùng lại kết quả
+ANTISPOOF_SMOOTH_WINDOW = 5            # Lấy trung bình xác suất trên K lần chạy gần nhất
 MOIRE_ENERGY_RATIO_THRESH = 0.42       # Tỷ lệ năng lượng Fourier tần số cao (vân Moiré)
 DEPTH_3D_MIN_DELTA = 0.025             # Độ nhô tối thiểu trục Z của chóp mũi so với 2 mắt (MediaPipe)
 

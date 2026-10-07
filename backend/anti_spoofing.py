@@ -22,10 +22,10 @@ except ImportError:
 @dataclass
 class AntiSpoofResult:
     is_real: bool = True
-    real_prob: float = 0.95
-    print_prob: float = 0.02
-    replay_prob: float = 0.03
-    spoof_type: str = "real"  # 'real' | 'print_attack' | 'replay_attack' | 'planar_2d' | 'screen_moire' | 'bezel_detected'
+    real_prob: float = 0.0
+    print_prob: float = 0.0
+    replay_prob: float = 0.0
+    spoof_type: str = "real"  # 'real' | 'print_attack' | 'replay_attack' | 'planar_2d' | 'screen_moire' | 'suspect' | 'model_unavailable'
     depth_3d_delta: float = 0.05
     depth_3d_ok: bool = True
     moire_ratio: float = 0.15
@@ -255,6 +255,7 @@ class AntiSpoofDetector:
         res.bezel_detected = bezel_detected
 
         # 5. Chạy mô hình Deep Learning MiniFASNet (nếu có ONNX session)
+        model_ran = False
         if self.session is not None and face_roi.size > 0:
             try:
                 crop_80 = crop_face_margin(frame_bgr, bbox, scale=2.7, out_w=80, out_h=80)
@@ -274,9 +275,16 @@ class AntiSpoofDetector:
                     res.real_prob = round(float(probs[1]), 3)
                     res.print_prob = round(float(probs[0]), 3)
                     res.replay_prob = round(float(probs[2]), 3)
+                    model_ran = True
             except Exception as e:
-                # Nếu có lỗi khi inference, fallback giữ giá trị mặc định
                 print(f"[AntiSpoof] Inference error: {e}")
+
+        if not model_ran and C.ANTISPOOF_REQUIRE_MODEL:
+            res.is_real = False
+            res.spoof_type = "model_unavailable"
+            res.severity = "error"
+            res.message = "Không chạy được mô hình chống giả mạo MiniFASNet – Kiểm tra file backend/models/minifasnet_v2.onnx"
+            return res
 
         # 6. Tổng hợp quyết định (Ensemble Rule Base)
         # Tình huống A: MiniFASNet phát hiện giả mạo rõ rệt

@@ -9,7 +9,7 @@ import os
 # (a) KIỂM TRA CHẤT LƯỢNG CAMERA
 # ---------------------------------------------------------------------------
 MIN_WIDTH, MIN_HEIGHT = 640, 480       # độ phân giải gốc tối thiểu của webcam
-MIN_FPS = 25.0                         # FPS thực tế đo trên trình duyệt
+MIN_FPS = 25.0                         # FPS thực tế đo trên trình duyệt (dưới mức này chỉ cảnh báo, không chặn)
 BLACK_FRAME_MEAN = 18.0                # độ sáng trung bình < 18 -> camera bị che / khung đen
 FROZEN_DIFF = 0.15                     # chênh lệch trung bình giữa 2 frame liên tiếp coi như "giống hệt"
 FROZEN_FRAMES = 12                     # số lần liên tiếp giống hệt -> camera bị treo
@@ -34,11 +34,13 @@ MAX_STRAIGHT = dict(yaw=12.0, pitch=15.0, roll=10.0)
 FACE_BRIGHTNESS_MIN = 40.0             # Mean < 40 -> Báo Đỏ ("Không gian quá tối")
 FACE_BRIGHTNESS_MAX = 210.0            # Mean > 210 -> Báo Đỏ ("Ánh sáng quá mạnh")
 FACE_BRIGHTNESS_STD_MIN = 10.0         # Std Dev < 10 kèm Mean trung bình -> Báo Vàng ("Ngược sáng / thiếu chi tiết")
-MAX_SIDE_LIGHT_RATIO = 1.6             # Tỉ lệ sáng nửa mặt sáng / nửa mặt tối
+MAX_SIDE_LIGHT_RATIO = 1.6             # Tỉ lệ sáng nửa mặt sáng / nửa mặt tối (chỉ gợi ý, không chặn)
 
 # 3. Sharpness Check (Laplacian Variance trên ROI mặt chuẩn hoá 200px)
-MIN_FACE_SHARPNESS = 25.0              # laplacian_var < 25 -> Báo Vàng ("Giữ yên camera / Giữ chắc máy")
-MIN_FACE_SHARPNESS_TURNING = 18.0      # Dung sai độ nét khi quay đầu
+# Webcam laptop thường cho 30-150. Nếu bị chặn oan, hạ ngưỡng thay vì tắt hẳn.
+SHARPNESS_CHECK_ENABLED = True
+MIN_FACE_SHARPNESS = 15.0              # laplacian_var < 15 -> Báo Vàng ("Giữ yên đầu và camera")
+MIN_FACE_SHARPNESS_TURNING = 10.0      # Dung sai độ nét khi quay đầu (nhoè chuyển động)
 
 # 4. Occlusion Check (Kính râm đen, Kính lóa phản quang, Khẩu trang, Bàn tay)
 SUNGLASSES_EYE_MEAN_MAX = 30.0         # Eye ROI Mean < 30 VÀ Std < 10 -> Kính râm đen -> Báo Đỏ
@@ -72,6 +74,7 @@ ZOOM_TIMEOUT_SEC = 12.0
 # (e) CHỐNG GIẢ MẠO ẢNH & VIDEO (PASSIVE ANTI-SPOOFING / PAD)
 # ---------------------------------------------------------------------------
 MINIFASNET_MODEL_PATH = os.path.join(os.path.dirname(__file__), "models", "minifasnet_v2.onnx")
+ANTISPOOF_REQUIRE_MODEL = True         # Thiếu/lỗi model -> từ chối thay vì mặc định coi là người thật
 ANTISPOOF_REAL_THRESH = 0.65           # Ngưỡng tin cậy Real face của MiniFASNet (chuẩn production)
 ANTISPOOF_PRINT_THRESH = 0.50          # Ngưỡng phát hiện ảnh in 2D (nhạy bén chặn ảnh in)
 ANTISPOOF_REPLAY_THRESH = 0.50         # Ngưỡng phát hiện video/màn hình phát lại (chặn Replay)

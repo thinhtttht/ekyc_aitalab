@@ -1,8 +1,8 @@
 """(b) Đánh giá chất lượng khuôn mặt (FQA) bằng MediaPipe FaceMesh + OpenCV.
 
 Trả về FaceResult chứa số liệu thô; hàm `quality_checks` áp ngưỡng để ra checks/thông báo.
-Lưu ý: toạ độ trong FaceResult là toạ độ ảnh GỐC (chưa lật gương); các gợi ý hướng di chuyển
-được quy đổi sang hướng trên màn hình (đã lật gương) để người dùng làm theo tự nhiên.
+Lưu ý: frontend lật gương ảnh TRƯỚC khi gửi lên, nên trục x của ảnh trùng với màn hình người
+dùng đang nhìn: x nhỏ = bên trái màn hình = bên trái của người dùng (như soi gương).
 """
 from __future__ import annotations
 
@@ -34,25 +34,25 @@ _EYE_FALLBACK = [159, 386]              # mí trên nếu không có iris
 PARTS_CONFIG = {
     "left_eye": {
         "indices": [33, 160, 158, 133, 153, 144],
-        "name": "Mắt phải",
+        "name": "Mắt trái",
         "min_edge": 4.0,
         "min_contrast": 25.0,
     },
     "right_eye": {
         "indices": [362, 385, 387, 263, 373, 380],
-        "name": "Mắt trái",
+        "name": "Mắt phải",
         "min_edge": 4.0,
         "min_contrast": 25.0,
     },
     "left_eyebrow": {
         "indices": [70, 63, 105, 66, 107],
-        "name": "Chân mày phải",
+        "name": "Chân mày trái",
         "min_edge": 1.8,
         "min_contrast": 18.0,
     },
     "right_eyebrow": {
         "indices": [336, 296, 334, 293, 300],
-        "name": "Chân mày trái",
+        "name": "Chân mày phải",
         "min_edge": 1.8,
         "min_contrast": 18.0,
     },
@@ -84,7 +84,7 @@ class FaceResult:
     fill: float = 0.0                            # face_h / (2*ry)
     scale_ratio: float = 0.0                     # Width_face / Width_oval (Tỷ lệ vàng 0.40 - 0.85)
     corners_inside: bool = True                  # 4 góc bounding box có lọt elip không
-    offset: tuple = (0.0, 0.0)                   # lệch tâm (chuẩn hoá theo bán trục), toạ độ ảnh gốc
+    offset: tuple = (0.0, 0.0)                   # lệch tâm (chuẩn hoá theo bán trục); x > 0 = lệch sang phải màn hình
     brightness: float = 0.0                      # độ sáng trung bình vùng mặt
     brightness_mean: float = 0.0                 # Mean kênh độ sáng
     brightness_std: float = 0.0                  # Độ lệch chuẩn (kiểm tra ngược sáng)
@@ -543,7 +543,8 @@ def quality_checks(face: FaceResult, require_oval: bool = True, is_turning: bool
         and abs(face.roll) <= C.MAX_STRAIGHT["roll"]
     ) if not is_turning else True
 
-    sharpness_ok = bool(face.detected)
+    min_sharpness = C.MIN_FACE_SHARPNESS_TURNING if is_turning else C.MIN_FACE_SHARPNESS
+    sharpness_ok = bool(face.detected and (not C.SHARPNESS_CHECK_ENABLED or face.sharpness >= min_sharpness))
 
     scale_ok = face.detected and (C.FACE_SCALE_RANGE[0] <= face.scale_ratio <= C.FACE_SCALE_RANGE[1])
     illumination_ok = face.detected and (C.FACE_BRIGHTNESS_MIN <= face.brightness_mean <= C.FACE_BRIGHTNESS_MAX)
@@ -596,24 +597,21 @@ def quality_checks(face: FaceResult, require_oval: bool = True, is_turning: bool
                 return checks, "Hãy tiến lại gần camera hơn", "warn"
             return checks, "Hãy lùi ra xa camera một chút", "warn"
         if not checks["inside_oval"]:
-            dx_screen, dy = -face.offset[0], face.offset[1]
-            off_center = abs(dx_screen) > 0.20 or abs(dy) > 0.20
+            dx, dy = face.offset
+            off_center = abs(dx) > 0.20 or abs(dy) > 0.20
             # Chỉ báo "lùi ra xa" khi mặt thực sự quá lớn (chiều cao gần chạm/vượt oval)
             # và KHÔNG phải do lệch tâm gây ra.
             if face.fill > C.FACE_FILL[1] or (not off_center and face.scale_ratio > 0.72):
                 return checks, "Khuôn mặt tràn khung – Hãy lùi ra xa camera một chút và căn vào giữa khung Oval", "warn"
             if face.scale_ratio < 0.48 or face.fill < 0.52:
                 return checks, "Khuôn mặt quá nhỏ – Hãy tiến lại gần camera hơn và căn vào giữa khung Oval", "warn"
-            if abs(dx_screen) > 0.20:
-                return checks, ("Dịch mặt sang trái" if dx_screen > 0 else "Dịch mặt sang phải") + " vào giữa khung Oval", "warn"
+            if abs(dx) > 0.20:
+                return checks, _shift_hint(dx, dy), "warn"
             if abs(dy) > 0.20:
                 return checks, ("Hạ mặt xuống một chút" if dy < 0 else "Nâng mặt lên một chút") + " vào giữa khung Oval", "warn"
             return checks, "Đưa toàn bộ khuôn mặt vào giữa khung Oval", "warn"
         if not checks["centered_ok"]:
-            dx_screen, dy = -face.offset[0], face.offset[1]
-            if abs(dx_screen) >= abs(dy):
-                return checks, ("Dịch mặt sang trái" if dx_screen > 0 else "Dịch mặt sang phải") + " vào giữa khung Oval", "warn"
-            return checks, ("Hạ mặt xuống một chút" if dy < 0 else "Nâng mặt lên một chút") + " vào giữa khung Oval", "warn"
+            return checks, _shift_hint(*face.offset), "warn"
 
     # 3. Kiểm tra nhìn thẳng & độ nghiêng đầu (Roll / Pitch / Yaw)
     if not checks["head_straight"]:
@@ -635,4 +633,16 @@ def quality_checks(face: FaceResult, require_oval: bool = True, is_turning: bool
             return checks, "Đang quay mặt sang phải – Hãy nhìn thẳng vào camera", "warn"
         return checks, "Hãy nhìn thẳng vào camera", "warn"
 
+    if not checks["sharpness_ok"]:
+        return checks, "Hình ảnh bị mờ – Giữ yên đầu và camera", "warn"
+
     return checks, "Khuôn mặt hợp lệ! Giữ yên...", "ok"
+
+
+def _shift_hint(dx: float, dy: float) -> str:
+    """Hướng dẫn dịch mặt về tâm oval. Ảnh đã lật gương nên trái/phải trùng với màn hình."""
+    if abs(dx) >= abs(dy):
+        direction = "Dịch mặt sang trái" if dx > 0 else "Dịch mặt sang phải"
+    else:
+        direction = "Hạ mặt xuống một chút" if dy < 0 else "Nâng mặt lên một chút"
+    return direction + " vào giữa khung Oval"

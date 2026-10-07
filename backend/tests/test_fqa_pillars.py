@@ -121,11 +121,47 @@ def test_pillar_2_illumination():
 
 
 def test_pillar_3_sharpness():
-    # Độ sắc nét đã được bỏ chặn, luôn đạt chuẩn khi có khuôn mặt hợp lệ
     face = create_valid_face()
-    face.sharpness = 20.0
+    face.sharpness = C.MIN_FACE_SHARPNESS + 5
     checks, msg, sev = quality_checks(face)
     assert checks["sharpness_ok"] is True
+
+    face.sharpness = C.MIN_FACE_SHARPNESS - 5
+    checks, msg, sev = quality_checks(face)
+    assert checks["sharpness_ok"] is False
+    assert sev == "warn"
+    assert "mờ" in msg.lower()
+
+    # Khi quay đầu dùng ngưỡng nới lỏng hơn
+    face.sharpness = (C.MIN_FACE_SHARPNESS + C.MIN_FACE_SHARPNESS_TURNING) / 2
+    checks, _, _ = quality_checks(face, is_turning=True)
+    assert checks["sharpness_ok"] is True
+
+
+def test_pillar_3_sharpness_can_be_disabled(monkeypatch):
+    monkeypatch.setattr(C, "SHARPNESS_CHECK_ENABLED", False)
+    face = create_valid_face()
+    face.sharpness = 0.0
+    checks, _, _ = quality_checks(face)
+    assert checks["sharpness_ok"] is True
+
+
+def test_shift_hint_matches_mirrored_screen():
+    # Ảnh đã lật gương: offset x > 0 nghĩa là mặt đang lệch sang PHẢI màn hình -> phải dịch sang trái
+    face_right = create_valid_face()
+    face_right.offset = (0.40, 0.0)
+    _, msg, _ = quality_checks(face_right)
+    assert "sang trái" in msg.lower()
+
+    face_left = create_valid_face()
+    face_left.offset = (-0.40, 0.0)
+    _, msg, _ = quality_checks(face_left)
+    assert "sang phải" in msg.lower()
+
+    face_high = create_valid_face()
+    face_high.offset = (0.0, -0.40)
+    _, msg, _ = quality_checks(face_high)
+    assert "hạ mặt" in msg.lower()
 
 
 def test_pillar_4_occlusion():
@@ -184,24 +220,6 @@ def test_pillar_4_occlusion():
     cont_ok, cont_msg, cont_sev = check_continuous_face_quality(face_mouth)
     assert cont_ok is False
     assert cont_sev == "error"
-
-
-def test_real_tissue_paper_occlusion_image():
-    tissue_img_path = r"C:\Users\Admin\.gemini\antigravity\brain\0ed4fda9-7d9a-4a29-afb5-d05aacfa3031\.user_uploaded\media_1791199393546.png"
-    if os.path.exists(tissue_img_path):
-        import cv2
-        from face_analyzer import FaceAnalyzer
-        analyzer = FaceAnalyzer()
-        frame = cv2.imread(tissue_img_path)
-        oval = {"cx": 0.5, "cy": 0.5, "rx": 0.22, "ry": 0.32}
-        res = analyzer.analyze(frame, oval)
-        assert res.detected is True
-        assert res.parts_status.get("mouth") is False
-        assert res.mask_detected is True
-        assert res.occluded_part_name is not None
-        c_ok, c_msg, c_sev = check_continuous_face_quality(res)
-        assert c_ok is False
-        assert c_sev == "error"
 
 
 def test_continuous_quality_during_turning():

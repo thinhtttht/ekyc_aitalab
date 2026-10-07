@@ -147,8 +147,9 @@ class EnrollmentSession:
                         face_res=face_res,
                         progress=1.0,
                     )
+                fps_hint = " – FPS thấp, nên đóng bớt ứng dụng nền" if cam_res.metrics.get("fps_low") else ""
                 return self._build_response(
-                    message=f"Đang kiểm tra chất lượng Camera ({int(progress * 100)}%)...",
+                    message=f"Đang kiểm tra chất lượng Camera ({int(progress * 100)}%)...{fps_hint}",
                     color="green",
                     cam_res=cam_res,
                     face_res=face_res,
@@ -200,8 +201,9 @@ class EnrollmentSession:
                         progress=0.0,
                         fqa_passed_sound=True,
                     )
+                light_hint = " – Ánh sáng đang lệch một bên mặt" if face_res.side_ratio > C.MAX_SIDE_LIGHT_RATIO else ""
                 return self._build_response(
-                    message=f"Khuôn mặt hợp lệ! Giữ yên ({int(progress * 100)}%)...",
+                    message=f"Khuôn mặt hợp lệ! Giữ yên ({int(progress * 100)}%)...{light_hint}",
                     color="green",
                     cam_res=cam_res,
                     face_res=face_res,

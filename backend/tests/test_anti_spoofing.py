@@ -44,6 +44,21 @@ def test_3d_depth_liveness():
     assert delta_flat < C.DEPTH_3D_MIN_DELTA
 
 
+def test_missing_model_is_rejected(monkeypatch):
+    detector = AntiSpoofDetector(model_path="khong-ton-tai.onnx")
+    assert detector.session is None
+    frame = np.full((480, 640, 3), 120, dtype=np.uint8)
+
+    res = detector.evaluate(frame, (0.3, 0.3, 0.7, 0.7))
+    assert res.is_real is False
+    assert res.spoof_type == "model_unavailable"
+    assert res.severity == "error"
+
+    monkeypatch.setattr(C, "ANTISPOOF_REQUIRE_MODEL", False)
+    res = detector.evaluate(frame, (0.3, 0.3, 0.7, 0.7))
+    assert res.spoof_type != "model_unavailable"
+
+
 def test_anti_spoof_detection_print_attack():
     detector = AntiSpoofDetector()
     frame = np.full((480, 640, 3), 120, dtype=np.uint8)

@@ -95,6 +95,7 @@ class CameraMonitor:
             "width": stats.width,
             "height": stats.height,
             "fps": round(stats.fps, 1) if stats.fps else None,
+            "fps_low": bool(stats.fps) and stats.fps < C.MIN_FPS,
             "frame_brightness": round(brightness, 1),
             "noise_sigma": round(noise, 2),
             "frame_diff": round(diff, 3) if diff is not None else None,
@@ -117,6 +118,8 @@ class CameraMonitor:
             result.message, result.severity = "Khung hình quá chói – tránh nguồn sáng chiếu thẳng vào camera", "warn"
         elif not checks["noise_ok"]:
             result.message, result.severity = "Hình ảnh bị nhiễu hạt – hãy tăng ánh sáng phòng", "warn"
+        elif stats.fps and stats.fps < C.MIN_FPS:
+            result.message = f"Camera đạt chuẩn – FPS thấp ({stats.fps:.0f}), nên đóng bớt ứng dụng đang dùng camera/CPU"
         else:
             result.message, result.severity = "Camera đạt chuẩn – đang xác nhận...", "ok"
         return result

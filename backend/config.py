@@ -34,8 +34,6 @@ MAX_STRAIGHT = dict(yaw=12.0, pitch=15.0, roll=10.0)
 FACE_BRIGHTNESS_MIN = 40.0             # Mean < 40 -> Báo Đỏ ("Không gian quá tối")
 FACE_BRIGHTNESS_MAX = 210.0            # Mean > 210 -> Báo Đỏ ("Ánh sáng quá mạnh")
 FACE_BRIGHTNESS_STD_MIN = 10.0         # Std Dev < 10 kèm Mean trung bình -> Báo Vàng ("Ngược sáng / thiếu chi tiết")
-MAX_SIDE_LIGHT_RATIO = 1.6             # Tỉ lệ sáng nửa mặt sáng / nửa mặt tối (chỉ gợi ý, không chặn)
-
 # 3. Sharpness Check (Laplacian Variance trên ROI mặt chuẩn hoá 200px)
 # Webcam laptop thường cho 30-150. Nếu bị chặn oan, hạ ngưỡng thay vì tắt hẳn.
 SHARPNESS_CHECK_ENABLED = True
@@ -49,6 +47,7 @@ GLARE_PIXEL_THRESH = 240               # Điểm ảnh > 240 trong vùng mắt
 GLARE_AREA_RATIO_MAX = 0.30            # Glare > 30% diện tích mắt -> Báo Vàng ("Nghiêng mặt nhẹ để tránh lóa kính")
 MASK_CHROMA_DIST = 32.0                # Chênh lệch sắc độ má dưới so với trán (khi mũi/miệng bị che)
 MASK_DARK_RATIO = 0.40                 # Độ sáng má dưới / trán
+MOUTH_MAX_ASPECT = 6.0                 # Rộng / cao của môi (mốc 61-291 / 0-17); vượt ngưỡng -> coi như miệng bị che
 HAND_DETECTION_ENABLED = True          # MediaPipe Hands tốn gần bằng FaceMesh; tắt nếu máy yếu
 HAND_DETECTION_EVERY_N_FRAMES = 2      # Chạy Hands mỗi N frame, các frame giữa dùng lại kết quả gần nhất
 

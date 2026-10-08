@@ -343,8 +343,8 @@ def analyze_landmarks(frame_bgr: np.ndarray, lm3: np.ndarray, oval: dict, out: F
             w_m = float(np.linalg.norm(px[61] - px[291]))
             h_m = float(np.linalg.norm(px[0] - px[17]))
             m_aspect = w_m / max(1.0, h_m)
-            # Ngũ quan miệng người bình thường có tỷ lệ w/h <= 3.5 và chiều cao h_m >= 3.0px
-            if m_aspect > 3.5 or h_m < 3.0:
+            # Môi ngậm, môi mỏng hoặc đang cười có thể tới w/h ~ 5; ngưỡng thấp hơn buộc người dùng phải hé miệng
+            if m_aspect > C.MOUTH_MAX_ASPECT or h_m < 3.0:
                 is_ok = False
 
             # Phân tích chất liệu trong ROI miệng

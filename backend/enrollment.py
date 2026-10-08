@@ -151,8 +151,7 @@ class EnrollmentSession:
             return self._reply("Camera đạt chuẩn! Đưa khuôn mặt vào khung Oval", "cyan", 1.0)
 
         progress = elapsed / C.CAMERA_STABLE_SEC
-        fps_hint = " – FPS thấp, nên đóng bớt ứng dụng nền" if cam.metrics.get("fps_low") else ""
-        return self._reply(f"Đang kiểm tra chất lượng Camera ({int(progress * 100)}%)...{fps_hint}", "green", progress)
+        return self._reply("Đang kiểm tra chất lượng Camera...", "green", progress)
 
     def _on_face_quality(self) -> Dict[str, Any]:
         v, face = self._verdict, self._face
@@ -180,8 +179,7 @@ class EnrollmentSession:
             return self._reply(self._turn_instruction(), "yellow", fqa_passed_sound=True)
 
         progress = self.fqa_consecutive_passes / C.FQA_CONSECUTIVE_FRAMES
-        light_hint = " – Ánh sáng đang lệch một bên mặt" if face.side_ratio > C.MAX_SIDE_LIGHT_RATIO else ""
-        return self._reply(f"Khuôn mặt hợp lệ! Giữ yên ({int(progress * 100)}%)...{light_hint}", "green", progress)
+        return self._reply("Khuôn mặt hợp lệ! Giữ yên...", "green", progress)
 
     def _on_turn(self) -> Dict[str, Any]:
         if self._now - self.stage_start_time > C.CHALLENGE_TIMEOUT_SEC:
@@ -254,8 +252,7 @@ class EnrollmentSession:
         if not (growth_ok and framed_ok):
             self.stable_start_time = None
             if not growth_ok:
-                hint = f"Hãy tiến lại gần camera hơn nữa (hiện đạt {int(growth * 100)}% / {int(C.ZOOM_MIN_GROWTH * 100)}%)"
-                return self._reply(hint, "yellow")
+                return self._reply("Hãy tiến lại gần camera hơn nữa", "yellow", min(1.0, (growth - 1.0) / (C.ZOOM_MIN_GROWTH - 1.0)))
             return self._reply(v.message, _color_for(v.severity))
 
         elapsed = self._hold_elapsed()
@@ -271,7 +268,7 @@ class EnrollmentSession:
             self._enter(Stage.FLASHING)
             return self._reply("Giữ yên khuôn mặt! Chuẩn bị quét ánh sáng màu...", "green", 1.0)
         progress = elapsed / C.HOLD_SEC
-        return self._reply(f"Tuyệt vời! Giữ yên khuôn mặt ({int(progress * 100)}%)...", "green", progress)
+        return self._reply("Tuyệt vời! Giữ yên khuôn mặt...", "green", progress)
 
     def _on_flashing(self) -> Dict[str, Any]:
         return self._reply("Đang quét ánh sáng quang học... Hãy nhìn thẳng vào màn hình", "green", 1.0)
@@ -478,6 +475,7 @@ def _face_metrics(face: FaceResult) -> Dict[str, Any]:
         "glare_detected": face.glare_detected,
         "hand_occlusion": face.hand_occlusion,
         "perspective_ratio": face.perspective_ratio,
+        "side_light_ratio": round(face.side_ratio, 2),
     })
     if s:
         m.update({

@@ -52,7 +52,6 @@ const userCountBadge = document.getElementById('userCountBadge');
 const enrollFormBox = document.getElementById('enrollFormBox');
 const enrollSavedBox = document.getElementById('enrollSavedBox');
 const inputUserName = document.getElementById('inputUserName');
-const inputUserId = document.getElementById('inputUserId');
 const btnSaveUser = document.getElementById('btnSaveUser');
 const btnGoToVerify = document.getElementById('btnGoToVerify');
 const btnGoToUsers = document.getElementById('btnGoToUsers');
@@ -127,6 +126,42 @@ let frameCountInWindow = 0;
 let lastFpsCalcTime = performance.now();
 let lastFrameTimestamp = performance.now();
 let isFrameAdvancing = true;
+
+// Thông báo đáy video: giữ mỗi thông báo tối thiểu PILL_MIN_DWELL_MS để chữ không nhảy liên tục theo từng frame
+const PILL_MIN_DWELL_MS = 1200;
+let pillShownAt = 0;
+let pillPending = null;
+let pillTimer = null;
+let pillStage = null;
+
+function applyGuidance(text, color) {
+  bottomPill.textContent = text;
+  bottomPill.className = `bottom-guidance-pill ${color}`;
+  pillShownAt = performance.now();
+  pillPending = null;
+}
+
+function setGuidance(text, color = 'cyan', immediate = false) {
+  if (!text) return;
+  if (bottomPill.textContent === text && bottomPill.classList.contains(color)) {
+    pillPending = null;
+    return;
+  }
+  const wait = PILL_MIN_DWELL_MS - (performance.now() - pillShownAt);
+  if (immediate || wait <= 0) {
+    clearTimeout(pillTimer);
+    pillTimer = null;
+    applyGuidance(text, color);
+    return;
+  }
+  pillPending = { text, color };
+  if (!pillTimer) {
+    pillTimer = setTimeout(() => {
+      pillTimer = null;
+      if (pillPending) applyGuidance(pillPending.text, pillPending.color);
+    }, wait);
+  }
+}
 
 // Hidden Canvas cho cắt khung 4:5
 const offscreenCanvas = document.createElement('canvas');
@@ -524,8 +559,7 @@ async function triggerOpticalFlashing() {
     const sequence = chData.sequence || [];
     const token = chData.challenge_token;
 
-    bottomPill.className = 'bottom-guidance-pill green';
-    bottomPill.textContent = 'Giữ yên khuôn mặt! Đang quét phản xạ ánh sáng...';
+    setGuidance('Giữ yên khuôn mặt! Đang quét phản xạ ánh sáng...', 'green', true);
 
     const collectedFrames = [];
 
@@ -578,8 +612,7 @@ async function triggerOpticalFlashing() {
     // 3. Tắt lớp phủ sau khi chiếu xong
     clearFlashingColor();
 
-    bottomPill.className = 'bottom-guidance-pill cyan';
-    bottomPill.textContent = 'Đang phân tích phản xạ quang phổ mô da...';
+    setGuidance('Đang phân tích phản xạ quang phổ mô da...', 'cyan', true);
 
     // 4. Gửi các khung hình lên máy chủ để xác thực quang học
     const verifyRes = await fetch(`${API_BASE}/api/enroll/color_verify`, {
@@ -600,15 +633,13 @@ async function triggerOpticalFlashing() {
     const verifyData = await verifyRes.json();
     if (verifyData.passed) {
       playTingSound();
-      bottomPill.className = 'bottom-guidance-pill green';
-      bottomPill.textContent = 'Xác thực sinh trắc học hoàn tất! Đang chụp chân dung HD...';
+      setGuidance('Xác thực sinh trắc học hoàn tất! Đang chụp chân dung HD...', 'green', true);
       updateStepper('capture');
       setRow('chk-optical-liveness', 'val-optical-liveness', true, `Đạt (r = ${verifyData.correlation_score})`);
       isLoopRunning = false;
       captureHdAndVerify(verifyData.summary || {});
     } else {
-      bottomPill.className = 'bottom-guidance-pill red';
-      bottomPill.textContent = verifyData.message || 'Chưa đủ độ phản xạ quang học trên da. Vui lòng tăng sáng màn hình và thử lại.';
+      setGuidance(verifyData.message || 'Chưa đủ độ phản xạ quang học trên da. Vui lòng tăng sáng màn hình và thử lại.', 'red', true);
       setRow('chk-optical-liveness', 'val-optical-liveness', false, 'Không đạt');
       setTimeout(() => {
         isFlashingActive = false;
@@ -619,8 +650,7 @@ async function triggerOpticalFlashing() {
   } catch (err) {
     console.error('Lỗi quy trình Color Flashing:', err);
     clearFlashingColor();
-    bottomPill.className = 'bottom-guidance-pill red';
-    bottomPill.textContent = err.message || 'Lỗi quét quang học. Vui lòng thử lại.';
+    setGuidance(err.message || 'Lỗi quét quang học. Vui lòng thử lại.', 'red', true);
     setTimeout(() => {
       isFlashingActive = false;
       isLoopRunning = true;
@@ -633,7 +663,7 @@ async function triggerOpticalFlashing() {
 // 4. CẬP NHẬT GIAO DIỆN & LƯỚI SINH TRẮC HỌC (BIOMETRIC MESH - APPLE FACE ID / STRIPE IDENTITY AESTHETIC)
 // -----------------------------------------------------------------------------
 
-function drawBiometricMesh(keypoints, partsStatus = {}, occludedPartName = null, hasHandOcclusion = false, overallColor = 'cyan', antiSpoof = null, isUpsideDown = false) {
+function drawBiometricMesh(keypoints, partsStatus = {}, overallColor = 'cyan') {
   if (!meshCtx) return;
   meshCtx.clearRect(0, 0, meshCanvas.width, meshCanvas.height);
 
@@ -739,67 +769,6 @@ function drawBiometricMesh(keypoints, partsStatus = {}, occludedPartName = null,
 
     meshCtx.restore();
   });
-
-  // 3. Floating Security Alert Capsule (Apple Glassmorphism Design)
-  let alertText = null;
-  if (antiSpoof && antiSpoof.is_real === false) {
-    if (antiSpoof.spoof_type === 'print_attack' || antiSpoof.spoof_type === 'planar_2d') {
-      alertText = 'Phát hiện ảnh in 2D • Yêu cầu người thật';
-    } else if (antiSpoof.spoof_type === 'replay_attack' || antiSpoof.spoof_type === 'screen_moire') {
-      alertText = 'Phát hiện màn hình / video • Yêu cầu người thật';
-    } else {
-      alertText = 'Phát hiện dấu hiệu giả mạo sinh trắc';
-    }
-  } else if (isUpsideDown) {
-    alertText = 'Vui lòng giữ thẳng khuôn mặt';
-  } else if (hasHandOcclusion) {
-    alertText = 'Vui lòng không để tay che khuôn mặt';
-  } else if (occludedPartName) {
-    alertText = `Khuôn mặt bị che: ${occludedPartName}`;
-  }
-
-  if (alertText) {
-    meshCtx.save();
-    meshCtx.font = '600 12px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-    const textMetrics = meshCtx.measureText(alertText);
-    const boxW = Math.min(w - 32, textMetrics.width + 42);
-    const boxH = 34;
-    const boxX = (w - boxW) / 2;
-    const boxY = 56;
-
-    // Nền Frosted Glass Capsule sang trọng
-    meshCtx.fillStyle = 'rgba(15, 23, 42, 0.88)';
-    meshCtx.shadowColor = 'rgba(0, 0, 0, 0.35)';
-    meshCtx.shadowBlur = 16;
-    meshCtx.beginPath();
-    if (meshCtx.roundRect) {
-      meshCtx.roundRect(boxX, boxY, boxW, boxH, 17);
-    } else {
-      meshCtx.rect(boxX, boxY, boxW, boxH);
-    }
-    meshCtx.fill();
-
-    // Viền hairline cảnh báo
-    meshCtx.strokeStyle = 'rgba(239, 68, 68, 0.55)';
-    meshCtx.lineWidth = 1;
-    meshCtx.stroke();
-
-    // Chấm đỏ breathing status indicator
-    meshCtx.fillStyle = '#ef4444';
-    meshCtx.shadowColor = '#ef4444';
-    meshCtx.shadowBlur = 6;
-    meshCtx.beginPath();
-    meshCtx.arc(boxX + 18, boxY + boxH / 2, 4, 0, Math.PI * 2);
-    meshCtx.fill();
-
-    // Chữ thông báo hiện đại
-    meshCtx.fillStyle = '#f8fafc';
-    meshCtx.textAlign = 'left';
-    meshCtx.textBaseline = 'middle';
-    meshCtx.shadowBlur = 0;
-    meshCtx.fillText(alertText, boxX + 30, boxY + boxH / 2);
-    meshCtx.restore();
-  }
 }
 
 function playTingSound() {
@@ -830,22 +799,15 @@ function renderFeedback(data) {
   }
 
   // Cập nhật thông điệp và màu sắc viền Oval
-  bottomPill.textContent = data.message;
-  bottomPill.className = `bottom-guidance-pill ${data.color || 'cyan'}`;
+  const stageChanged = data.stage !== pillStage;
+  pillStage = data.stage;
+  setGuidance(data.message, data.color || 'cyan', stageChanged);
 
   // Cập nhật khung Oval SVG (vị trí, kích thước, tiến độ)
   updateOvalSvg(data.oval, data.color, data.progress);
 
   // Vẽ lưới Biometric Mesh & ngũ quan công nghệ cao lên meshCanvas
-  drawBiometricMesh(
-    data.keypoints,
-    data.parts_status || {},
-    data.occluded_part_name,
-    data.face_checks?.no_hand_occlusion === false,
-    data.color || 'cyan',
-    data.anti_spoof,
-    Boolean(data.face_metrics?.is_upside_down || data.face_checks?.not_upside_down === false)
-  );
+  drawBiometricMesh(data.keypoints, data.parts_status || {}, data.color || 'cyan');
 
   // Cập nhật mũi tên xoay đầu
   if (data.turn_arrow === 'left') {
@@ -1109,8 +1071,7 @@ async function captureHdAndVerify(initialSummary = {}) {
   const snapshotDataUrl = hdCanvas.toDataURL('image/jpeg', 0.95);
 
   // 2. Hiển thị trạng thái đang kiểm định an ninh backend
-  bottomPill.className = 'bottom-guidance-pill yellow';
-  bottomPill.textContent = 'Đang kiểm định toàn vẹn khuôn mặt & chống giả mạo chân dung...';
+  setGuidance('Đang kiểm định toàn vẹn khuôn mặt & chống giả mạo chân dung...', 'yellow', true);
 
   try {
     const res = await fetch(`${API_BASE}/api/enroll/verify_capture`, {
@@ -1130,8 +1091,7 @@ async function captureHdAndVerify(initialSummary = {}) {
     const data = await res.json();
     if (data.passed) {
       playTingSound();
-      bottomPill.className = 'bottom-guidance-pill green';
-      bottomPill.textContent = 'Đăng ký thành công! Khuôn mặt toàn vẹn & đạt chuẩn sinh trắc học.';
+      setGuidance('Đăng ký thành công! Khuôn mặt toàn vẹn & đạt chuẩn sinh trắc học.', 'green', true);
       snapshotImg.src = snapshotDataUrl;
       lastCapturedDataUrl = snapshotDataUrl;
 
@@ -1166,16 +1126,11 @@ async function captureHdAndVerify(initialSummary = {}) {
         inputUserName.value = '';
         inputUserName.classList.remove('error');
       }
-      if (inputUserId) {
-        inputUserId.value = '';
-      }
-
       // Hiển thị modal hoàn tất
       summaryModal.classList.remove('hidden');
     } else {
       // Từ chối đăng ký và mở Modal cảnh báo hiện đại
-      bottomPill.className = 'bottom-guidance-pill red';
-      bottomPill.textContent = `Không đạt: ${data.message}`;
+      setGuidance(`Không đạt: ${data.message}`, 'red', true);
 
       setTimeout(() => {
         showRejectionModal(data.message);
@@ -1183,8 +1138,7 @@ async function captureHdAndVerify(initialSummary = {}) {
     }
   } catch (err) {
     console.error('Lỗi kiểm định capture:', err);
-    bottomPill.className = 'bottom-guidance-pill red';
-    bottomPill.textContent = `Lỗi kiểm tra bảo mật: ${err.message}`;
+    setGuidance(`Lỗi kiểm tra bảo mật: ${err.message}`, 'red', true);
     setTimeout(() => {
       showRejectionModal(err.message);
     }, 300);
@@ -1312,7 +1266,6 @@ if (tabBtnUsers) tabBtnUsers.addEventListener('click', () => switchTab('viewUser
 async function handleSaveUser() {
   if (!inputUserName) return;
   const fullName = inputUserName.value.trim();
-  const userId = inputUserId ? inputUserId.value.trim() : '';
 
   if (!fullName) {
     inputUserName.classList.add('error');
@@ -1332,7 +1285,6 @@ async function handleSaveUser() {
     const payload = {
       session_id: currentSessionId,
       full_name: fullName,
-      user_id: userId || undefined,
       image: lastCapturedDataUrl || snapshotImg.src,
       metadata: {
         enrolled_via: 'web_ekyc',

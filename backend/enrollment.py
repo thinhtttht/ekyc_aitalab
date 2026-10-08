@@ -509,7 +509,7 @@ def _final_capture_issue(face: FaceResult) -> Optional[tuple]:
         return "feature_occluded", f"Khuôn mặt không toàn vẹn (bị che khuất {face.occluded_part_name}). Vui lòng để lộ toàn bộ khuôn mặt.", None
 
     parts = face.parts_status
-    if not all(parts.get(k, True) for k in ("left_eye", "right_eye", "nose", "mouth")):
+    if not all(parts.get(k, True) for k in ("left_eye", "right_eye", "nose")):
         return "features_incomplete", "Ngũ quan khuôn mặt không đầy đủ hoặc bị che cản. Vui lòng thử lại từ đầu.", None
 
     lim = C.FINAL_MAX_POSE

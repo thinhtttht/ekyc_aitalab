@@ -206,13 +206,11 @@ def test_pillar_4_occlusion():
     assert sev == "error"
     assert "che khuất" in msg.lower()
 
-    # Che miệng / Khăn giấy / Vật cản che mặt -> Báo Đỏ
+    # Khẩu trang -> Báo Đỏ (vùng miệng không còn được kiểm tra riêng)
     face_mouth = create_valid_face()
-    face_mouth.parts_status["mouth"] = False
-    face_mouth.occluded_part_name = "Vùng Miệng (phát hiện vật cản / giấy che mặt)"
     face_mouth.mask_detected = True
     checks, msg, sev = quality_checks(face_mouth)
-    assert checks["has_mouth"] is False
+    assert "has_mouth" not in checks
     assert checks["no_mask"] is False
     assert sev == "error"
     assert "che khuất" in msg.lower() or "khẩu trang" in msg.lower()
@@ -335,6 +333,18 @@ def test_distance_guidance_overflow_and_small():
     assert checks["inside_oval"] is False
     assert sev == "warn"
     assert "lại gần" in msg.lower()
+
+
+def test_mouth_region_is_not_checked():
+    from face_analyzer import analyze_landmarks
+
+    rng = np.random.default_rng(0)
+    frame = rng.integers(0, 255, (600, 480, 3), dtype=np.uint8)
+    lm3 = np.column_stack([rng.uniform(0.3, 0.7, 478), rng.uniform(0.25, 0.75, 478), rng.uniform(-0.05, 0.05, 478)])
+    face = analyze_landmarks(frame, lm3, C.OVAL_NORMAL)
+    assert "mouth" not in face.parts_status
+    assert "mouth" in face.keypoints          # vẫn vẽ viền môi trên lưới
+    assert "has_mouth" not in quality_checks(face)[0]
 
 
 def test_mask_false_positive_with_clear_mouth_and_nose():

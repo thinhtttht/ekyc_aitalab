@@ -47,7 +47,6 @@ GLARE_PIXEL_THRESH = 240               # Điểm ảnh > 240 trong vùng mắt
 GLARE_AREA_RATIO_MAX = 0.30            # Glare > 30% diện tích mắt -> Báo Vàng ("Nghiêng mặt nhẹ để tránh lóa kính")
 MASK_CHROMA_DIST = 32.0                # Chênh lệch sắc độ má dưới so với trán (khi mũi/miệng bị che)
 MASK_DARK_RATIO = 0.40                 # Độ sáng má dưới / trán
-MOUTH_MAX_ASPECT = 6.0                 # Rộng / cao của môi (mốc 61-291 / 0-17); vượt ngưỡng -> coi như miệng bị che
 HAND_DETECTION_ENABLED = True          # MediaPipe Hands tốn gần bằng FaceMesh; tắt nếu máy yếu
 HAND_DETECTION_EVERY_N_FRAMES = 2      # Chạy Hands mỗi N frame, các frame giữa dùng lại kết quả gần nhất
 

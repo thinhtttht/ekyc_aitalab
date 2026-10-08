@@ -199,7 +199,7 @@ def test_part_occlusion_rejection():
     sess = EnrollmentSession("test-parts-session")
     sess.stage = Stage.FACE_QUALITY
 
-    class MouthOccludedAnalyzer:
+    class NoseOccludedAnalyzer:
         def analyze(self, frame_bgr, oval, **kwargs):
             return FaceResult(
                 face_count=1,
@@ -221,9 +221,9 @@ def test_part_occlusion_rejection():
                 parts_status={
                     "left_eye": True, "right_eye": True,
                     "left_eyebrow": True, "right_eyebrow": True,
-                    "nose": True, "mouth": False,
+                    "nose": False,
                 },
-                occluded_part_name="miệng/môi",
+                occluded_part_name="Vùng Mũi",
                 keypoints={
                     "mouth": [[0.4, 0.6], [0.6, 0.6]],
                     "nose": [[0.5, 0.4], [0.5, 0.5]],
@@ -231,17 +231,18 @@ def test_part_occlusion_rejection():
             )
         def close(self): pass
 
-    sess.face_analyzer = MouthOccludedAnalyzer()
+    sess.face_analyzer = NoseOccludedAnalyzer()
     stats = ClientStats(fps=30.0, width=1280, height=720, frame_advancing=True)
     frame = np.full((600, 480, 3), 130, dtype=np.uint8)
 
     res = sess.process_frame(frame, stats)
-    assert res["face_checks"]["has_mouth"] is False
+    assert res["face_checks"]["has_nose"] is False
     assert res["face_checks"]["has_eyes"] is True
+    assert "has_mouth" not in res["face_checks"]
     assert res["color"] == "red"
-    assert "che khuất miệng/môi" in res["message"].lower()
-    assert res["occluded_part_name"] == "miệng/môi"
-    assert res["parts_status"]["mouth"] is False
+    assert "che khuất vùng mũi" in res["message"].lower()
+    assert res["occluded_part_name"] == "Vùng Mũi"
+    assert res["parts_status"]["nose"] is False
     assert "mouth" in res["keypoints"]
     assert res["progress"] == 0.0
 

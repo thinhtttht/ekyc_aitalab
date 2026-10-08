@@ -731,7 +731,7 @@ function drawBiometricMesh(keypoints, partsStatus = {}, overallColor = 'cyan') {
     { key: 'left_eye', isClosed: true, isOk: partsStatus.left_eye !== false, name: 'Mắt trái' },
     { key: 'right_eye', isClosed: true, isOk: partsStatus.right_eye !== false, name: 'Mắt phải' },
     { key: 'nose', isClosed: false, isOk: partsStatus.nose !== false, name: 'Sống mũi' },
-    { key: 'mouth', isClosed: true, isOk: partsStatus.mouth !== false, name: 'Miệng/Môi' },
+    { key: 'mouth', isClosed: true, isOk: true, name: 'Miệng/Môi' },
   ];
 
   partsList.forEach((part) => {
@@ -979,7 +979,6 @@ function updateChecklist(camChk = {}, camMet = {}, faceChk = {}, faceMet = {}, s
   setRow('chk-hand', 'val-hand', faceChk.no_hand_occlusion, faceChk.no_hand_occlusion ? 'Không có' : 'Phát hiện tay che');
   setRow('chk-eyes', 'val-eyes', faceChk.has_eyes, faceChk.has_eyes ? 'Rõ nét' : 'Mắt bị che');
   setRow('chk-nose', 'val-nose', faceChk.has_nose, faceChk.has_nose ? 'Rõ nét' : 'Mũi bị che');
-  setRow('chk-mouth', 'val-mouth', faceChk.has_mouth, faceChk.has_mouth ? 'Rõ nét' : 'Miệng bị che');
   setRow('chk-eyebrows', 'val-eyebrows', faceChk.has_eyebrows, faceChk.has_eyebrows ? 'Rõ nét' : 'Chân mày bị che');
 
   // Nhóm 4: Thử thách Sinh trắc

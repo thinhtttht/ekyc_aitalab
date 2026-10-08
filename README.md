@@ -1,17 +1,16 @@
-# Smart-eKYC – Đăng ký & xác thực khuôn mặt (PoC)
+# Smart-eKYC – Đăng ký và xác thực khuôn mặt
 
-Bản thử nghiệm eKYC khuôn mặt chạy trên trình duyệt: kiểm tra camera và chất lượng ảnh mặt, thử thách
-chủ động (quay đầu, tiến gần, nháy màu), chống giả mạo thụ động bằng MiniFASNet, trích xuất vector ArcFace
-512 chiều, lưu SQLite và so khớp 1:1 / 1:N.
+Bản thử nghiệm eKYC khuôn mặt chạy trên trình duyệt: kiểm tra camera và chất lượng ảnh mặt, kiểm tra liveness, 
+chống giả mạo thụ động bằng MiniFASNet, trích xuất vector ArcFace 512 chiều, lưu SQLite và so khớp 1:1 / 1:N.
 
-> Đây là PoC phục vụ nghiên cứu, chưa đạt chuẩn production (chưa có xác thực API, ngưỡng chưa hiệu chỉnh
+> Đây là bản chưa đạt chuẩn production (chưa có xác thực API, ngưỡng chưa hiệu chỉnh
 > trên dữ liệu thật). Những gì còn thiếu được liệt kê trong [ROADMAP.md](ROADMAP.md).
 
 ---
 
 ## Tính năng hiện có
 
-| Bước | Nội dung | Mã nguồn |
+| Bước | Nội dung | Code |
 | --- | --- | --- |
 | Camera | Độ phân giải tối thiểu, mất tín hiệu / đóng băng, độ sáng, nhiễu. FPS thấp chỉ cảnh báo | `camera_quality.py` |
 | Chất lượng mặt (FQA) | Một mặt duy nhất, cự ly, lọt Oval, đầu thẳng, ánh sáng, ngược sáng, độ nét, khẩu trang / kính râm / lóa kính / tay che / ngũ quan bị che | `face_analyzer.py` (`evaluate_face`) |
@@ -42,7 +41,7 @@ pip install -r backend/requirements-dev.txt      # thêm pytest + httpx để ch
 python -m uvicorn app:app --app-dir backend --host 127.0.0.1 --port 8000 --reload
 ```
 
-Mở [http://127.0.0.1:8000](http://127.0.0.1:8000) bằng Chrome / Edge và cho phép dùng camera. Nếu báo
+Mở [http://127.0.0.1:8000](http://127.0.0.1:8000) bằng trình duyệt và cho phép dùng camera. Nếu báo
 "Camera đang bị chiếm giữ", hãy đóng các ứng dụng khác đang mở webcam (Zoom, Teams, tab trình duyệt khác).
 
 Chạy test:

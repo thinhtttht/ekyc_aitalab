@@ -8,34 +8,40 @@ Tài liệu kỹ thuật mô tả chi tiết toàn bộ luồng xử lý dữ li
 
 ```mermaid
 flowchart TD
-    subgraph CLIENT["Lớp Giao Diện Khách Hàng (Web Frontend)"]
-        UI_CAM["Webcam Feed (HTML5 Canvas 4:5 & 16:9)"]
-        UI_GUIDE["Khung Oval Hướng Dẫn & Phản Hồi Trực Quan"]
-        UI_FLASH["Màn Phủ Quang Học Đổi Màu (Color Flashing)"]
+    classDef clientStyle fill:#e0f2fe,stroke:#0284c7,stroke-width:2px,color:#0369a1;
+    classDef ingestStyle fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#b45309;
+    classDef fqaStyle fill:#ede9fe,stroke:#7c3aed,stroke-width:2px,color:#5b21b6;
+    classDef bioStyle fill:#dcfce7,stroke:#16a34a,stroke-width:2px,color:#15803d;
+    classDef storageStyle fill:#ffedd5,stroke:#ea580c,stroke-width:2px,color:#c2410c;
+
+    subgraph CLIENT["📱 Lớp Giao Diện Khách Hàng (Web Frontend)"]
+        UI_CAM["Webcam Feed<br/>(HTML5 Canvas 4:5 & 16:9)"]:::clientStyle
+        UI_GUIDE["Khung Oval Hướng Dẫn<br/>& Phản Hồi Trực Quan"]:::clientStyle
+        UI_FLASH["Màn Phủ Quang Học Đổi Màu<br/>(Color Flashing Layer)"]:::clientStyle
     end
 
-    subgraph INGESTION["Tầng Tiếp Nhận & Kiểm Định Phần Cứng"]
-        CAM_CHK["Kiểm Tra Camera: Độ phân giải, FPS, Nhiễu, Treo"]
-        DECODE["Giải mã Base64 -> Ma trận OpenCV BGR"]
+    subgraph INGESTION["⚡ Tầng Tiếp Nhận & Kiểm Định Phần Cứng"]
+        CAM_CHK["Kiểm Tra Camera:<br/>Độ phân giải, FPS, Nhiễu, Treo"]:::ingestStyle
+        DECODE["Giải mã Base64 -> Ma trận OpenCV BGR"]:::ingestStyle
     end
 
-    subgraph FQA_PAD["Tầng Đánh Giá Chất Lượng (FQA) & Chống Giả Mạo (PAD)"]
-        FACEMESH["MediaPipe FaceMesh (468/478 Điểm mốc 3D)"]
-        FQA["Bộ Tiêu Chí FQA 7 Trụ Cột: Cự ly, Lọt Oval, Ánh sáng, Độ nét, Ngũ quan"]
-        ACTIVE_LIV["Liveness Chủ Động: Quay đầu 3D (>= 20°) & Phóng to Oval (>= 25%)"]
-        FLASH_PAD["Active Optical PAD: Tương quan Pearson phổ màu da mặt"]
-        MINIFAS["Passive PAD: MiniFASNet v2 (Ảnh in 2D & Replay Attack)"]
+    subgraph FQA_PAD["🛡️ Tầng Đánh Giá Chất Lượng (FQA) & Chống Giả Mạo (PAD)"]
+        FACEMESH["MediaPipe FaceMesh<br/>(468/478 Điểm mốc 3D)"]:::fqaStyle
+        FQA["Bộ Tiêu Chí FQA 7 Trụ Cột:<br/>Cự ly, Lọt Oval, Ánh sáng, Độ nét, Ngũ quan"]:::fqaStyle
+        ACTIVE_LIV["Liveness Chủ Động:<br/>Quay đầu 3D (>= 20°) & Phóng to Oval (>= 25%)"]:::fqaStyle
+        FLASH_PAD["Active Optical PAD:<br/>Tương quan Pearson phổ màu da mặt"]:::fqaStyle
+        MINIFAS["Passive PAD: MiniFASNet v2<br/>(Chống ảnh in 2D & Replay Attack)"]:::fqaStyle
     end
 
-    subgraph BIOMETRICS["Tầng Sinh Trắc Học Học Sâu (Deep Biometrics)"]
-        ALIGN["Face Alignment 5 Mốc Chuẩn (Mắt, Mũi, Khóe miệng) -> 112x112"]
-        ARCFACE["InsightFace ArcFace ResNet-50 (WebFace600K)"]
-        L2NORM["Chuẩn Hóa L2 Norm -> Vector 512D trên Mặt cầu S⁵¹¹"]
+    subgraph BIOMETRICS["🧠 Tầng Sinh Trắc Học Học Sâu (Deep Biometrics)"]
+        ALIGN["Face Alignment 5 Mốc Chuẩn<br/>(Mắt, Mũi, Khóe miệng) -> 112x112"]:::bioStyle
+        ARCFACE["InsightFace ArcFace ResNet-50<br/>(WebFace600K Backbone)"]:::bioStyle
+        L2NORM["Chuẩn Hóa L2 Norm -> Vector 512D<br/>trên Mặt cầu S⁵¹¹"]:::bioStyle
     end
 
-    subgraph STORAGE_MATCH["Tầng Lưu Trữ & Đối Sánh (Storage & Matching)"]
-        SQLITE[("CSDL SQLite: Vector BLOB + HD Snapshot + Metadata")]
-        MATCH_ENGINE["Biometric Matcher: Cosine Similarity & Khoảng cách Euclid"]
+    subgraph STORAGE_MATCH["🗄️ Tầng Lưu Trữ & Đối Sánh (Storage & Matching)"]
+        SQLITE[("CSDL SQLite:<br/>Vector BLOB + HD Snapshot + Metadata")]:::storageStyle
+        MATCH_ENGINE["Biometric Matcher:<br/>Cosine Similarity & Khoảng cách Euclid"]:::storageStyle
     end
 
     UI_CAM --> DECODE --> CAM_CHK
@@ -46,6 +52,12 @@ flowchart TD
     L2NORM -->|Quy trình Đăng ký| SQLITE
     L2NORM -->|Quy trình Xác thực| MATCH_ENGINE
     SQLITE -.->|Nạp hồ sơ| MATCH_ENGINE
+
+    style CLIENT fill:#f0f9ff,stroke:#0284c7,stroke-width:2px,stroke-dasharray: 5 5;
+    style INGESTION fill:#fffbeb,stroke:#d97706,stroke-width:2px,stroke-dasharray: 5 5;
+    style FQA_PAD fill:#faf5ff,stroke:#7c3aed,stroke-width:2px,stroke-dasharray: 5 5;
+    style BIOMETRICS fill:#f0fdf4,stroke:#16a34a,stroke-width:2px,stroke-dasharray: 5 5;
+    style STORAGE_MATCH fill:#fff7ed,stroke:#ea580c,stroke-width:2px,stroke-dasharray: 5 5;
 ```
 
 ---
@@ -57,44 +69,54 @@ Quy trình đăng ký khuôn mặt diễn ra qua **5 giai đoạn nghiêm ngặt
 ```mermaid
 sequenceDiagram
     autonumber
-    actor User as Người dùng (Webcam)
-    participant FE as Frontend (web/app.js)
-    participant BE as Backend API (backend/app.py)
-    participant FQA as Face Analyzer (FQA & PAD)
-    participant Model as ArcFace & MiniFASNet
-    participant DB as SQLite DB
+    actor User as 👤 Người dùng (Webcam)
+    participant FE as 💻 Frontend (web/app.js)
+    participant BE as ⚙️ Backend API (backend/app.py)
+    participant FQA as 🛡️ Face Analyzer (FQA & PAD)
+    participant Model as 🧠 ArcFace & MiniFASNet
+    participant DB as 🗄️ SQLite Database
 
-    Note over User, FE: GIAI ĐOẠN 0 & 1: CAMERA & KHUNG OVAL FQA
+    rect rgb(224, 242, 254)
+    Note over User, FE: GIAI ĐOẠN 0 & 1: CAMERA & KHUNG OVAL FQA (Xanh Biển)
     FE->>BE: POST /api/enroll/frame (Ảnh 480x600, stats)
     BE->>FQA: Phân tích MediaPipe FaceMesh & 7 trụ cột FQA
     FQA-->>BE: FaceResult (scale_ratio, oval_dist, brightness, sharpness, parts)
-    BE-->>FE: Trả về feedback (Giữ thẳng đầu, vào khung Oval, đạt 6 frames liên tiếp)
+    BE-->>FE: Phản hồi hướng dẫn (Giữ thẳng đầu, vào khung Oval, đạt 6 frames liên tiếp)
+    end
 
-    Note over User, FE: GIAI ĐOẠN 2: ACTIVE LIVENESS (QUAY ĐẦU 3D)
+    rect rgb(237, 233, 254)
+    Note over User, FE: GIAI ĐOẠN 2: ACTIVE LIVENESS (QUAY ĐẦU 3D) (Tím Nhạt)
     FE->>BE: Frame quay đầu (Góc Yaw >= 20° Trái/Phải)
     BE->>FQA: Head Pose Estimation (PnP z-depth)
     FQA-->>BE: Đạt góc quay -> Yêu cầu quay lại chính diện (Yaw <= 10°)
     BE-->>FE: Hoàn thành thử thách quay đầu
+    end
 
-    Note over User, FE: GIAI ĐOẠN 3: DYNAMIC ZOOM (TIẾN GẦN CAMERA)
+    rect rgb(254, 243, 199)
+    Note over User, FE: GIAI ĐOẠN 3: DYNAMIC ZOOM (TIẾN GẦN CAMERA) (Vàng Ấm)
     FE->>BE: Frame phóng to (Khung Oval mở rộng)
     BE->>FQA: Chiều cao khuôn mặt tăng >= 25% (face_h growth)
     BE-->>FE: Đạt cự ly cận cảnh -> Chuyển sang Flashing
+    end
 
-    Note over User, FE: GIAI ĐOẠN 4: ACTIVE OPTICAL FLASHING & PASSIVE PAD
+    rect rgb(255, 237, 213)
+    Note over User, FE: GIAI ĐOẠN 4: ACTIVE OPTICAL FLASHING & PASSIVE PAD (Cam Nhạt)
     BE->>FE: Sinh Token Thách Thức (Chuỗi màu: Đỏ -> Xanh -> Vàng)
     FE->>User: Đổi màu viền màn hình (330ms / bước màu)
     FE->>BE: Gửi frame kèm chỉ số màu phản xạ trên da mặt
     BE->>FQA: Tính hệ số tương quan Pearson r >= 0.10 & Biên độ >= 1.0
     BE->>Model: MiniFASNet v2 kiểm tra (Real Prob >= 65%)
     BE-->>FE: Thách thức quang học hợp lệ! Yêu cầu chụp HD
+    end
 
-    Note over User, FE: GIAI ĐOẠN 5: CHỤP ẢNH HD & LƯU HỒ SƠ
+    rect rgb(220, 252, 231)
+    Note over User, FE: GIAI ĐOẠN 5: CHỤP ẢNH HD & LƯU HỒ SƠ (Xanh Lá Mint)
     FE->>BE: POST /api/users/enroll (HD Snapshot 720p, Full Name)
     BE->>Model: Align 5 mốc chuẩn -> Trích xuất ArcFace 512D -> L2 Norm
     BE->>DB: Lưu User ID, Tên, Vector 512D (BLOB), Snapshot
     DB-->>BE: Ghi đĩa thành công
     BE-->>FE: Thông báo đăng ký thành công -> Mở Modal Xác thực
+    end
 ```
 
 ### Chi tiết các bước xử lý trong Luồng Đăng Ký:
@@ -116,69 +138,77 @@ Xác thực sinh trắc học được thiết kế theo tiêu chuẩn an toàn 
 
 ```mermaid
 flowchart TD
-    START(["Bắt đầu Xác thực (Nhấn nút hoặc Auto-scan)"]) --> CAPTURE["Chụp Frame Trực Tiếp từ Webcam (640x480 Canvas)"]
-    CAPTURE --> API["Gửi POST /api/verify/face (Base64 Image, Mode, Threshold)"]
+    classDef startStyle fill:#2563eb,stroke:#1d4ed8,stroke-width:2px,color:#ffffff,font-weight:bold;
+    classDef decisionStyle fill:#eff6ff,stroke:#3b82f6,stroke-width:2px,color:#1e40af,font-weight:bold;
+    classDef fqaRejectStyle fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#b45309,font-weight:bold;
+    classDef padRejectStyle fill:#fee2e2,stroke:#dc2626,stroke-width:2px,color:#991b1b,font-weight:bold;
+    classDef aiStyle fill:#f5f3ff,stroke:#7c3aed,stroke-width:2px,color:#5b21b6,font-weight:bold;
+    classDef successStyle fill:#d1fae5,stroke:#059669,stroke-width:2.5px,color:#065f46,font-weight:bold;
+    classDef mismatchStyle fill:#ffe4e6,stroke:#e11d48,stroke-width:2px,color:#9f1239,font-weight:bold;
+
+    START(["🚀 Bắt đầu Xác thực (Nhấn nút hoặc Auto-scan)"]):::startStyle --> CAPTURE["📷 Chụp Frame Trực Tiếp từ Webcam (640x480 Canvas)"]
+    CAPTURE --> API["🌐 Gửi POST /api/verify/face (Base64, Mode, Threshold)"]
 
     subgraph STEP1["BƯỚC 1: BỘ DÒ TĨNH & KIỂM ĐỊNH HIỆN DIỆN (PRESENCE CHECK)"]
-        API --> STATIC_MESH["MediaPipe FaceMesh (static_image_mode = TRUE)"]
-        STATIC_MESH --> CHK_COUNT{"Số lượng mặt phát hiện?"}
-        CHK_COUNT -->|"0 khuôn mặt"| ERR_NO_FACE["Từ chối: NO_FACE<br/>(Không phát hiện khuôn mặt)"]
-        CHK_COUNT -->|"> 1 khuôn mặt"| ERR_MULTI["Từ chối: MULTIPLE_FACES<br/>(Nhiều hơn 1 người trước camera)"]
-        CHK_COUNT -->|"1 khuôn mặt"| CHK_AREA{"Diện tích mặt >= 2.5% khung hình?"}
-        CHK_AREA -->|"Không (Vết nhiễu/ảnh xa)"| ERR_TINY["Từ chối: NO_FACE<br/>(Loại bỏ nhiễu hậu cảnh)"]
+        API --> STATIC_MESH["MediaPipe FaceMesh<br/>(static_image_mode = TRUE)"]:::aiStyle
+        STATIC_MESH --> CHK_COUNT{"Số lượng mặt phát hiện?"}:::decisionStyle
+        CHK_COUNT -->|"0 khuôn mặt"| ERR_NO_FACE["❌ Từ chối: NO_FACE<br/>(Không phát hiện khuôn mặt)"]:::fqaRejectStyle
+        CHK_COUNT -->|"> 1 khuôn mặt"| ERR_MULTI["❌ Từ chối: MULTIPLE_FACES<br/>(Nhiều người trước camera)"]:::fqaRejectStyle
+        CHK_COUNT -->|"Đúng 1 mặt"| CHK_AREA{"Diện tích mặt >= 2.5% khung hình?"}:::decisionStyle
+        CHK_AREA -->|"Không (Vết nhiễu/ảnh xa)"| ERR_TINY["❌ Từ chối: NO_FACE<br/>(Loại bỏ nhiễu hậu cảnh)"]:::fqaRejectStyle
     end
 
     subgraph STEP2["BƯỚC 2: HÀNG RÀO KIỂM SOÁT FQA 7 TIÊU CHÍ (STRICT FQA)"]
-        CHK_AREA -->|"Đạt diện tích"| FQA_INV{"Mặt bị lộn ngược?"}
-        FQA_INV -->|"Có"| ERR_POSE["Từ chối: INVALID_POSE"]
-        FQA_INV -->|"Không"| FQA_OCC{"Bị che khuất?<br/>(Tay, Khẩu trang, Kính râm, Mất mắt/mũi)"}
-        FQA_OCC -->|"Có"| ERR_OCC["Từ chối: FACE_OCCLUDED"]
-        FQA_OCC -->|"Không"| FQA_OVAL{"Lọt khung Oval & Cự ly?<br/>(Oval dist <= 1.30, Scale 0.30 - 0.95)"}
-        FQA_OVAL -->|"Không"| ERR_OVAL["Từ chối: INVALID_FRAMING"]
-        FQA_OVAL -->|"Đạt"| FQA_HEAD{"Nhìn thẳng?<br/>(|Yaw| <= 30°, |Pitch| <= 25°)"}
-        FQA_HEAD -->|"Nghiêng quá mức"| ERR_HEAD["Từ chối: INVALID_POSE"]
-        FQA_HEAD -->|"Thẳng"| FQA_SHARP{"Độ nét Sharpness >= 15.0?"}
-        FQA_SHARP -->|"Mờ / Rung lắc"| ERR_BLUR["Từ chối: IMAGE_BLURRY"]
-        FQA_SHARP -->|"Nét"| FQA_LIGHT{"Độ sáng trong khoảng 40 - 210?"}
-        FQA_LIGHT -->|"Quá tối hoặc lóa"| ERR_LIGHT["Từ chối: POOR_LIGHTING"]
+        CHK_AREA -->|"Đạt diện tích"| FQA_INV{"Mặt bị lộn ngược?"}:::decisionStyle
+        FQA_INV -->|"Có"| ERR_POSE["⚠️ Từ chối: INVALID_POSE"]:::fqaRejectStyle
+        FQA_INV -->|"Không"| FQA_OCC{"Bị che khuất?<br/>(Khẩu trang, Kính râm, Tay, Mất mắt/mũi)"}:::decisionStyle
+        FQA_OCC -->|"Có"| ERR_OCC["⚠️ Từ chối: FACE_OCCLUDED"]:::fqaRejectStyle
+        FQA_OCC -->|"Không"| FQA_OVAL{"Lọt khung Oval & Cự ly?<br/>(Oval dist <= 1.30, Scale 0.30 - 0.95)"}:::decisionStyle
+        FQA_OVAL -->|"Lệch khung"| ERR_OVAL["⚠️ Từ chối: INVALID_FRAMING"]:::fqaRejectStyle
+        FQA_OVAL -->|"Đạt"| FQA_HEAD{"Nhìn thẳng?<br/>(|Yaw| <= 30°, |Pitch| <= 25°)"}:::decisionStyle
+        FQA_HEAD -->|"Nghiêng quá mức"| ERR_HEAD["⚠️ Từ chối: INVALID_POSE"]:::fqaRejectStyle
+        FQA_HEAD -->|"Thẳng"| FQA_SHARP{"Độ nét Sharpness >= 15.0?"}:::decisionStyle
+        FQA_SHARP -->|"Mờ / Rung lắc"| ERR_BLUR["⚠️ Từ chối: IMAGE_BLURRY"]:::fqaRejectStyle
+        FQA_SHARP -->|"Nét"| FQA_LIGHT{"Độ sáng trong khoảng 40 - 210?"}:::decisionStyle
+        FQA_LIGHT -->|"Quá tối hoặc chói"| ERR_LIGHT["⚠️ Từ chối: POOR_LIGHTING"]:::fqaRejectStyle
     end
 
     subgraph STEP3["BƯỚC 3: PHÒNG THỦ CHỐNG GIẢ MẠO PASSIVE PAD"]
-        FQA_LIGHT -->|"Đạt ánh sáng"| PAD_RUN["Chạy MiniFASNet v2 (Khớp BBox)"]
-        PAD_RUN --> PAD_CHK{"is_real == True?<br/>(Real prob >= 65%)"}
-        PAD_CHK -->|"Giả mạo (In / Video)"| ERR_PAD["Từ chối: SPOOF_REJECTED<br/>(Cảnh báo gian lận PAD)"]
+        FQA_LIGHT -->|"Đạt ánh sáng"| PAD_RUN["Chạy MiniFASNet v2 (Khớp BBox)"]:::aiStyle
+        PAD_RUN --> PAD_CHK{"is_real == True?<br/>(Real prob >= 65%)"}:::decisionStyle
+        PAD_CHK -->|"Giả mạo (In / Video)"| ERR_PAD["🚨 Từ chối: SPOOF_REJECTED<br/>(Cảnh báo gian lận PAD)"]:::padRejectStyle
     end
 
     subgraph STEP4["BƯỚC 4: TRÍCH XUẤT ĐẶC TRƯNG ARCFACE"]
-        PAD_CHK -->|"Người thật"| EXTRACT_KPS["Lấy 5 mốc chuẩn ArcFace [Mắt T, Mắt P, Mũi, Mép T, Mép P]"]
-        EXTRACT_KPS --> WARP_AFFINE["Biến đổi Affine tương tự (norm_crop) -> Ảnh 112x112"]
-        WARP_AFFINE --> RUN_ARCFACE["Suy luận ResNet-50 ArcFace (ONNX Runtime)"]
-        RUN_ARCFACE --> NORM_512["Chuẩn hóa L2 Norm: ||e_query|| = 1.0"]
+        PAD_CHK -->|"Người thật"| EXTRACT_KPS["Lấy 5 mốc chuẩn ArcFace<br/>[Mắt T, Mắt P, Mũi, Mép T, Mép P]"]:::aiStyle
+        EXTRACT_KPS --> WARP_AFFINE["Biến đổi Affine tương tự (norm_crop) -> 112x112"]:::aiStyle
+        WARP_AFFINE --> RUN_ARCFACE["Suy luận ResNet-50 ArcFace (ONNX Runtime)"]:::aiStyle
+        RUN_ARCFACE --> NORM_512["Chuẩn hóa L2 Norm: ||e_query|| = 1.0"]:::aiStyle
     end
 
     subgraph STEP5["BƯỚC 5: ĐỐI SÁNH SINH TRẮC HỌC (BIOMETRIC MATCHING)"]
-        NORM_512 --> CHECK_MODE{"Chế độ Đối Sánh?"}
+        NORM_512 --> CHECK_MODE{"Chế độ Đối Sánh?"}:::decisionStyle
 
         CHECK_MODE -->|"1:1 (So khớp đích danh)"| MATCH_11["Lấy Vector của Target User ID trong CSDL"]
         MATCH_11 --> CALC_11["Tính Cosine Sim = e_query • e_target<br/>Khoảng cách Euclid d = sqrt(2(1 - Sim))"]
-        CALC_11 --> DECIDE_11{"Cosine Sim >= Threshold (0.55)?"}
-        DECIDE_11 -->|"Đạt"| RES_11_PASS["Xác thực Thành Công (MATCH_SUCCESS)"]
-        DECIDE_11 -->|"Không đạt"| RES_11_FAIL["Không Khớp Danh Tính (MISMATCH)"]
+        CALC_11 --> DECIDE_11{"Cosine Sim >= Threshold (0.55)?"}:::decisionStyle
+        DECIDE_11 -->|"Đạt"| RES_11_PASS["✅ Xác thực Thành Công<br/>(MATCH_SUCCESS)"]:::successStyle
+        DECIDE_11 -->|"Không đạt"| RES_11_FAIL["❌ Không Khớp Danh Tính<br/>(MISMATCH)"]:::mismatchStyle
 
         CHECK_MODE -->|"1:N (Nhận diện toàn CSDL)"| LOAD_ALL["Quét toàn bộ Users trong SQLite"]
         LOAD_ALL --> CALC_ALL["Tính Dot Product e_query • e_i với mọi User"]
         CALC_ALL --> SORT_TOP["Sắp xếp giảm dần -> Lấy Top-1 Candidate"]
-        SORT_TOP --> DECIDE_1N{"Top-1 Sim >= Threshold (0.55)?"}
-        DECIDE_1N -->|"Đạt"| RES_1N_PASS["Khớp Danh Tính Top-1 (MATCH_SUCCESS)"]
-        DECIDE_1N -->|"Không đạt"| RES_1N_FAIL["Không Khớp Danh Tính Nào (MISMATCH)"]
+        SORT_TOP --> DECIDE_1N{"Top-1 Sim >= Threshold (0.55)?"}:::decisionStyle
+        DECIDE_1N -->|"Đạt"| RES_1N_PASS["✅ Khớp Danh Tính Top-1<br/>(MATCH_SUCCESS)"]:::successStyle
+        DECIDE_1N -->|"Không đạt"| RES_1N_FAIL["❌ Không Khớp Danh Tính Nào<br/>(MISMATCH)"]:::mismatchStyle
     end
 
     subgraph STEP6["BƯỚC 6: PHẢN HỒI GIAO DIỆN KHÁCH HÀNG (UI RENDERING)"]
-        RES_11_PASS --> UI_PASS["Hiển thị Card User xanh, phát âm thanh 'Ting', Leaderboard xanh"]
+        RES_11_PASS --> UI_PASS["🟢 Hiển thị Card User xanh, phát âm thanh 'Ting', Leaderboard xanh"]:::successStyle
         RES_1N_PASS --> UI_PASS
-        RES_11_FAIL --> UI_FAIL["Hiển thị Banner Đỏ 'Không trùng khớp', Leaderboard xám trung tính"]
+        RES_11_FAIL --> UI_FAIL["🔴 Hiển thị Banner Đỏ 'Không trùng khớp', Leaderboard xám trung tính"]:::mismatchStyle
         RES_1N_FAIL --> UI_FAIL
-        ERR_NO_FACE --> UI_WARN["Hiển thị Banner Vàng/Cam cảnh báo, ẨN HOÀN TOÀN User Card & Leaderboard"]
+        ERR_NO_FACE --> UI_WARN["🟡 Hiển thị Banner Cảnh Báo, ẨN HOÀN TOÀN User Card & Leaderboard"]:::fqaRejectStyle
         ERR_MULTI --> UI_WARN
         ERR_TINY --> UI_WARN
         ERR_POSE --> UI_WARN
@@ -187,8 +217,15 @@ flowchart TD
         ERR_HEAD --> UI_WARN
         ERR_BLUR --> UI_WARN
         ERR_LIGHT --> UI_WARN
-        ERR_PAD --> UI_DANGER["Hiển thị Banner Báo Động Đỏ PAD Attack, Ẩn User Card"]
+        ERR_PAD --> UI_DANGER["🚨 Hiển thị Banner Báo Động Đỏ PAD Attack, Ẩn User Card"]:::padRejectStyle
     end
+
+    style STEP1 fill:#f8fafc,stroke:#94a3b8,stroke-width:1.5px;
+    style STEP2 fill:#f8fafc,stroke:#94a3b8,stroke-width:1.5px;
+    style STEP3 fill:#f8fafc,stroke:#94a3b8,stroke-width:1.5px;
+    style STEP4 fill:#f8fafc,stroke:#94a3b8,stroke-width:1.5px;
+    style STEP5 fill:#f8fafc,stroke:#94a3b8,stroke-width:1.5px;
+    style STEP6 fill:#f8fafc,stroke:#94a3b8,stroke-width:1.5px;
 ```
 
 ---

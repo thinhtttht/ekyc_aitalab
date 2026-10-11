@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart-eKYC Architecture & Pipeline Visualizer</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap');
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+    code, pre {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .glow-cyan { box-shadow: 0 0 25px -5px rgba(6, 182, 212, 0.35); }
+    .glow-purple { box-shadow: 0 0 25px -5px rgba(168, 85, 247, 0.35); }
+    .glow-emerald { box-shadow: 0 0 25px -5px rgba(16, 185, 129, 0.35); }
+    .glow-amber { box-shadow: 0 0 25px -5px rgba(245, 158, 11, 0.35); }
+    .glow-rose { box-shadow: 0 0 25px -5px rgba(244, 63, 94, 0.35); }
+    
+    .glass-card {
+      background: rgba(15, 23, 42, 0.75);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .flow-line {
+      position: relative;
+    }
+    .flow-line::after {
+      content: '';
+      position: absolute;
+      bottom: -16px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 2px;
+      height: 16px;
+      background: linear-gradient(to bottom, #38bdf8, #818cf8);
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen p-4 md:p-8 antialiased selection:bg-cyan-500 selection:text-white">
+
+  <!-- TOP HEADER -->
+  <header class="max-w-7xl mx-auto mb-8 text-center md:text-left flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-slate-800 pb-6">
+    <div>
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-xs font-semibold uppercase tracking-wider mb-2">
+        <span class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
+        Hệ Thống eKYC Sinh Trắc Học Đa Tầng
+      </div>
+      <h1 class="text-3xl md:text-4xl font-extrabold tracking-tight bg-gradient-to-r from-cyan-400 via-sky-300 to-indigo-400 bg-clip-text text-transparent">
+        Kiến Trúc Pipeline Đăng Ký & Xác Thực eKYC
+      </h1>
+      <p class="text-slate-400 text-sm md:text-base mt-1">
+        Mô hình hóa trực quan luồng xử lý FQA 7 trụ cột, Liveness 3D, Active Color Flashing & ArcFace 512D
+      </p>
+    </div>
+
+    <!-- TAB SWITCHER BUTTONS -->
+    <div class="flex flex-wrap justify-center gap-2 bg-slate-900/90 p-1.5 rounded-xl border border-slate-800">
+      <button onclick="switchTab('tabOverview')" id="btn-tabOverview" class="tab-btn px-4 py-2 rounded-lg text-xs md:text-sm font-semibold transition-all bg-cyan-500 text-slate-950 shadow-md">
+        🏛️ Kiến Trúc Đa Tầng
+      </button>
+      <button onclick="switchTab('tabEnroll')" id="btn-tabEnroll" class="tab-btn px-4 py-2 rounded-lg text-xs md:text-sm font-semibold transition-all text-slate-300 hover:text-white hover:bg-slate-800">
+        📝 Pipeline Đăng Ký (5 Stages)
+      </button>
+      <button onclick="switchTab('tabVerify')" id="btn-tabVerify" class="tab-btn px-4 py-2 rounded-lg text-xs md:text-sm font-semibold transition-all text-slate-300 hover:text-white hover:bg-slate-800">
+        🛡️ Pipeline Xác Thực (Zero-Trust)
+      </button>
+      <button onclick="switchTab('tabSecurity')" id="btn-tabSecurity" class="tab-btn px-4 py-2 rounded-lg text-xs md:text-sm font-semibold transition-all text-slate-300 hover:text-white hover:bg-slate-800">
+        ⚔️ Phòng Thủ & Toán Học
+      </button>
+    </div>
+  </header>
+
+  <!-- MAIN WRAPPER -->
+  <main class="max-w-7xl mx-auto">
+
+    <!-- ======================================================================= -->
+    <!-- TAB 1: TỔNG QUAN KIẾN TRÚC ĐA TẦNG -->
+    <!-- ======================================================================= -->
+    <section id="tabOverview" class="tab-panel space-y-6">
+      <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+        
+        <!-- TẦNG 1: FRONTEND -->
+        <div class="glass-card rounded-2xl p-5 border-cyan-500/30 hover:border-cyan-400 transition-all glow-cyan flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-xs font-bold uppercase tracking-wider text-cyan-400">Tầng 1 · Client</span>
+              <span class="text-xl">📱</span>
+            </div>
+            <h3 class="text-lg font-bold text-white mb-2">Web Frontend</h3>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              HTML5 Canvas, getUserMedia, render Khung Oval phản hồi màu sắc thời gian thực và màn phủ Flashing nháy màu.
+            </p>
+          </div>
+          <div class="mt-4 pt-3 border-t border-slate-800/80">
+            <span class="text-[11px] font-mono text-cyan-300 bg-cyan-950/60 px-2 py-1 rounded border border-cyan-800/50">web/app.js</span>
+          </div>
+        </div>
+
+        <!-- TẦNG 2: INGESTION -->
+        <div class="glass-card rounded-2xl p-5 border-amber-500/30 hover:border-amber-400 transition-all glow-amber flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-xs font-bold uppercase tracking-wider text-amber-400">Tầng 2 · Ingestion</span>
+              <span class="text-xl">⚡</span>
+            </div>
+            <h3 class="text-lg font-bold text-white mb-2">Camera & Decode</h3>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              FastAPI endpoint giải mã Base64 -> BGR OpenCV, kiểm tra FPS &ge; 25, độ sáng khung hình, nhiễu Immerk&aelig;r & treo camera.
+            </p>
+          </div>
+          <div class="mt-4 pt-3 border-t border-slate-800/80">
+            <span class="text-[11px] font-mono text-amber-300 bg-amber-950/60 px-2 py-1 rounded border border-amber-800/50">camera_quality.py</span>
+          </div>
+        </div>
+
+        <!-- TẦNG 3: FQA & PAD -->
+        <div class="glass-card rounded-2xl p-5 border-purple-500/30 hover:border-purple-400 transition-all glow-purple flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-xs font-bold uppercase tracking-wider text-purple-400">Tầng 3 · FQA & PAD</span>
+              <span class="text-xl">🛡️</span>
+            </div>
+            <h3 class="text-lg font-bold text-white mb-2">FaceMesh & Liveness</h3>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              MediaPipe 468 landmarks, FQA 7 trụ cột, Quay đầu 3D &ge; 20&deg;, Zoom cận cảnh &ge; 25%, và nháy màu da Pearson r &ge; 0.10.
+            </p>
+          </div>
+          <div class="mt-4 pt-3 border-t border-slate-800/80">
+            <span class="text-[11px] font-mono text-purple-300 bg-purple-950/60 px-2 py-1 rounded border border-purple-800/50">face_analyzer.py</span>
+          </div>
+        </div>
+
+        <!-- TẦNG 4: DEEP BIOMETRICS -->
+        <div class="glass-card rounded-2xl p-5 border-emerald-500/30 hover:border-emerald-400 transition-all glow-emerald flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-xs font-bold uppercase tracking-wider text-emerald-400">Tầng 4 · AI Backbone</span>
+              <span class="text-xl">🧠</span>
+            </div>
+            <h3 class="text-lg font-bold text-white mb-2">ArcFace & MiniFAS</h3>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              MiniFASNet v2 chống giả mạo ảnh in/video, Face Alignment 5 mốc chuẩn và ResNet-50 trích xuất vector 512D chuẩn hóa L2 Norm = 1.0.
+            </p>
+          </div>
+          <div class="mt-4 pt-3 border-t border-slate-800/80">
+            <span class="text-[11px] font-mono text-emerald-300 bg-emerald-950/60 px-2 py-1 rounded border border-emerald-800/50">feature_extractor.py</span>
+          </div>
+        </div>
+
+        <!-- TẦNG 5: STORAGE & MATCHING -->
+        <div class="glass-card rounded-2xl p-5 border-rose-500/30 hover:border-rose-400 transition-all glow-rose flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-xs font-bold uppercase tracking-wider text-rose-400">Tầng 5 · Storage</span>
+              <span class="text-xl">🗄️</span>
+            </div>
+            <h3 class="text-lg font-bold text-white mb-2">SQLite & Matcher</h3>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              Cơ sở dữ liệu lưu BLOB nhị phân float32, snapshot HD; đối sánh Cosine Similarity 1:1 và quét định danh 1:N tốc độ &lt; 20ms.
+            </p>
+          </div>
+          <div class="mt-4 pt-3 border-t border-slate-800/80">
+            <span class="text-[11px] font-mono text-rose-300 bg-rose-950/60 px-2 py-1 rounded border border-rose-800/50">database.py</span>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- SƠ ĐỒ DÒNG DỮ LIỆU ĐA TẦNG -->
+      <div class="glass-card rounded-2xl p-6 border-slate-800">
+        <h4 class="text-base font-bold text-white mb-4 flex items-center gap-2">
+          <span class="text-cyan-400">▶</span> Luồng Dữ Liệu Xuyên Suốt Hệ Thống (Data Ingestion & Inference Flow)
+        </h4>
+        <div class="flex flex-col md:flex-row items-center justify-between gap-3 text-xs">
+          <div class="flex-1 bg-slate-900 p-3 rounded-xl border border-slate-800 text-center">
+            <span class="text-slate-400">Đầu vào:</span>
+            <div class="font-bold text-cyan-400 mt-1">Frame JPEG 480x600 (Canvas)</div>
+          </div>
+          <span class="text-slate-600 font-bold hidden md:inline">&rarr;</span>
+          <div class="flex-1 bg-slate-900 p-3 rounded-xl border border-slate-800 text-center">
+            <span class="text-slate-400">OpenCV Decode:</span>
+            <div class="font-bold text-amber-400 mt-1">Ma trận uint8 BGR (480, 600, 3)</div>
+          </div>
+          <span class="text-slate-600 font-bold hidden md:inline">&rarr;</span>
+          <div class="flex-1 bg-slate-900 p-3 rounded-xl border border-slate-800 text-center">
+            <span class="text-slate-400">MediaPipe Mesh:</span>
+            <div class="font-bold text-purple-400 mt-1">468 Tọa độ 3D (x, y, z)</div>
+          </div>
+          <span class="text-slate-600 font-bold hidden md:inline">&rarr;</span>
+          <div class="flex-1 bg-slate-900 p-3 rounded-xl border border-slate-800 text-center">
+            <span class="text-slate-400">Affine Warp 112x112:</span>
+            <div class="font-bold text-emerald-400 mt-1">Ảnh mặt đã căn 5 mốc chuẩn</div>
+          </div>
+          <span class="text-slate-600 font-bold hidden md:inline">&rarr;</span>
+          <div class="flex-1 bg-slate-900 p-3 rounded-xl border border-slate-800 text-center">
+            <span class="text-slate-400">ArcFace ONNX:</span>
+            <div class="font-bold text-rose-400 mt-1">Vector 512D (L2 Norm = 1.0)</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================================================================= -->
+    <!-- TAB 2: PIPELINE ĐĂNG KÝ (ENROLLMENT 5 STAGES) -->
+    <!-- ======================================================================= -->
+    <section id="tabEnroll" class="tab-panel hidden space-y-6">
+      <div class="glass-card rounded-2xl p-6 border-slate-800">
+        <h3 class="text-xl font-bold text-white mb-2 flex items-center gap-2">
+          <span>📝</span> 5 Giai Đoạn Đăng Ký Chống Gian Lận (Enrollment FSM State Machine)
+        </h3>
+        <p class="text-slate-400 text-sm mb-6">
+          Người dùng phải vượt qua tuần tự 5 cửa ải bảo mật sinh trắc học để đảm bảo 100% người thật hiện diện trước camera:
+        </p>
+
+        <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+          
+          <!-- STAGE 1: KHUNG OVAL & FQA -->
+          <div class="bg-slate-900/90 border border-sky-500/30 rounded-xl p-4 flex flex-col justify-between hover:border-sky-400 transition-all">
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <span class="px-2 py-0.5 rounded bg-sky-500/20 text-sky-400 font-bold text-[11px]">GIAI ĐOẠN 1</span>
+                <span class="text-sm">🎯</span>
+              </div>
+              <h4 class="font-bold text-white text-sm mb-2">Khung Oval & FQA</h4>
+              <ul class="text-xs text-slate-300 space-y-1.5 list-disc list-inside">
+                <li>Tỷ lệ mặt/oval: 0.40 - 0.85</li>
+                <li>Lọt elip: d &le; 1.0</li>
+                <li>Nhìn thẳng: |Yaw| &le; 12&deg;</li>
+                <li>Độ nét: Var &ge; 15.0</li>
+                <li>Độ sáng: 40 - 210</li>
+              </ul>
+            </div>
+            <div class="mt-4 pt-2 border-t border-slate-800 text-[11px] text-sky-400 font-semibold">
+              ✓ Đạt 6 frames liên tiếp
+            </div>
+          </div>
+
+          <!-- STAGE 2: ACTIVE 3D TURN -->
+          <div class="bg-slate-900/90 border border-purple-500/30 rounded-xl p-4 flex flex-col justify-between hover:border-purple-400 transition-all">
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <span class="px-2 py-0.5 rounded bg-purple-500/20 text-purple-400 font-bold text-[11px]">GIAI ĐOẠN 2</span>
+                <span class="text-sm">🔄</span>
+              </div>
+              <h4 class="font-bold text-white text-sm mb-2">Quay Đầu 3D</h4>
+              <ul class="text-xs text-slate-300 space-y-1.5 list-disc list-inside">
+                <li>Ước lượng tư thế solvePnP</li>
+                <li>Quay Trái/Phải: |Yaw| &ge; 20&deg;</li>
+                <li>Giữ 3 frame khi quay</li>
+                <li>Quay về chính diện: |Yaw| &le; 10&deg;</li>
+                <li>Chống ảnh in 2D cố định</li>
+              </ul>
+            </div>
+            <div class="mt-4 pt-2 border-t border-slate-800 text-[11px] text-purple-400 font-semibold">
+              ✓ Hoàn thành quay đầu
+            </div>
+          </div>
+
+          <!-- STAGE 3: DYNAMIC ZOOM -->
+          <div class="bg-slate-900/90 border border-amber-500/30 rounded-xl p-4 flex flex-col justify-between hover:border-amber-400 transition-all">
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <span class="px-2 py-0.5 rounded bg-amber-500/20 text-amber-400 font-bold text-[11px]">GIAI ĐOẠN 3</span>
+                <span class="text-sm">🔍</span>
+              </div>
+              <h4 class="font-bold text-white text-sm mb-2">Phóng To Cận Cảnh</h4>
+              <ul class="text-xs text-slate-300 space-y-1.5 list-disc list-inside">
+                <li>Oval mở rộng rx=0.43, ry=0.46</li>
+                <li>Người dùng tiến gần ống kính</li>
+                <li>Chiều cao mặt tăng &ge; 25%</li>
+                <li>Kiểm tra độ sâu hình học 3D</li>
+                <li>Chống video replay màn hình</li>
+              </ul>
+            </div>
+            <div class="mt-4 pt-2 border-t border-slate-800 text-[11px] text-amber-400 font-semibold">
+              ✓ Đạt cự ly cận cảnh
+            </div>
+          </div>
+
+          <!-- STAGE 4: COLOR FLASHING -->
+          <div class="bg-slate-900/90 border border-rose-500/30 rounded-xl p-4 flex flex-col justify-between hover:border-rose-400 transition-all">
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <span class="px-2 py-0.5 rounded bg-rose-500/20 text-rose-400 font-bold text-[11px]">GIAI ĐOẠN 4</span>
+                <span class="text-sm">🌈</span>
+              </div>
+              <h4 class="font-bold text-white text-sm mb-2">Optical Flashing</h4>
+              <ul class="text-xs text-slate-300 space-y-1.5 list-disc list-inside">
+                <li>Chiếu chuỗi màu ngẫu nhiên</li>
+                <li>330ms mỗi bước màu</li>
+                <li>Tương quan Pearson r &ge; 0.10</li>
+                <li>Biên độ phản xạ &ge; 1.0</li>
+                <li>MiniFASNet Real Prob &ge; 65%</li>
+              </ul>
+            </div>
+            <div class="mt-4 pt-2 border-t border-slate-800 text-[11px] text-rose-400 font-semibold">
+              ✓ Xác thực quang học đạt
+            </div>
+          </div>
+
+          <!-- STAGE 5: SNAPSHOT & ENROLL -->
+          <div class="bg-slate-900/90 border border-emerald-500/30 rounded-xl p-4 flex flex-col justify-between hover:border-emerald-400 transition-all">
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <span class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-bold text-[11px]">GIAI ĐOẠN 5</span>
+                <span class="text-sm">💾</span>
+              </div>
+              <h4 class="font-bold text-white text-sm mb-2">Chụp HD & Lưu Trữ</h4>
+              <ul class="text-xs text-slate-300 space-y-1.5 list-disc list-inside">
+                <li>Chụp HD Snapshot 720p</li>
+                <li>Warp Affine 5 mốc -> 112x112</li>
+                <li>InsightFace ResNet-50 512D</li>
+                <li>Chuẩn hóa L2 Norm: ||e|| = 1.0</li>
+                <li>Lưu CSDL SQLite (BLOB)</li>
+              </ul>
+            </div>
+            <div class="mt-4 pt-2 border-t border-slate-800 text-[11px] text-emerald-400 font-semibold">
+              ✓ Sinh User ID USR-XXXXX
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================================================================= -->
+    <!-- TAB 3: PIPELINE XÁC THỰC (VERIFICATION ZERO-TRUST) -->
+    <!-- ======================================================================= -->
+    <section id="tabVerify" class="tab-panel hidden space-y-6">
+      <div class="glass-card rounded-2xl p-6 border-slate-800">
+        <h3 class="text-xl font-bold text-white mb-2 flex items-center gap-2">
+          <span>🛡️</span> Luồng Xác Thực Sinh Trắc Học Zero-Trust (Verification Flow)
+        </h3>
+        <p class="text-slate-400 text-sm mb-6">
+          Chạy bộ dò tĩnh độc lập từng frame (<code class="text-cyan-400">static_image_mode = True</code>) để xóa bỏ hoàn toàn hiện tượng nhớ vết (Ghost Tracking) khi người dùng không có mặt:
+        </p>
+
+        <!-- FLOW BẰNG CÁC CARD MÀU SẮC -->
+        <div class="space-y-4">
+          
+          <!-- BƯỚC 1 -->
+          <div class="flex items-start gap-4 p-4 rounded-xl bg-slate-900 border border-slate-800">
+            <div class="w-8 h-8 rounded-full bg-cyan-500/20 text-cyan-400 flex items-center justify-center font-bold text-xs shrink-0">1</div>
+            <div class="flex-1">
+              <div class="flex items-center justify-between">
+                <h4 class="font-bold text-white text-sm">Chụp Frame & Bắt Mặt Độc Lập (Static Face Detection)</h4>
+                <span class="text-xs px-2 py-0.5 rounded bg-cyan-950 text-cyan-400 border border-cyan-800/60 font-mono">FaceMesh (static=True)</span>
+              </div>
+              <p class="text-xs text-slate-300 mt-1">
+                Không lưu vết từ frame trước. Nếu <code class="text-amber-400">face_count == 0</code> hoặc <code class="text-amber-400">area &lt; 2.5%</code> &rarr; Từ chối ngay lập tức với mã <strong class="text-amber-300">NO_FACE</strong>.
+              </p>
+            </div>
+          </div>
+
+          <!-- BƯỚC 2 -->
+          <div class="flex items-start gap-4 p-4 rounded-xl bg-slate-900 border border-slate-800">
+            <div class="w-8 h-8 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold text-xs shrink-0">2</div>
+            <div class="flex-1">
+              <div class="flex items-center justify-between">
+                <h4 class="font-bold text-white text-sm">Bộ Lọc FQA 7 Tiêu Chí Nghiêm Ngặt</h4>
+                <span class="text-xs px-2 py-0.5 rounded bg-amber-950 text-amber-400 border border-amber-800/60 font-mono">FQA Firewall</span>
+              </div>
+              <div class="grid grid-cols-2 md:grid-cols-4 gap-2 mt-2 text-xs">
+                <div class="bg-slate-950 p-2 rounded border border-slate-800"><span class="text-slate-400">Ngũ quan:</span> <strong class="text-slate-200">Mắt, mũi rõ</strong></div>
+                <div class="bg-slate-950 p-2 rounded border border-slate-800"><span class="text-slate-400">Che khuất:</span> <strong class="text-slate-200">Không khẩu trang/kính</strong></div>
+                <div class="bg-slate-950 p-2 rounded border border-slate-800"><span class="text-slate-400">Khung Oval:</span> <strong class="text-slate-200">Oval dist &le; 1.30</strong></div>
+                <div class="bg-slate-950 p-2 rounded border border-slate-800"><span class="text-slate-400">Độ nét:</span> <strong class="text-slate-200">Laplacian &ge; 15.0</strong></div>
+              </div>
+              <p class="text-xs text-slate-400 mt-2">Vi phạm bất kỳ tiêu chí nào &rarr; Từ chối với các mã: <code class="text-amber-400">FACE_OCCLUDED</code>, <code class="text-amber-400">INVALID_FRAMING</code>, <code class="text-amber-400">IMAGE_BLURRY</code>.</p>
+            </div>
+          </div>
+
+          <!-- BƯỚC 3 -->
+          <div class="flex items-start gap-4 p-4 rounded-xl bg-slate-900 border border-slate-800">
+            <div class="w-8 h-8 rounded-full bg-rose-500/20 text-rose-400 flex items-center justify-center font-bold text-xs shrink-0">3</div>
+            <div class="flex-1">
+              <div class="flex items-center justify-between">
+                <h4 class="font-bold text-white text-sm">Phòng Thủ Chống Giả Mạo Passive PAD</h4>
+                <span class="text-xs px-2 py-0.5 rounded bg-rose-950 text-rose-400 border border-rose-800/60 font-mono">MiniFASNet v2</span>
+              </div>
+              <p class="text-xs text-slate-300 mt-1">
+                Phân tích tần số không gian (Fourier Spectrum) và kết cấu vi mô trên BBox khuôn mặt. Nếu là ảnh in 2D hoặc màn hình phát lại &rarr; Từ chối với mã <strong class="text-rose-400">SPOOF_REJECTED</strong>.
+              </p>
+            </div>
+          </div>
+
+          <!-- BƯỚC 4 -->
+          <div class="flex items-start gap-4 p-4 rounded-xl bg-slate-900 border border-slate-800">
+            <div class="w-8 h-8 rounded-full bg-purple-500/20 text-purple-400 flex items-center justify-center font-bold text-xs shrink-0">4</div>
+            <div class="flex-1">
+              <div class="flex items-center justify-between">
+                <h4 class="font-bold text-white text-sm">Trích Xuất ArcFace 512 Chiều</h4>
+                <span class="text-xs px-2 py-0.5 rounded bg-purple-950 text-purple-400 border border-purple-800/60 font-mono">ResNet-50 112x112</span>
+              </div>
+              <p class="text-xs text-slate-300 mt-1">
+                Căn chỉnh 5 mốc chuẩn (2 mắt, chóp mũi, 2 khóe miệng) bằng Affine transform. Suy luận qua mạng nơ-ron sâu ArcFace, chuẩn hóa L2 Norm: <code class="text-purple-300">||e_query|| = 1.0</code>.
+              </p>
+            </div>
+          </div>
+
+          <!-- BƯỚC 5 -->
+          <div class="flex items-start gap-4 p-4 rounded-xl bg-slate-900 border border-slate-800">
+            <div class="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-xs shrink-0">5</div>
+            <div class="flex-1">
+              <div class="flex items-center justify-between">
+                <h4 class="font-bold text-white text-sm">Đối Sánh Sinh Trắc Học (Cosine Similarity &ge; 0.55)</h4>
+                <span class="text-xs px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800/60 font-mono">1:1 & 1:N Engine</span>
+              </div>
+              <p class="text-xs text-slate-300 mt-1">
+                Tính tích vô hướng <code class="text-emerald-400">S = e_query &bull; e_target</code>. Nếu <code class="text-emerald-400">S &ge; 0.55</code> &rarr; <strong class="text-emerald-300">MATCH_SUCCESS</strong> (Phát âm thanh Ting, Card xanh). Nếu <code class="text-rose-400">S &lt; 0.55</code> &rarr; <strong class="text-rose-300">MISMATCH</strong> (Thanh xám dưới ngưỡng).
+              </p>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================================================================= -->
+    <!-- TAB 4: MA TRẬN PHÒNG THỦ & TOÁN HỌC -->
+    <!-- ======================================================================= -->
+    <section id="tabSecurity" class="tab-panel hidden space-y-6">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        
+        <!-- CARD TOÁN HỌC -->
+        <div class="glass-card rounded-2xl p-6 border-slate-800">
+          <h3 class="text-lg font-bold text-white mb-3 flex items-center gap-2">
+            <span>📐</span> Nền Tảng Toán Học Sinh Trắc Học
+          </h3>
+          <div class="space-y-4 text-xs text-slate-300">
+            <div class="bg-slate-900 p-3 rounded-xl border border-slate-800">
+              <span class="text-slate-400 font-semibold block mb-1">1. Mặt cầu siêu chiều Unit Hypersphere (S⁵¹¹):</span>
+              <code class="text-cyan-400 text-sm font-bold">||e||₂ = sqrt(&Sigma; eᵢ²) = 1.0</code>
+              <p class="text-slate-400 mt-1">Mọi vector khuôn mặt đều được chuẩn hóa về độ dài bằng 1, triệt tiêu ảnh hưởng của cường độ sáng.</p>
+            </div>
+
+            <div class="bg-slate-900 p-3 rounded-xl border border-slate-800">
+              <span class="text-slate-400 font-semibold block mb-1">2. Quan hệ Cosine Similarity & Khoảng cách Euclid:</span>
+              <code class="text-emerald-400 text-sm font-bold">D_e = sqrt(2 * (1 - S_c))</code>
+              <p class="text-slate-400 mt-1">Khi S_c = 1.0 &rarr; D_e = 0.0 (Trùng khớp). Tại ngưỡng an toàn S_c = 0.55 &rarr; D_e &approx; 0.948.</p>
+            </div>
+
+            <div class="bg-slate-900 p-3 rounded-xl border border-slate-800">
+              <span class="text-slate-400 font-semibold block mb-1">3. Tương quan Pearson quang học da mặt (Color Flashing):</span>
+              <code class="text-amber-400 text-sm font-bold">r = Cov(X, Y) / (&sigma;X * &sigma;Y) &ge; 0.10</code>
+              <p class="text-slate-400 mt-1">Đo độ đồng điệu giữa chuỗi xung màu chiếu từ màn hình và phổ phản xạ trên biểu bì da người thật.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- MA TRẬN PHÒNG THỦ -->
+        <div class="glass-card rounded-2xl p-6 border-slate-800">
+          <h3 class="text-lg font-bold text-white mb-3 flex items-center gap-2">
+            <span>⚔️</span> Ma Trận Chặn Đứng Gian Lận
+          </h3>
+          <div class="space-y-2 text-xs">
+            <div class="flex items-center justify-between p-2.5 rounded-lg bg-slate-900 border border-slate-800">
+              <div>
+                <strong class="text-rose-400">Không có mặt / Bỏ mặt ra</strong>
+                <p class="text-slate-400 text-[11px]">Bàn ghế, tường, rời khỏi camera</p>
+              </div>
+              <span class="px-2 py-1 rounded bg-amber-950 text-amber-300 border border-amber-800 font-mono text-[10px]">Chặn: static=True</span>
+            </div>
+
+            <div class="flex items-center justify-between p-2.5 rounded-lg bg-slate-900 border border-slate-800">
+              <div>
+                <strong class="text-rose-400">Che mặt (Giấy / Khẩu trang)</strong>
+                <p class="text-slate-400 text-[11px]">Che nửa mặt, chỉ hở trán</p>
+              </div>
+              <span class="px-2 py-1 rounded bg-amber-950 text-amber-300 border border-amber-800 font-mono text-[10px]">Chặn: PARTS_CONFIG</span>
+            </div>
+
+            <div class="flex items-center justify-between p-2.5 rounded-lg bg-slate-900 border border-slate-800">
+              <div>
+                <strong class="text-rose-400">Ảnh in màu 2D (Printed Photo)</strong>
+                <p class="text-slate-400 text-[11px]">Cầm ảnh in giấy A4 trước webcam</p>
+              </div>
+              <span class="px-2 py-1 rounded bg-rose-950 text-rose-300 border border-rose-800 font-mono text-[10px]">Chặn: MiniFASNet PAD</span>
+            </div>
+
+            <div class="flex items-center justify-between p-2.5 rounded-lg bg-slate-900 border border-slate-800">
+              <div>
+                <strong class="text-rose-400">Video Replay màn hình</strong>
+                <p class="text-slate-400 text-[11px]">Dùng iPad/điện thoại chiếu video</p>
+              </div>
+              <span class="px-2 py-1 rounded bg-rose-950 text-rose-300 border border-rose-800 font-mono text-[10px]">Chặn: Moiré + Zoom</span>
+            </div>
+
+            <div class="flex items-center justify-between p-2.5 rounded-lg bg-slate-900 border border-slate-800">
+              <div>
+                <strong class="text-rose-400">Deepfake thời gian thực (OBS)</strong>
+                <p class="text-slate-400 text-[11px]">Phần mềm chèn luồng video ảo</p>
+              </div>
+              <span class="px-2 py-1 rounded bg-cyan-950 text-cyan-300 border border-cyan-800 font-mono text-[10px]">Chặn: Color Flashing</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <!-- JAVASCRIPT TAB SWITCHER -->
+  <script>
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-panel').forEach(panel => {
+        panel.classList.add('hidden');
+      });
+      document.getElementById(tabId).classList.remove('hidden');
+
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('bg-cyan-500', 'text-slate-950', 'shadow-md');
+        btn.classList.add('text-slate-300', 'hover:text-white', 'hover:bg-slate-800');
+      });
+
+      const activeBtn = document.getElementById('btn-' + tabId);
+      if (activeBtn) {
+        activeBtn.classList.remove('text-slate-300', 'hover:text-white', 'hover:bg-slate-800');
+        activeBtn.classList.add('bg-cyan-500', 'text-slate-950', 'shadow-md');
+      }
+    }
+  </script>
+</body>
+</html>

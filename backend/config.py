@@ -100,6 +100,9 @@ FLASH_AWB_GAMMA = 0.45                  # Hệ số bù trừ độ lệch cân 
 FLASH_CHALLENGE_TIMEOUT_SEC = 15.0      # Thời gian sống của Token thách thức (giây)
 
 SESSION_TTL_SEC = 600
+# Ngưỡng Cosine Similarity tiêu chuẩn cho ArcFace 512D (FAR < 0.0001% trên WebFace600K)
+DEFAULT_VERIFY_THRESHOLD = 0.55
 # EKYC_DEBUG=1: trả thêm toàn bộ chỉ số thô (xác suất PAD chi tiết, heuristic, fill, perspective...) mỗi frame
 DEBUG_METRICS = os.environ.get("EKYC_DEBUG", "0") == "1"
 CORS_ORIGINS = ["http://127.0.0.1:8000", "http://localhost:8000"]
+

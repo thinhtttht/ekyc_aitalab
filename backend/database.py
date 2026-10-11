@@ -17,8 +17,10 @@ import numpy as np
 
 try:
     from backend.feature_extractor import get_arcface_extractor
+    import backend.config as C
 except ImportError:
     from feature_extractor import get_arcface_extractor
+    import config as C
 
 DB_DIR = os.path.join(os.path.dirname(__file__), "data")
 DB_PATH = os.path.join(DB_DIR, "ekyc.db")
@@ -221,7 +223,7 @@ class UserRepository:
         self,
         query_embedding: np.ndarray,
         target_user_id: str,
-        threshold: float = 0.45,
+        threshold: float = C.DEFAULT_VERIFY_THRESHOLD,
     ) -> Dict[str, Any]:
         """So khớp đích danh 1:1 khuôn mặt người dùng với hồ sơ trong cơ sở dữ liệu."""
         target = self.get_user(target_user_id)
@@ -230,24 +232,31 @@ class UserRepository:
                 "is_match": False,
                 "error": f"Không tìm thấy người dùng có ID {target_user_id}",
                 "similarity": 0.0,
+                "distance": 2.0,
+                "confidence_pct": 0.0,
                 "threshold": threshold,
+                "matched_user": None,
+                "target_user": None,
             }
 
         verification = self.extractor.verify(query_embedding, target["embedding"], threshold=threshold)
+        is_match = bool(verification["is_match"])
+        user_info = {
+            "user_id": target["user_id"],
+            "full_name": target["full_name"],
+            "snapshot_b64": target["snapshot_b64"],
+            "created_at": target["created_at"],
+        }
         return {
             **verification,
-            "target_user": {
-                "user_id": target["user_id"],
-                "full_name": target["full_name"],
-                "snapshot_b64": target["snapshot_b64"],
-                "created_at": target["created_at"],
-            },
+            "matched_user": user_info if is_match else None,
+            "target_user": user_info,
         }
 
     def match_user_1_to_n(
         self,
         query_embedding: np.ndarray,
-        threshold: float = 0.45,
+        threshold: float = C.DEFAULT_VERIFY_THRESHOLD,
         top_k: int = 5,
     ) -> Dict[str, Any]:
         """Định danh 1:N tìm kiếm người dùng tương đồng nhất trong toàn bộ cơ sở dữ liệu."""
@@ -257,6 +266,10 @@ class UserRepository:
                 "is_match": False,
                 "message": "Cơ sở dữ liệu người dùng đang trống. Chưa có hồ sơ đăng ký nào.",
                 "similarity": 0.0,
+                "distance": 2.0,
+                "confidence_pct": 0.0,
+                "threshold": threshold,
+                "matched_user": None,
                 "top_match": None,
                 "candidates": [],
             }
@@ -285,9 +298,22 @@ class UserRepository:
         top_match = candidates[0] if candidates else None
         is_match = bool(top_match and top_match["is_match"])
 
+        matched_user_info = None
+        if is_match and top_match:
+            matched_user_info = {
+                "user_id": top_match["user_id"],
+                "full_name": top_match["full_name"],
+                "snapshot_b64": top_match["snapshot_b64"],
+                "created_at": top_match["created_at"],
+            }
+
         return {
             "is_match": is_match,
             "threshold": threshold,
+            "similarity": top_match["similarity"] if top_match else 0.0,
+            "distance": top_match["distance"] if top_match else 2.0,
+            "confidence_pct": top_match["confidence_pct"] if top_match else 0.0,
+            "matched_user": matched_user_info,
             "top_match": top_match if is_match else None,
             "candidates": candidates[:top_k],
         }

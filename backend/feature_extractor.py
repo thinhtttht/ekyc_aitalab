@@ -166,7 +166,7 @@ class ArcFaceExtractor:
         self,
         emb1: np.ndarray,
         emb2: np.ndarray,
-        threshold: float = 0.45,
+        threshold: float = 0.55,
     ) -> dict:
         """So khớp 1:1 giữa 2 vector đặc trưng."""
         sim = self.compute_similarity(emb1, emb2)

@@ -1375,12 +1375,20 @@ body {
   color: #065f46;
 }
 
+.verify-verdict-box.mismatch,
 .verify-verdict-box.fail {
   background: #fef2f2;
   border-color: #fecaca;
   color: #991b1b;
 }
 
+.verify-verdict-box.danger {
+  background: #fff1f2;
+  border-color: #fda4af;
+  color: #be123c;
+}
+
+.verify-verdict-box.warning,
 .verify-verdict-box.spoof {
   background: #fffbeb;
   border-color: #fde68a;

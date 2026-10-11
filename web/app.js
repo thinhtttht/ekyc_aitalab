@@ -406,7 +406,7 @@ if (btnRejectionRetry) {
 
 // Vòng lặp gửi frame tự điều tốc
 async function frameLoop() {
-  if (!isLoopRunning) {
+  if (!isLoopRunning || currentTab !== 'viewEnroll') {
     requestAnimationFrame(frameLoop);
     return;
   }
@@ -1787,7 +1787,7 @@ async function triggerFaceVerification() {
     sCtx.restore();
 
     const frameBase64 = snapCanvas.toDataURL('image/jpeg', 0.9);
-    const thresholdVal = verifyThreshold ? parseFloat(verifyThreshold.value) : 0.45;
+    const thresholdVal = verifyThreshold ? parseFloat(verifyThreshold.value) : 0.55;
     const targetUserId = currentVerifyMode === '1_to_1' && selectVerifyUser ? selectVerifyUser.value : null;
 
     if (currentVerifyMode === '1_to_1' && !targetUserId) {
@@ -1826,11 +1826,11 @@ async function triggerFaceVerification() {
 
 function renderVerifyResult(data) {
   const match = data.match_result || {};
-  const isMatch = Boolean(match.is_match);
+  const isMatch = Boolean(data.passed && match.is_match);
   const latency = data.latency_ms != null ? `${data.latency_ms} ms` : '-- ms';
   const padOk = Boolean(data.anti_spoof?.is_real);
   const sim = match.similarity != null ? Number(match.similarity).toFixed(4) : '--';
-  const conf = match.confidence != null ? `${(match.confidence * 100).toFixed(1)}%` : '--%';
+  const conf = match.confidence_pct != null ? `${Number(match.confidence_pct).toFixed(1)}%` : '--%';
   const dist = match.distance != null ? Number(match.distance).toFixed(4) : '--';
 
   // Cập nhật thẻ thông số kỹ thuật
@@ -1839,9 +1839,13 @@ function renderVerifyResult(data) {
   if (metDist) metDist.textContent = dist;
   if (metLatency) metLatency.textContent = latency;
   if (metPad) {
-    metPad.textContent = padOk
-      ? `✓ Người thật (${Math.round((data.anti_spoof.real_prob ?? 0) * 100)}%)`
-      : `✗ Giả mạo (${data.anti_spoof?.spoof_type || 'Attack'})`;
+    if (data.anti_spoof) {
+      metPad.textContent = padOk
+        ? `✓ Người thật (${Math.round((data.anti_spoof.real_prob ?? 1) * 100)}%)`
+        : `✗ Giả mạo (${data.anti_spoof?.spoof_type || 'Attack'})`;
+    } else {
+      metPad.textContent = '--';
+    }
   }
 
   // Xử lý Verdict Banner & User Card
@@ -1851,7 +1855,7 @@ function renderVerifyResult(data) {
     if (verdictIcon) verdictIcon.textContent = '✅';
     if (verdictTitle) verdictTitle.textContent = 'XÁC THỰC THÀNH CÔNG';
     if (verdictSubtitle) {
-      verdictSubtitle.textContent = `Khớp danh tính: ${match.matched_user?.full_name || ''} (Sim: ${sim})`;
+      verdictSubtitle.textContent = `Khớp danh tính: ${match.matched_user?.full_name || ''} (Sim: ${sim} ≥ ${match.threshold || 0.55})`;
     }
 
     if (matchedUserCard && match.matched_user) {
@@ -1869,7 +1873,7 @@ function renderVerifyResult(data) {
       verdictSubtitle.textContent =
         currentVerifyMode === '1_to_1'
           ? `Khuôn mặt không trùng với hồ sơ đã chọn (Sim: ${sim} < Ngưỡng)`
-          : `Không tìm thấy hồ sơ tương đồng trong CSDL (Cao nhất: ${sim})`;
+          : `Không tìm thấy hồ sơ tương đồng đạt ngưỡng (Điểm cao nhất: ${sim} < Ngưỡng)`;
     }
     if (matchedUserCard) matchedUserCard.classList.add('hidden');
   } else if (data.verdict === 'SPOOF_REJECTED') {
@@ -1879,30 +1883,61 @@ function renderVerifyResult(data) {
     if (verdictSubtitle) verdictSubtitle.textContent = data.message || 'Phát hiện ảnh in hoặc màn hình!';
     if (matchedUserCard) matchedUserCard.classList.add('hidden');
   } else {
-    // NO_FACE, MULTIPLE_FACES
+    // Các lỗi FQA / Không có mặt
     if (verifyVerdictBox) verifyVerdictBox.className = 'verify-verdict-box warning';
-    if (verdictIcon) verdictIcon.textContent = '⚠️';
-    if (verdictTitle) verdictTitle.textContent = 'CHẤT LƯỢNG HÌNH ẢNH CHƯA ĐẠT';
-    if (verdictSubtitle) verdictSubtitle.textContent = data.message;
+
+    let icon = '⚠️';
+    let title = 'CHẤT LƯỢNG HÌNH ẢNH CHƯA ĐẠT';
+    if (data.verdict === 'NO_FACE') {
+      icon = '👤';
+      title = 'KHÔNG PHÁT HIỆN KHUÔN MẶT';
+    } else if (data.verdict === 'MULTIPLE_FACES') {
+      icon = '👥';
+      title = 'PHÁT HIỆN NHIỀU KHUÔN MẶT';
+    } else if (data.verdict === 'FACE_OCCLUDED') {
+      icon = '🎭';
+      title = 'KHUÔN MẶT BỊ CHE KHUẤT';
+    } else if (data.verdict === 'INVALID_FRAMING') {
+      icon = '🎯';
+      title = 'CĂN CHỈNH VÀO KHUNG OVAL';
+    } else if (data.verdict === 'IMAGE_BLURRY') {
+      icon = '🌫️';
+      title = 'HÌNH ẢNH BỊ MỜ / RUNG LẮC';
+    } else if (data.verdict === 'POOR_LIGHTING') {
+      icon = '💡';
+      title = 'ÁNH SÁNG CHƯA ĐẠT CHUẨN';
+    } else if (data.verdict === 'INVALID_POSE') {
+      icon = '📐';
+      title = 'TƯ THẾ ĐẦU CHƯA THẲNG';
+    }
+
+    if (verdictIcon) verdictIcon.textContent = icon;
+    if (verdictTitle) verdictTitle.textContent = title;
+    if (verdictSubtitle) verdictSubtitle.textContent = data.message || 'Vui lòng căn chỉnh khuôn mặt vào đúng khung hướng dẫn.';
     if (matchedUserCard) matchedUserCard.classList.add('hidden');
   }
 
-  // Render Top Candidates Leaderboard (1:N)
+  // Render Top Candidates Leaderboard (Chỉ ở chế độ 1:N và khi CÓ kết quả so khớp thực tế)
   if (candidatesLeaderboardBox && candidatesList) {
-    if (currentVerifyMode === '1_to_n' && match.candidates && match.candidates.length > 0) {
+    const hasCandidateResults =
+      (data.verdict === 'MATCH_SUCCESS' || data.verdict === 'MISMATCH') &&
+      match.candidates &&
+      match.candidates.length > 0;
+    if (currentVerifyMode === '1_to_n' && hasCandidateResults) {
       candidatesLeaderboardBox.classList.remove('hidden');
       candidatesList.innerHTML = match.candidates
         .map((c, i) => {
           const cSim = Number(c.similarity).toFixed(4);
           const cPct = Math.max(0, Math.min(100, Math.round(c.similarity * 100)));
           const isTop = i === 0 && isMatch;
+          const matchLabel = isTop ? '✓ ĐÃ XÁC THỰC' : (c.is_match ? '✓ Đạt ngưỡng' : '✗ Dưới ngưỡng');
           return `
             <div class="candidate-row ${isTop ? 'matched' : ''}">
               <span class="c-rank">#${i + 1}</span>
               <img src="${c.snapshot_b64 || ''}" alt="Avatar" class="c-avatar" />
               <div class="c-info">
                 <div class="c-name">${escapeHtml(c.full_name)}</div>
-                <div class="c-id">${c.user_id}</div>
+                <div class="c-id">${c.user_id} · <span style="font-size: 11px; opacity: 0.85;">${matchLabel}</span></div>
               </div>
               <div class="c-meter">
                 <div class="c-bar-track">

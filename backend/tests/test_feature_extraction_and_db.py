@@ -181,3 +181,40 @@ def test_api_user_enroll_and_verify():
     res_del_all = client.delete("/api/users")
     assert res_del_all.status_code == 200
     assert "deleted_count" in res_del_all.json()
+
+
+def test_verify_rejects_no_face_and_invalid_inputs():
+    """Kiểm tra tuyệt đối không cho qua khi ảnh không có mặt hoặc mờ/che khuất."""
+    repo = get_user_repository()
+    img_valid = make_dummy_face_bgr((140, 150, 160))
+    emb = get_arcface_extractor().extract_embedding(img_valid)
+    repo.save_user("User Test Security", emb, img_to_b64(img_valid), user_id="USR-SEC-01")
+
+    try:
+        # 1. Ảnh đen hoàn toàn (không có mặt) -> Phải trả về NO_FACE
+        black_img = np.zeros((480, 640, 3), dtype=np.uint8)
+        res_black = client.post(
+            "/api/verify/face",
+            json={"image": img_to_b64(black_img), "threshold": 0.55},
+        )
+        assert res_black.status_code == 200
+        data_black = res_black.json()
+        assert data_black["passed"] is False
+        assert data_black["verdict"] == "NO_FACE"
+        assert data_black["match_result"] is None
+
+        # 2. Ảnh nhiễu ngẫu nhiên (không có mặt) -> Phải trả về NO_FACE
+        noise_img = np.random.randint(0, 255, (480, 640, 3), dtype=np.uint8)
+        res_noise = client.post(
+            "/api/verify/face",
+            json={"image": img_to_b64(noise_img), "threshold": 0.55},
+        )
+        assert res_noise.status_code == 200
+        data_noise = res_noise.json()
+        assert data_noise["passed"] is False
+        assert data_noise["verdict"] == "NO_FACE"
+        assert data_noise["match_result"] is None
+
+    finally:
+        repo.delete_user("USR-SEC-01")
+

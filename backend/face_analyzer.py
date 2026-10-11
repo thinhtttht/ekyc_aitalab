@@ -135,15 +135,16 @@ class FaceAnalyzer:
     def __init__(self, stream: bool = False) -> None:
         if mp is None:
             raise RuntimeError("mediapipe chưa được cài đặt")
+        is_static = not stream
         self._mesh = mp.solutions.face_mesh.FaceMesh(
-            static_image_mode=False,
+            static_image_mode=is_static,
             max_num_faces=2,
             refine_landmarks=True,
-            min_detection_confidence=0.5,
-            min_tracking_confidence=0.5,
+            min_detection_confidence=0.55 if is_static else 0.5,
+            min_tracking_confidence=0.55 if is_static else 0.5,
         )
         self._hands = mp.solutions.hands.Hands(
-            static_image_mode=False,
+            static_image_mode=is_static,
             max_num_hands=2,
             min_detection_confidence=0.5,
             min_tracking_confidence=0.5,
@@ -188,6 +189,10 @@ class FaceAnalyzer:
         sorted_faces = sorted(faces, key=face_area, reverse=True)
         primary_face = sorted_faces[0]
         primary_area = face_area(primary_face)
+
+        # Nếu mặt chính quá nhỏ (diện tích < 2.5% tổng khung hình), coi như không có mặt hợp lệ
+        if primary_area < 0.025:
+            return FaceResult(face_count=0)
 
         # Chỉ tính là "nhiều khuôn mặt" khi khuôn mặt thứ 2 có kích thước đáng kể
         # (diện tích >= 20% mặt chính VÀ diện tích >= 0.025 tổng khung hình).

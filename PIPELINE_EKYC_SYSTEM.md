@@ -64,7 +64,111 @@ flowchart TD
 
 ## 📝 2. Pipeline Chi Tiết: Luồng Đăng Ký (Enrollment Pipeline)
 
-Quy trình đăng ký khuôn mặt diễn ra qua **5 giai đoạn nghiêm ngặt liên hoàn (Finite State Machine - FSM)** nhằm loại bỏ hoàn toàn gian lận danh tính:
+Quy trình đăng ký khuôn mặt diễn ra qua **5 giai đoạn nghiêm ngặt liên hoàn (Finite State Machine - FSM)** nhằm loại bỏ hoàn toàn gian lận danh tính và đảm bảo chỉ có dữ liệu sinh trắc học đạt chuẩn tối đa mới được ghi vào hệ thống:
+
+### 🌈 Lưu Đồ Trạng Thái FSM Luồng Đăng Ký (Enrollment State Machine Flowchart)
+
+```mermaid
+flowchart TD
+    classDef startStyle fill:#2563eb,stroke:#1d4ed8,stroke-width:2px,color:#ffffff,font-weight:bold;
+    classDef s0Style fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#92400e,font-weight:bold;
+    classDef s1Style fill:#e0f2fe,stroke:#0284c7,stroke-width:2px,color:#0369a1,font-weight:bold;
+    classDef s2Style fill:#ede9fe,stroke:#7c3aed,stroke-width:2px,color:#5b21b6,font-weight:bold;
+    classDef s3Style fill:#dbeafe,stroke:#2563eb,stroke-width:2px,color:#1e40af,font-weight:bold;
+    classDef s4Style fill:#ffe4e6,stroke:#e11d48,stroke-width:2px,color:#9f1239,font-weight:bold;
+    classDef s5Style fill:#d1fae5,stroke:#059669,stroke-width:2px,color:#065f46,font-weight:bold;
+    classDef decisionStyle fill:#ffffff,stroke:#6366f1,stroke-width:2px,color:#312e81,font-weight:bold;
+    classDef rejectStyle fill:#fee2e2,stroke:#ef4444,stroke-width:2px,color:#991b1b,font-weight:bold;
+    classDef successStyle fill:#16a34a,stroke:#15803d,stroke-width:2.5px,color:#ffffff,font-weight:bold;
+
+    START(["🚀 Khởi Động Đăng Ký Khuôn Mặt (Enrollment Start)"]):::startStyle --> S0_INIT
+
+    subgraph S0["🟡 GIAI ĐOẠN 0: KIỂM ĐỊNH PHẦN CỨNG CAMERA"]
+        S0_INIT["📷 Khởi tạo Camera Feed (480x600 Canvas)"]:::s0Style
+        S0_CHECK{"Phần cứng & đường truyền đạt chuẩn?<br/>• FPS >= 25<br/>• Noise < 18.0 (Immerkær)<br/>• Độ sáng Luma: 45 - 215"}:::decisionStyle
+        S0_INIT --> S0_CHECK
+        S0_CHECK -->|"❌ Không đạt"| S0_WARN["⚠️ Cảnh báo UI: Webcam mờ/nhiễu hoặc ngược sáng"]:::rejectStyle
+        S0_WARN --> S0_INIT
+    end
+
+    S0_CHECK -->|"✅ Đạt chuẩn phần cứng"| S1_INIT
+
+    subgraph S1["🔵 GIAI ĐOẠN 1: CANH KHUNG OVAL & 7 TRỤ CỘT FQA"]
+        S1_INIT["🎯 Hiển thị Khung Oval Hướng dẫn (web/app.js)"]:::s1Style
+        S1_AI["🛡️ Phân tích MediaPipe FaceMesh (468 3D Points)"]:::s1Style
+        S1_FQA{"Kiểm tra 7 tiêu chí FQA nghiêm ngặt:<br/>1. Lọt trọn Oval: d <= 1.0<br/>2. Tỷ lệ diện tích: 40% <= Scale <= 85%<br/>3. Góc chính diện: |Yaw|, |Pitch| <= 12°<br/>4. Độ nét Sobel Edge >= 15.0<br/>5. Đủ 5 vùng ngũ quan chính"}:::decisionStyle
+        S1_STABLE{"Tích lũy liên tiếp<br/>đủ 6 frames chuẩn FQA?"}:::decisionStyle
+
+        S1_INIT --> S1_AI --> S1_FQA
+        S1_FQA -->|"❌ Sai tư thế / Lệch oval"| S1_HINT["💡 Phản hồi UI tức thời:<br/>'Vui lòng nhìn thẳng' / 'Tiến gần hơn'"]:::rejectStyle
+        S1_HINT --> S1_INIT
+        S1_FQA -->|"✅ Khung hình đạt"| S1_STABLE
+        S1_STABLE -->|"Chưa đủ 6 frames"| S1_AI
+    end
+
+    S1_STABLE -->|"✅ Đạt 6/6 frames chuẩn"| S2_INIT
+
+    subgraph S2["🟣 GIAI ĐOẠN 2: THỬ THÁCH 3D HEAD TURN (ACTIVE LIVENESS)"]
+        S2_INIT["🔄 Phát sinh Thử thách Ngẫu nhiên: Quay đầu 3D<br/>(Random Challenge: Trái hoặc Phải)"]:::s2Style
+        S2_CHECK{"Góc quay đầu Yaw >= 20°?<br/>(Head Pose SolvePnP z-depth)"}:::decisionStyle
+        S2_RETURN["🔙 Nhận diện thành công góc quay!<br/>Yêu cầu đưa khuôn mặt về chính diện (|Yaw| <= 10°)"]:::s2Style
+        S2_CENTER{"Đã quay về chính diện?"}:::decisionStyle
+
+        S2_INIT --> S2_CHECK
+        S2_CHECK -->|"Hết thời gian (Timeout)"| S2_TIMEOUT["⏳ Timeout: Reset về bắt đầu Stage 2"]:::rejectStyle
+        S2_TIMEOUT --> S2_INIT
+        S2_CHECK -->|"✅ Đạt góc quay"| S2_RETURN --> S2_CENTER
+        S2_CENTER -->|"Chưa về giữa"| S2_RETURN
+    end
+
+    S2_CENTER -->|"✅ Hoàn thành quay đầu 3D"| S3_INIT
+
+    subgraph S3["🔷 GIAI ĐOẠN 3: DYNAMIC ZOOM (THỬ THÁCH TIẾN GẦN)"]
+        S3_INIT["🔍 Kích hoạt Dynamic Oval Zoom (Mở rộng Oval 1.25x)"]:::s3Style
+        S3_CHECK{"Khuôn mặt tiến sát camera?<br/>(Chiều cao mặt tăng trưởng >= 25%)"}:::decisionStyle
+        S3_INIT --> S3_CHECK
+        S3_CHECK -->|"Đứng yên / Không chuyển động"| S3_HINT["💡 Gợi ý UI: 'Hãy tiến lại gần camera hơn'"]:::rejectStyle
+        S3_HINT --> S3_INIT
+    end
+
+    S3_CHECK -->|"✅ Đạt cự ly cận cảnh"| S4_INIT
+
+    subgraph S4["🔴 GIAI ĐOẠN 4: ACTIVE OPTICAL FLASHING & PASSIVE PAD"]
+        S4_INIT["🌈 Kích hoạt Chuỗi Đổi Màu Viền Màn Hình<br/>(330ms/màu: Đỏ 🔴 ➔ Xanh Lá 🟢 ➔ Vàng 🟡)"]:::s4Style
+        S4_PEARSON{"Kiểm định Phản quang Sinh học:<br/>• Tương quan Pearson r >= 0.10<br/>• Biên độ phản xạ da mặt >= 1.0"}:::decisionStyle
+        S4_MINIFAS{"MiniFASNet v2 Passive PAD:<br/>Xác suất Real >= 65%?"}:::decisionStyle
+
+        S4_INIT --> S4_PEARSON
+        S4_PEARSON -->|"❌ Ánh sáng đồng nhất / Màn hình điện thoại"| S4_REJECT["🚫 TỪ CHỐI GIAN LẬN:<br/>Phát hiện màn hình hoặc ảnh in giả mạo!"]:::rejectStyle
+        S4_PEARSON -->|"✅ Da người thật hấp thụ quang phổ"| S4_MINIFAS
+        S4_MINIFAS -->|"❌ Giả mạo 2D"| S4_REJECT
+    end
+
+    S4_MINIFAS -->|"✅ Vượt qua tầng phòng thủ PAD quang học"| S5_INIT
+
+    subgraph S5["🟢 GIAI ĐOẠN 5: CHỤP ẢNH HD & TRÍCH XUẤT ARCFACE 512D"]
+        S5_INIT["📸 Kích hoạt Chụp Snapshot HD (Độ phân giải >= 720p)"]:::s5Style
+        S5_ALIGN["📐 Chuẩn hóa hình học 5 mốc chuẩn (Affine Warp 112x112)"]:::s5Style
+        S5_ARCFACE["🧠 InsightFace ArcFace ResNet-50:<br/>Trích xuất 512D Biometric Embeddings"]:::s5Style
+        S5_NORM["⚙️ Chuẩn hóa L2 Norm: ||e||₂ = 1.0 trên mặt cầu S⁵¹¹"]:::s5Style
+        S5_DB[("🗄️ Lưu Trữ SQLite Database:<br/>ID: USR-XXXXXXXX + Tên + 512D BLOB + Ảnh HD")]:::s5Style
+
+        S5_INIT --> S5_ALIGN --> S5_ARCFACE --> S5_NORM --> S5_DB
+    end
+
+    S5_DB --> SUCCESS(["🎉 ĐĂNG KÝ HỒ SƠ THÀNH CÔNG!<br/>Hệ thống sẵn sàng cho Xác Thực Sinh Trắc"]):::successStyle
+
+    style S0 fill:#fffbeb,stroke:#d97706,stroke-width:2px,stroke-dasharray: 4 4;
+    style S1 fill:#f0f9ff,stroke:#0284c7,stroke-width:2px,stroke-dasharray: 4 4;
+    style S2 fill:#faf5ff,stroke:#7c3aed,stroke-width:2px,stroke-dasharray: 4 4;
+    style S3 fill:#eff6ff,stroke:#2563eb,stroke-width:2px,stroke-dasharray: 4 4;
+    style S4 fill:#fff1f2,stroke:#e11d48,stroke-width:2px,stroke-dasharray: 4 4;
+    style S5 fill:#f0fdf4,stroke:#059669,stroke-width:2px,stroke-dasharray: 4 4;
+```
+
+---
+
+### 📡 Sơ Đồ Tuần Tự Trao Đổi Dữ Liệu (Sequence Diagram)
 
 ```mermaid
 sequenceDiagram
@@ -76,32 +180,38 @@ sequenceDiagram
     participant Model as 🧠 ArcFace & MiniFASNet
     participant DB as 🗄️ SQLite Database
 
+    rect rgb(254, 243, 199)
+    Note over User, FE: 🟡 GIAI ĐOẠN 0: KIỂM ĐỊNH CAMERA & MÔI TRƯỜNG (Vàng Nhạt)
+    FE->>BE: Gửi chỉ số phần cứng (FPS Canvas, Độ sáng trung bình, Noise)
+    BE-->>FE: Camera ổn định -> Cấp phép mở khung Oval
+    end
+
     rect rgb(224, 242, 254)
-    Note over User, FE: GIAI ĐOẠN 0 & 1: CAMERA & KHUNG OVAL FQA (Xanh Biển)
-    FE->>BE: POST /api/enroll/frame (Ảnh 480x600, stats)
+    Note over User, FE: 🔵 GIAI ĐOẠN 1: KHUNG OVAL & 7 TIÊU CHÍ FQA (Xanh Biển)
+    FE->>BE: POST /api/enroll/frame (Ảnh 480x600, Frame ID)
     BE->>FQA: Phân tích MediaPipe FaceMesh & 7 trụ cột FQA
     FQA-->>BE: FaceResult (scale_ratio, oval_dist, brightness, sharpness, parts)
-    BE-->>FE: Phản hồi hướng dẫn (Giữ thẳng đầu, vào khung Oval, đạt 6 frames liên tiếp)
+    BE-->>FE: Phản hồi hướng dẫn (Đạt 6 frames liên tiếp -> Mở Stage 2)
     end
 
     rect rgb(237, 233, 254)
-    Note over User, FE: GIAI ĐOẠN 2: ACTIVE LIVENESS (QUAY ĐẦU 3D) (Tím Nhạt)
+    Note over User, FE: 🟣 GIAI ĐOẠN 2: ACTIVE 3D HEAD TURN LIVENESS (Tím Nhạt)
     FE->>BE: Frame quay đầu (Góc Yaw >= 20° Trái/Phải)
     BE->>FQA: Head Pose Estimation (PnP z-depth)
     FQA-->>BE: Đạt góc quay -> Yêu cầu quay lại chính diện (Yaw <= 10°)
-    BE-->>FE: Hoàn thành thử thách quay đầu
+    BE-->>FE: Hoàn thành thử thách quay đầu -> Mở Stage 3
     end
 
-    rect rgb(254, 243, 199)
-    Note over User, FE: GIAI ĐOẠN 3: DYNAMIC ZOOM (TIẾN GẦN CAMERA) (Vàng Ấm)
-    FE->>BE: Frame phóng to (Khung Oval mở rộng)
+    rect rgb(219, 234, 254)
+    Note over User, FE: 🔷 GIAI ĐOẠN 3: DYNAMIC ZOOM (TIẾN GẦN CAMERA) (Xanh Chàm)
+    FE->>BE: Frame phóng to (Khung Oval tự mở rộng)
     BE->>FQA: Chiều cao khuôn mặt tăng >= 25% (face_h growth)
-    BE-->>FE: Đạt cự ly cận cảnh -> Chuyển sang Flashing
+    BE-->>FE: Đạt cự ly cận cảnh -> Mở Stage 4
     end
 
-    rect rgb(255, 237, 213)
-    Note over User, FE: GIAI ĐOẠN 4: ACTIVE OPTICAL FLASHING & PASSIVE PAD (Cam Nhạt)
-    BE->>FE: Sinh Token Thách Thức (Chuỗi màu: Đỏ -> Xanh -> Vàng)
+    rect rgb(255, 228, 230)
+    Note over User, FE: 🔴 GIAI ĐOẠN 4: ACTIVE OPTICAL FLASHING & PASSIVE PAD (Hồng Cam)
+    BE->>FE: Sinh Token Thách Thức (Chuỗi màu: Đỏ -> Xanh Lá -> Vàng)
     FE->>User: Đổi màu viền màn hình (330ms / bước màu)
     FE->>BE: Gửi frame kèm chỉ số màu phản xạ trên da mặt
     BE->>FQA: Tính hệ số tương quan Pearson r >= 0.10 & Biên độ >= 1.0
@@ -109,26 +219,31 @@ sequenceDiagram
     BE-->>FE: Thách thức quang học hợp lệ! Yêu cầu chụp HD
     end
 
-    rect rgb(220, 252, 231)
-    Note over User, FE: GIAI ĐOẠN 5: CHỤP ẢNH HD & LƯU HỒ SƠ (Xanh Lá Mint)
+    rect rgb(209, 250, 229)
+    Note over User, FE: 🟢 GIAI ĐOẠN 5: CHỤP ẢNH HD & TRÍCH XUẤT ARCFACE 512D (Xanh Ngọc)
     FE->>BE: POST /api/users/enroll (HD Snapshot 720p, Full Name)
     BE->>Model: Align 5 mốc chuẩn -> Trích xuất ArcFace 512D -> L2 Norm
-    BE->>DB: Lưu User ID, Tên, Vector 512D (BLOB), Snapshot
+    BE->>DB: Lưu User ID (USR-XXXXXXXX), Tên, Vector 512D (BLOB), Snapshot
     DB-->>BE: Ghi đĩa thành công
     BE-->>FE: Thông báo đăng ký thành công -> Mở Modal Xác thực
     end
 ```
 
-### Chi tiết các bước xử lý trong Luồng Đăng Ký:
+---
+
+### 📊 Bảng Tiêu Chuẩn Kỹ Thuật 5 Giai Đoạn Đăng Ký
 
 | Giai đoạn | Tên kỹ thuật | Giải thuật & Công nghệ cốt lõi | Điều kiện vượt qua (Pass Criteria) |
-| :--- | :--- | :--- | :--- |
-| **Stage 0** | **Camera Quality** | Immerkær Noise Estimation, Luma Variance | Độ phân giải $\ge 640\times 480$, FPS đo $\ge 25$, Độ sáng $45-215$, Không đóng băng khung hình. |
-| **Stage 1** | **FQA & Framing** | MediaPipe FaceMesh (468 pts), Sobel Edge, Convex Hull | Tỷ lệ Oval $0.40 \le \text{scale} \le 0.85$, Lọt Oval $d \le 1.0$, Góc thẳng $|\text{Yaw}| \le 12^\circ$, Nét $\ge 15.0$, Ngũ quan rõ. |
-| **Stage 2** | **3D Turn Liveness** | Head Pose Estimation (SolvePnP trên 3D Landmarks) | Quay đầu sang trái hoặc phải đạt $|\text{Yaw}| \ge 20^\circ$, sau đó đưa về tâm $\le 10^\circ$. |
-| **Stage 3** | **Zoom In Challenge** | Dynamic Ellipse Expansion, Bounding Box Growth | Chiều cao mặt tăng trưởng $\ge 25\%$ so với giai đoạn 1, mặt nằm trọn trong Oval phóng to. |
-| **Stage 4** | **Optical Flashing PAD**| Pearson Correlation, MiniFASNet v2 ONNX | Hệ số tương quan $r \ge 0.10$, Biên độ $\ge 1.0$, MiniFASNet Real Probability $\ge 65\%$. |
-| **Stage 5** | **Feature Extractor** | Affine Warp 112x112, ResNet-50 ArcFace ONNX | Vector 512 chiều, chuẩn hóa $\|\mathbf{e}\|_2 = 1.0$, lưu SQLite kèm User ID tự sinh `USR-XXXXXXXX`. |
+| :---: | :--- | :--- | :--- |
+| <span style="background-color:#fef3c7;color:#92400e;padding:3px 10px;border-radius:6px;font-weight:700;display:inline-block;">🟡 Stage 0</span> | **Camera Hardware Quality** | Immerkær Noise Estimation, Luma Variance | Độ phân giải $\ge 640\times 480$, FPS đo $\ge 25$, Độ sáng $45-215$, Không đóng băng khung hình. |
+| <span style="background-color:#e0f2fe;color:#0369a1;padding:3px 10px;border-radius:6px;font-weight:700;display:inline-block;">🔵 Stage 1</span> | **Oval Framing & 7 FQA Pillars** | MediaPipe FaceMesh (468 pts), Sobel Edge, Convex Hull | Tỷ lệ Oval $0.40 \le \text{scale} \le 0.85$, Lọt Oval $d \le 1.0$, Góc thẳng $\|\text{Yaw}\| \le 12^\circ$, Nét $\ge 15.0$, Đạt liên tiếp 6 frames. |
+| <span style="background-color:#ede9fe;color:#5b21b6;padding:3px 10px;border-radius:6px;font-weight:700;display:inline-block;">🟣 Stage 2</span> | **3D Active Turn Liveness** | Head Pose Estimation (SolvePnP trên 3D Landmarks) | Quay đầu sang trái/phải đạt $\|\text{Yaw}\| \ge 20^\circ$, sau đó đưa về chính diện $\le 10^\circ$. |
+| <span style="background-color:#dbeafe;color:#1e40af;padding:3px 10px;border-radius:6px;font-weight:700;display:inline-block;">🔷 Stage 3</span> | **Dynamic Oval Zoom Challenge** | Dynamic Ellipse Expansion, Bounding Box Growth | Chiều cao khuôn mặt tăng trưởng $\ge 25\%$ so với giai đoạn 1, mặt nằm trọn trong Oval phóng to. |
+| <span style="background-color:#ffe4e6;color:#9f1239;padding:3px 10px;border-radius:6px;font-weight:700;display:inline-block;">🔴 Stage 4</span> | **Optical Color Flashing PAD** | Pearson Correlation Analysis, MiniFASNet v2 ONNX | Hệ số tương quan $r \ge 0.10$, Biên độ $\ge 1.0$, MiniFASNet Real Probability $\ge 65\%$. |
+| <span style="background-color:#d1fae5;color:#065f46;padding:3px 10px;border-radius:6px;font-weight:700;display:inline-block;">🟢 Stage 5</span> | **HD Biometric Feature Extractor** | Affine Warp 112x112, ResNet-50 ArcFace ONNX | Vector 512 chiều, chuẩn hóa $\|\mathbf{e}\|_2 = 1.0$, lưu SQLite kèm User ID tự sinh `USR-XXXXXXXX`. |
+
+> [!IMPORTANT]
+> **Cơ Chế Khóa Trạng Thái Chống Bỏ Bước (FSM State Guarding)**: Bất kỳ giai đoạn nào vi phạm (lệch khung oval, chuyển động đột ngột, ánh sáng không phản quang sinh học hoặc giả mạo màn hình) hệ thống sẽ giữ nguyên trạng thái hoặc kích hoạt thử thách lại. Tuyệt đối không cho phép chụp ảnh Snapshot hay trích xuất vector ArcFace nếu chưa hoàn tất toàn bộ chuỗi bảo mật 5 giai đoạn.
 
 ---
 

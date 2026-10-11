@@ -172,3 +172,12 @@ def test_api_user_enroll_and_verify():
     res_del = client.delete("/api/users/USR-API-01")
     assert res_del.status_code == 200
     assert res_del.json()["status"] == "ok"
+
+    # 7. API Delete 404
+    res_del_404 = client.delete("/api/users/NON-EXISTENT-ID")
+    assert res_del_404.status_code == 404
+
+    # 8. API Delete All
+    res_del_all = client.delete("/api/users")
+    assert res_del_all.status_code == 200
+    assert "deleted_count" in res_del_all.json()

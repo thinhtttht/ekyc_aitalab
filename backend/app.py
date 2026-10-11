@@ -377,6 +377,17 @@ def delete_user_record(user_id: str):
     return {"status": "ok", "message": f"Đã xoá người dùng {user_id}"}
 
 
+@app.delete("/api/users")
+def delete_all_users_records():
+    """Xoá toàn bộ hồ sơ người dùng khỏi CSDL SQLite."""
+    count = user_repo.delete_all_users()
+    return {
+        "status": "ok",
+        "message": f"Đã xoá toàn bộ {count} hồ sơ người dùng thành công",
+        "deleted_count": count,
+    }
+
+
 @app.post("/api/verify/face")
 def verify_face_biometrics(payload: FaceVerifyPayload):
     """Xác thực khuôn mặt thời gian thực (hỗ trợ 1:1 đích danh và 1:N nhận diện)."""

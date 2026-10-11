@@ -204,6 +204,19 @@ class UserRepository:
                 conn.close()
         return affected > 0
 
+    def delete_all_users(self) -> int:
+        """Xoá toàn bộ hồ sơ người dùng khỏi CSDL SQLite."""
+        with _db_lock:
+            conn = _get_connection()
+            try:
+                cur = conn.cursor()
+                cur.execute("DELETE FROM users")
+                affected = cur.rowcount
+                conn.commit()
+            finally:
+                conn.close()
+        return affected
+
     def match_user_1_to_1(
         self,
         query_embedding: np.ndarray,

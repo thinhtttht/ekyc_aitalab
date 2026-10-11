@@ -1906,4 +1906,194 @@ body {
   word-break: break-all;
 }
 
+/* ---------------------------------------------------------------------------
+   DELETE USER CONFIRMATION MODAL & ACTIONS
+--------------------------------------------------------------------------- */
+.btn-tool-danger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 9px;
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  color: #dc2626;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-tool-danger:hover {
+  background: #fee2e2;
+  border-color: #fca5a5;
+  color: #b91c1c;
+}
+
+.delete-confirm-card {
+  max-width: 480px;
+}
+
+.modal-icon-danger {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: #fef2f2;
+  color: #dc2626;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 12px;
+  box-shadow: 0 0 0 6px #fee2e2;
+}
+
+.delete-user-preview-box {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin: 16px 0;
+  text-align: left;
+}
+
+.delete-avatar-wrap {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: #e2e8f0;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #cbd5e1;
+}
+
+.delete-avatar-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.delete-avatar-placeholder {
+  font-size: 24px;
+  line-height: 1;
+}
+
+.delete-user-meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.delete-user-name {
+  font-size: 14.5px;
+  font-weight: 700;
+  color: #0f172a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.delete-user-id {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+.delete-warning-note {
+  background: #fffbeb;
+  border: 1px solid #fef3c7;
+  color: #92400e;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  margin-bottom: 20px;
+  text-align: left;
+}
+
+.warn-badge {
+  font-weight: 700;
+  color: #b45309;
+}
+
+.btn-modal-danger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 20px;
+  border-radius: 10px;
+  border: none;
+  background: #dc2626;
+  color: #ffffff;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-modal-danger:hover {
+  background: #b91c1c;
+}
+
+.btn-modal-danger:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ---------------------------------------------------------------------------
+   TOAST NOTIFICATION BANNER
+--------------------------------------------------------------------------- */
+.toast-container {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  pointer-events: none;
+}
+
+.toast-item {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 18px;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+  border: 1px solid #e2e8f0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #0f172a;
+  transform: translateY(-20px);
+  opacity: 0;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease;
+}
+
+.toast-item.show {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+.toast-item.toast-success {
+  border-left: 4px solid #10b981;
+}
+
+.toast-item.toast-error {
+  border-left: 4px solid #ef4444;
+}
+
+.toast-item.toast-info {
+  border-left: 4px solid #3b82f6;
+}
+
+
 

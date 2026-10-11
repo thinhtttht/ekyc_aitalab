@@ -104,6 +104,22 @@ const vectorJsonContent = document.getElementById('vectorJsonContent');
 const btnCopyVector = document.getElementById('btnCopyVector');
 const btnCloseVectorModal = document.getElementById('btnCloseVectorModal');
 
+// Delete User Modal Elements
+const btnClearAllUsers = document.getElementById('btnClearAllUsers');
+const deleteUserModal = document.getElementById('deleteUserModal');
+const deleteModalTitle = document.getElementById('deleteModalTitle');
+const deleteModalSubtitle = document.getElementById('deleteModalSubtitle');
+const deleteUserPreviewBox = document.getElementById('deleteUserPreviewBox');
+const deleteUserImg = document.getElementById('deleteUserImg');
+const deleteUserName = document.getElementById('deleteUserName');
+const deleteUserId = document.getElementById('deleteUserId');
+const deleteModalWarningText = document.getElementById('deleteModalWarningText');
+const btnCancelDelete = document.getElementById('btnCancelDelete');
+const btnConfirmDelete = document.getElementById('btnConfirmDelete');
+const deleteBtnLabel = document.getElementById('deleteBtnLabel');
+const toastContainer = document.getElementById('toastContainer');
+let pendingDeleteTarget = null;
+
 // State Variables
 let currentStream = null;
 let currentSessionId = null;
@@ -1457,14 +1473,38 @@ function renderUsersTable(users) {
             <button class="btn-tbl-verify" onclick="quickVerifyUser('${u.user_id}')" title="Chuyển sang xác thực thử với người này">
               ⚡ Xác thực
             </button>
-            <button class="btn-tbl-del" onclick="deleteUserRecord('${u.user_id}', '${escapeHtml(u.full_name)}')" title="Xóa hồ sơ khỏi CSDL">
-              🗑️
+            <button class="btn-tbl-del" onclick="promptDeleteUser('${u.user_id}', '${escapeHtml(u.full_name)}', '${u.snapshot_b64 || ''}')" title="Xóa hồ sơ khỏi CSDL">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+              Xóa
             </button>
           </td>
         </tr>
       `;
     })
     .join('');
+}
+
+// -----------------------------------------------------------------------------
+// TOAST NOTIFICATION HELPER
+// -----------------------------------------------------------------------------
+function showToast(message, type = 'success') {
+  if (!toastContainer) return;
+  const item = document.createElement('div');
+  item.className = `toast-item toast-${type}`;
+  const icon = type === 'success' ? '✓' : type === 'error' ? '✕' : 'ℹ';
+  item.innerHTML = `<span>${icon}</span><span>${escapeHtml(message)}</span>`;
+  toastContainer.appendChild(item);
+
+  requestAnimationFrame(() => {
+    item.classList.add('show');
+  });
+
+  setTimeout(() => {
+    item.classList.remove('show');
+    setTimeout(() => {
+      if (item.parentNode) item.parentNode.removeChild(item);
+    }, 300);
+  }, 3500);
 }
 
 // Tìm kiếm hồ sơ người dùng
@@ -1502,19 +1542,111 @@ window.quickVerifyUser = function (userId) {
   }
 };
 
-// Xóa hồ sơ người dùng
-window.deleteUserRecord = async function (userId, userName) {
-  const confirmed = confirm(`Bạn có chắc chắn muốn xóa hồ sơ sinh trắc học của "${userName}" (${userId})?`);
-  if (!confirmed) return;
-
-  try {
-    const res = await fetch(`${API_BASE}/api/users/${userId}`, { method: 'DELETE' });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    await loadUsersTable();
-    loadUsersListForSelect();
-  } catch (err) {
-    alert(`Lỗi khi xóa người dùng: ${err.message}`);
+// -----------------------------------------------------------------------------
+// XÓA HỒ SƠ NGƯỜI DÙNG (MODAL XÁC NHẬN CHUYÊN NGHIỆP & BULK CLEAR)
+// -----------------------------------------------------------------------------
+window.promptDeleteUser = function (userId, userName, avatarSrc) {
+  if (!deleteUserModal) {
+    return deleteUserRecord(userId, userName);
   }
+  pendingDeleteTarget = { type: 'single', userId, userName };
+
+  if (deleteModalTitle) deleteModalTitle.textContent = 'Xác Nhận Xóa Hồ Sơ';
+  if (deleteModalSubtitle) deleteModalSubtitle.textContent = `Bạn có chắc chắn muốn xóa hồ sơ sinh trắc học của "${userName}"?`;
+  if (deleteUserPreviewBox) deleteUserPreviewBox.classList.remove('hidden');
+  if (deleteUserName) deleteUserName.textContent = userName;
+  if (deleteUserId) deleteUserId.textContent = `User ID: ${userId}`;
+  if (deleteUserImg) {
+    if (avatarSrc) {
+      deleteUserImg.src = avatarSrc;
+      deleteUserImg.style.display = 'block';
+    } else {
+      deleteUserImg.style.display = 'none';
+    }
+  }
+  if (deleteModalWarningText) {
+    deleteModalWarningText.textContent = 'Toàn bộ vector ArcFace 512D và ảnh chân dung đối sánh sẽ bị xóa vĩnh viễn khỏi CSDL SQLite. Hành động này không thể hoàn tác.';
+  }
+  if (deleteBtnLabel) deleteBtnLabel.textContent = 'Xác nhận Xóa';
+  deleteUserModal.classList.remove('hidden');
+};
+
+window.promptClearAllUsers = function () {
+  if (!deleteUserModal) return;
+  if (!cachedUsersList || cachedUsersList.length === 0) {
+    showToast('Cơ sở dữ liệu người dùng đang trống.', 'info');
+    return;
+  }
+  pendingDeleteTarget = { type: 'all' };
+
+  if (deleteModalTitle) deleteModalTitle.textContent = 'Xác Nhận Xóa Toàn Bộ CSDL';
+  if (deleteModalSubtitle) deleteModalSubtitle.textContent = `Bạn có chắc chắn muốn xóa toàn bộ ${cachedUsersList.length} hồ sơ người dùng?`;
+  if (deleteUserPreviewBox) deleteUserPreviewBox.classList.add('hidden');
+  if (deleteModalWarningText) {
+    deleteModalWarningText.textContent = `Hành động này sẽ xóa sạch toàn bộ ${cachedUsersList.length} hồ sơ cùng các vector đặc trưng ArcFace trong SQLite. Toàn bộ người dùng sẽ phải đăng ký lại từ đầu.`;
+  }
+  if (deleteBtnLabel) deleteBtnLabel.textContent = `Xóa Toàn Bộ (${cachedUsersList.length})`;
+  deleteUserModal.classList.remove('hidden');
+};
+
+function closeDeleteModal() {
+  if (deleteUserModal) deleteUserModal.classList.add('hidden');
+  pendingDeleteTarget = null;
+  if (btnConfirmDelete) {
+    btnConfirmDelete.disabled = false;
+  }
+  if (deleteBtnLabel) deleteBtnLabel.textContent = 'Xác nhận Xóa';
+}
+
+if (btnCancelDelete) {
+  btnCancelDelete.addEventListener('click', closeDeleteModal);
+}
+
+if (btnConfirmDelete) {
+  btnConfirmDelete.addEventListener('click', async () => {
+    if (!pendingDeleteTarget) return;
+    btnConfirmDelete.disabled = true;
+    if (deleteBtnLabel) deleteBtnLabel.textContent = 'Đang xóa...';
+
+    try {
+      if (pendingDeleteTarget.type === 'single') {
+        const { userId, userName } = pendingDeleteTarget;
+        const res = await fetch(`${API_BASE}/api/users/${userId}`, { method: 'DELETE' });
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.detail || `HTTP ${res.status}`);
+        }
+        showToast(`Đã xóa thành công hồ sơ của "${userName}".`, 'success');
+      } else if (pendingDeleteTarget.type === 'all') {
+        const res = await fetch(`${API_BASE}/api/users`, { method: 'DELETE' });
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.detail || `HTTP ${res.status}`);
+        }
+        const data = await res.json();
+        showToast(data.message || 'Đã xóa toàn bộ hồ sơ trong CSDL thành công.', 'success');
+      }
+
+      closeDeleteModal();
+      await loadUsersTable();
+      await loadUsersCount();
+      loadUsersListForSelect();
+    } catch (err) {
+      console.error('Lỗi khi xóa người dùng:', err);
+      showToast(`Lỗi khi xóa: ${err.message}`, 'error');
+      if (btnConfirmDelete) btnConfirmDelete.disabled = false;
+      if (deleteBtnLabel) deleteBtnLabel.textContent = 'Xác nhận Xóa';
+    }
+  });
+}
+
+if (btnClearAllUsers) {
+  btnClearAllUsers.addEventListener('click', promptClearAllUsers);
+}
+
+// Fallback xóa người dùng trực tiếp nếu cần gọi từ console
+window.deleteUserRecord = async function (userId, userName) {
+  promptDeleteUser(userId, userName);
 };
 
 // -----------------------------------------------------------------------------

@@ -43,7 +43,10 @@ const btnModalRetake = document.getElementById('btnModalRetake');
 const tabBtnEnroll = document.getElementById('tabBtnEnroll');
 const tabBtnVerify = document.getElementById('tabBtnVerify');
 const tabBtnUsers = document.getElementById('tabBtnUsers');
+const viewLanding = document.getElementById('viewLanding');
 const viewEnroll = document.getElementById('viewEnroll');
+const logoHome = document.getElementById('logoHome');
+const btnLandingEnroll = document.getElementById('btnLandingEnroll');
 const viewVerify = document.getElementById('viewVerify');
 const viewUsers = document.getElementById('viewUsers');
 const userCountBadge = document.getElementById('userCountBadge');
@@ -127,7 +130,7 @@ let isLoopRunning = false;
 let isSendingFrame = false;
 let isFlashingActive = false;
 let activeDeviceId = localStorage.getItem('ekyc_preferred_camera') || '';
-let currentTab = 'viewEnroll';
+let currentTab = 'viewLanding';
 let lastCapturedDataUrl = null;
 let lastSavedUserId = null;
 let currentVerifyMode = '1_to_n'; // '1_to_n' hoặc '1_to_1'
@@ -1231,10 +1234,13 @@ function switchTab(targetTabId) {
 
   // 2. Chuyển đổi hiển thị view panels
   const panels = [
+    { el: viewLanding, id: 'viewLanding' },
     { el: viewEnroll, id: 'viewEnroll' },
     { el: viewVerify, id: 'viewVerify' },
     { el: viewUsers, id: 'viewUsers' },
   ];
+
+  document.body.dataset.view = targetTabId;
 
   panels.forEach(({ el, id }) => {
     if (!el) return;
@@ -1273,6 +1279,8 @@ function switchTab(targetTabId) {
 if (tabBtnEnroll) tabBtnEnroll.addEventListener('click', () => switchTab('viewEnroll'));
 if (tabBtnVerify) tabBtnVerify.addEventListener('click', () => switchTab('viewVerify'));
 if (tabBtnUsers) tabBtnUsers.addEventListener('click', () => switchTab('viewUsers'));
+if (logoHome) logoHome.addEventListener('click', () => switchTab('viewLanding'));
+if (btnLandingEnroll) btnLandingEnroll.addEventListener('click', () => switchTab('viewEnroll'));
 
 // -----------------------------------------------------------------------------
 // 8. LƯU HỒ SƠ NGƯỜI DÙNG VÀO CƠ SỞ DỮ LIỆU (SAVE TO USERS DB)

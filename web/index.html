@@ -3,10 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Smart-eKYC | Định Danh Sinh Trắc Học Khuôn Mặt</title>
-  <link rel="stylesheet" href="styles.css?v=3.0">
+  <title>QAT eKYC</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@200;400;500;600;700&family=Racing+Sans+One&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css?v=4.6">
 </head>
-<body>
+<body data-view="viewLanding">
 
   <!-- LỚP PHỦ COLOR FLASHING TOÀN MÀN HÌNH (Full-Screen Immersive Light Pulse) -->
   <div id="flashingOverlay" class="flashing-overlay">
@@ -19,63 +22,55 @@
     </div>
   </div>
 
-  <!-- 1. TOP NAVBAR -->
-  <header class="navbar">
-    <div class="brand">
-      <div class="brand-logo">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-          <path d="m9 12 2 2 4-4"/>
-        </svg>
-      </div>
-      <div class="brand-text">
-        <span class="brand-name">Smart-eKYC</span>
-        <span class="badge-poc">BANK-GRADE BIOMETRICS</span>
-      </div>
-    </div>
+  <div class="glow-layer" aria-hidden="true">
+    <div class="glow glow-2"></div>
+    <div class="glow glow-6"></div>
+    <div class="glow glow-3"></div>
+  </div>
 
-    <!-- TABS ĐIỀU HƯỚNG TỔNG THỂ (ENROLLMENT - VERIFICATION - USERS DB) -->
-    <nav class="nav-tabs">
-      <button id="tabBtnEnroll" class="nav-tab-btn active" data-tab="viewEnroll">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
-        <span>Đăng ký eKYC</span>
-      </button>
-      <button id="tabBtnVerify" class="nav-tab-btn" data-tab="viewVerify">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
-        <span>Xác thực (1:1 & 1:N)</span>
-      </button>
-      <button id="tabBtnUsers" class="nav-tab-btn" data-tab="viewUsers">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-        <span>Quản lý Users</span>
-        <span id="userCountBadge" class="tab-badge">0</span>
-      </button>
+  <header class="topnav">
+    <button id="logoHome" class="logo-btn" type="button">QAT eKYC</button>
+    <nav class="nav-pills" aria-label="Điều hướng">
+      <button id="tabBtnEnroll" class="nav-pill" data-tab="viewEnroll" type="button">Đăng ký</button>
+      <button id="tabBtnVerify" class="nav-pill" data-tab="viewVerify" type="button">Xác thực</button>
+      <button id="tabBtnUsers" class="nav-pill" data-tab="viewUsers" type="button">Quản lý<span id="userCountBadge" class="tab-badge">0</span></button>
     </nav>
-
-    <div class="nav-controls">
-      <!-- Dropdown chọn Camera -->
-      <div class="camera-select-box">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
-        <select id="cameraSelect" title="Chọn thiết bị camera">
-          <option value="">Đang tìm thiết bị camera...</option>
-        </select>
-      </div>
-
-      <!-- Trạng thái kết nối Backend -->
-      <div id="backendStatus" class="status-chip online">
-        <span class="dot"></span>
-        <span class="status-label">Hệ thống Sẵn sàng</span>
-      </div>
-    </div>
   </header>
 
+  <div class="utility-bar">
+    <div class="camera-select-box">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+      <select id="cameraSelect" title="Chọn thiết bị camera">
+        <option value="">Đang tìm thiết bị camera...</option>
+      </select>
+    </div>
+    <div id="backendStatus" class="status-chip online">
+      <span class="dot"></span>
+      <span class="status-label">Hệ thống Sẵn sàng</span>
+    </div>
+  </div>
+
+  <section id="viewLanding" class="view-panel active">
+    <div class="landing-stage">
+      <div class="hero-copy">
+        <p class="hero-hello">Hello !?!</p>
+        <h1 class="hero-title">Đăng ký khuôn mặt<br>này bạn ơi</h1>
+        <p class="hero-sub">Hệ thống đăng ký thông minh</p>
+        <button id="btnLandingEnroll" class="cta-enroll" type="button">Đăng ký ⟶</button>
+      </div>
+      <img class="portrait-oval oval-top" src="assets/1.png" alt="">
+      <img class="portrait-oval oval-left" src="assets/2.png" alt="">
+      <img class="portrait-oval oval-right" src="assets/3.png" alt="">
+    </div>
+  </section>
+
   <!-- 2. MAIN ENROLLMENT PANEL -->
-  <div id="viewEnroll" class="view-panel active">
+  <div id="viewEnroll" class="view-panel hidden">
   <main class="main-layout">
 
     <!-- CỘT TRÁI: STEPPER TIẾN TRÌNH -->
     <aside class="stepper-card">
-      <h3 class="panel-title">Quy trình Định danh</h3>
-      <p class="panel-subtitle">Hệ thống phòng thủ sinh trắc học đa tầng</p>
+      <h3 class="panel-title">Quy trình</h3>
 
       <div class="stepper-list">
         <!-- BƯỚC 1 -->
@@ -86,8 +81,8 @@
             <div class="step-tail"></div>
           </div>
           <div class="step-body">
-            <div class="step-heading">Kiểm tra Thiết bị</div>
-            <div class="step-sub">Độ phân giải & Tín hiệu video</div>
+            <div class="step-heading">Kiểm tra thiết bị</div>
+            <div class="step-sub">Độ phân giải và Tín hiệu</div>
           </div>
         </div>
 
@@ -99,8 +94,8 @@
             <div class="step-tail"></div>
           </div>
           <div class="step-body">
-            <div class="step-heading">Định danh Khuôn mặt</div>
-            <div class="step-sub">Khung Oval chuẩn, FQA & Không che chắn</div>
+            <div class="step-heading">Khuôn mặt</div>
+            <div class="step-sub">Khung Oval</div>
           </div>
         </div>
 
@@ -112,8 +107,8 @@
             <div class="step-tail"></div>
           </div>
           <div class="step-body">
-            <div class="step-heading">Liveness Chuyển động</div>
-            <div class="step-sub">Quay đầu 3D Trái / Phải ngẫu nhiên</div>
+            <div class="step-heading">Liveness</div>
+            <div class="step-sub">Quay trái, phải</div>
           </div>
         </div>
 
@@ -125,8 +120,8 @@
             <div class="step-tail"></div>
           </div>
           <div class="step-body">
-            <div class="step-heading">Quang phổ Ánh sáng</div>
-            <div class="step-sub">Phân tích phản xạ bề mặt da sinh học</div>
+            <div class="step-heading">Ánh sáng</div>
+            <div class="step-sub">Phân tích phản xạ da</div>
           </div>
         </div>
 
@@ -137,8 +132,8 @@
             <span class="step-check">✓</span>
           </div>
           <div class="step-body">
-            <div class="step-heading">Hoàn tất Hồ sơ</div>
-            <div class="step-sub">Chụp chân dung HD & Kiểm định an ninh</div>
+            <div class="step-heading">Hoàn tất</div>
+            <div class="step-sub">Chụp chân dung và kiểm tra</div>
           </div>
         </div>
       </div>
@@ -269,7 +264,7 @@
       <!-- Thanh tiến độ giữ yên (Stability Hold Bar) -->
       <div class="hold-progress-container" id="holdProgressContainer">
         <div class="hold-progress-header">
-          <span id="holdLabel">Giữ yên khuôn mặt: 0%</span>
+          <span id="holdLabel">Tiến độ xác thực - 0%</span>
         </div>
         <div class="hold-progress-track">
           <div id="holdProgressBar" class="hold-progress-fill"></div>
@@ -280,20 +275,19 @@
       <div class="camera-actions">
         <button id="btnRestartSession" class="btn-action-outline">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
-          Bắt đầu lại quy trình
+          Bắt đầu lại
         </button>
       </div>
     </section>
 
     <!-- CỘT PHẢI: REALTIME CHECKLIST KIỂM TRA ĐIỀU KIỆN -->
     <aside class="checklist-card">
-      <h3 class="panel-title">Chỉ số Kiểm định Thời gian thực</h3>
-      <p class="panel-subtitle">Yêu cầu kỹ thuật theo bản đặc tả SRS</p>
+      <h3 class="panel-title">Thông số</h3>
 
       <!-- NHÓM 1: THIẾT BỊ & LUỒNG VIDEO (CAMERA QUALITY) -->
       <div class="check-group">
         <div class="group-title">
-          <span>1. Thiết bị Camera</span>
+          <span>1 - Camera</span>
         </div>
         <div class="check-row" id="chk-resolution">
           <span class="chk-icon">⚪</span>
@@ -320,7 +314,7 @@
       <!-- NHÓM 2: PHÒNG THỦ CHỐNG GIẢ MẠO SINH TRẮC (PASSIVE ANTI-SPOOFING / PAD) -->
       <div class="check-group">
         <div class="group-title">
-          <span>2. Chống giả mạo</span>
+          <span>2 - Chống giả mạo</span>
         </div>
         <div class="check-row" id="chk-anti-spoof-real">
           <span class="chk-icon">⚪</span>
@@ -337,17 +331,12 @@
           <span class="chk-label">Chống màn hình / Video replay</span>
           <span class="chk-val" id="val-anti-replay">--</span>
         </div>
-        <div class="check-row" id="chk-3d-depth">
-          <span class="chk-icon">⚪</span>
-          <span class="chk-label">Độ sâu hình học 3D (3D Depth Liveness)</span>
-          <span class="chk-val" id="val-3d-depth">--</span>
-        </div>
       </div>
 
       <!-- NHÓM 3: CHẤT LƯỢNG KHUÔN MẶT (FQA - 4 TIÊU CHÍ CỐT LÕI) -->
       <div class="check-group">
         <div class="group-title">
-          <span>3. Đánh giá khuôn mặt</span>
+          <span>3 - Đánh giá khuôn mặt</span>
         </div>
         <div class="check-row" id="chk-face-count">
           <span class="chk-icon">⚪</span>
@@ -419,7 +408,7 @@
       <!-- NHÓM 4: THỬ THÁCH SINH TRẮC HỌC -->
       <div class="check-group">
         <div class="group-title">
-          <span>4. Liveness</span>
+          <span>4 - Liveness</span>
         </div>
         <div class="check-row" id="chk-liveness-turn">
           <span class="chk-icon">⚪</span>
@@ -798,6 +787,6 @@
   <!-- CONTAINER HIỂN THỊ TOAST NOTIFICATION -->
   <div id="toastContainer" class="toast-container"></div>
 
-  <script src="app.js?v=3.3"></script>
+  <script src="app.js?v=4.0"></script>
 </body>
 </html>

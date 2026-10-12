@@ -35,32 +35,32 @@ PARTS_CONFIG = {
     "left_eye": {
         "indices": [33, 160, 158, 133, 153, 144],
         "name": "Mắt trái",
-        "min_edge": 4.0,
-        "min_contrast": 25.0,
+        "min_edge": 2.5,
+        "min_contrast": 16.0,
     },
     "right_eye": {
         "indices": [362, 385, 387, 263, 373, 380],
         "name": "Mắt phải",
-        "min_edge": 4.0,
-        "min_contrast": 25.0,
+        "min_edge": 2.5,
+        "min_contrast": 16.0,
     },
     "left_eyebrow": {
         "indices": [70, 63, 105, 66, 107],
         "name": "Chân mày trái",
-        "min_edge": 1.8,
-        "min_contrast": 18.0,
+        "min_edge": 1.2,
+        "min_contrast": 14.0,
     },
     "right_eyebrow": {
         "indices": [336, 296, 334, 293, 300],
         "name": "Chân mày phải",
-        "min_edge": 1.8,
-        "min_contrast": 18.0,
+        "min_edge": 1.2,
+        "min_contrast": 14.0,
     },
     "nose": {
         "indices": [1, 2, 98, 327, 168],
         "name": "Vùng Mũi",
-        "min_edge": 2.2,
-        "min_contrast": 20.0,
+        "min_edge": 0.8,
+        "min_contrast": 8.0,
     },
 }
 
@@ -315,6 +315,8 @@ def analyze_landmarks(frame_bgr: np.ndarray, lm3: np.ndarray, oval: dict, out: F
         out.sharpness = float(cv2.Laplacian(roi, cv2.CV_64F).var())
 
     face_w_px = max(1.0, (x1 - x0) * w)
+    r = max(3, int(face_w_px * 0.05))
+    ycc = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2YCrCb).astype(np.float64)
 
     # --- Kiểm tra độ rõ nét & sự hiện diện của từng bộ phận ngũ quan (Occlusion Detection) ---
     parts_status = {}
@@ -331,10 +333,22 @@ def analyze_landmarks(frame_bgr: np.ndarray, lm3: np.ndarray, oval: dict, out: F
                 occluded_name = p_cfg["name"]
             continue
 
-        sobel = cv2.Sobel(roi, cv2.CV_64F, 1, 1, ksize=3)
-        edge_energy = float(np.mean(np.abs(sobel)))
+        # Dùng Gradient Magnitude chuẩn (Gx dọc theo X, Gy dọc theo Y) thay vì đạo hàm chéo (1, 1)
+        # để bắt chính xác biên cạnh thẳng đứng của sống mũi và viền mắt
+        sobel_x = cv2.Sobel(roi, cv2.CV_64F, 1, 0, ksize=3)
+        sobel_y = cv2.Sobel(roi, cv2.CV_64F, 0, 1, ksize=3)
+        edge_energy = float(np.mean(np.abs(sobel_x) + np.abs(sobel_y)) * 0.5)
         contrast = float(roi.max() - roi.min())
         is_ok = bool(edge_energy >= p_cfg["min_edge"] and contrast >= p_cfg["min_contrast"])
+
+        # Cơ chế cứu cánh sinh trắc học: Nếu là Mũi nhưng da mịn hoặc ánh sáng tản đều
+        # làm contrast/edge thấp, kiểm tra xem vùng đó có đúng là da người tự nhiên hay không.
+        if not is_ok and p_key == "nose":
+            nose_patch = _patch(ycc, px[1, 0], px[1, 1], max(2, int(face_w_px * 0.03))).reshape(-1, 3)
+            if nose_patch.size > 0:
+                mean_cr, mean_cb = float(nose_patch[:, 1].mean()), float(nose_patch[:, 2].mean())
+                if _is_skin(mean_cr, mean_cb):
+                    is_ok = True
 
         parts_status[p_key] = is_ok
         if not is_ok and occluded_name is None:
@@ -347,9 +361,6 @@ def analyze_landmarks(frame_bgr: np.ndarray, lm3: np.ndarray, oval: dict, out: F
     # Khẩu trang thực tế (y tế hoặc vải) che kín MŨI VÀ MIỆNG; vùng miệng không được kiểm tra riêng,
     # nên dựa vào mũi: mũi rõ nét -> chỉ báo khi má dưới bị phủ màu nhân tạo hẳn.
     has_nose = bool(parts_status.get("nose", True))
-
-    r = max(3, int(face_w_px * 0.05))
-    ycc = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2YCrCb).astype(np.float64)
 
     def stats(indices, rad):
         ps = [_patch(ycc, px[i, 0], px[i, 1], rad).reshape(-1, 3) for i in indices]
@@ -550,7 +561,11 @@ def _continuous_issue(face: Optional[FaceResult], is_turning: bool) -> Issue:
     if face.hand_occlusion:
         return "Vui lòng bỏ tay ra khỏi khuôn mặt", "error"
     if face.occluded_part_name:
-        return f"Phát hiện che khuất {face.occluded_part_name} – Vui lòng để lộ toàn bộ khuôn mặt", "error"
+        # Khi đang quay đầu (is_turning=True), góc nghiêng 3D làm biến dạng/thu hẹp hình chiếu phối cảnh của mũi
+        if is_turning and face.occluded_part_name == "Vùng Mũi":
+            pass
+        else:
+            return f"Phát hiện che khuất {face.occluded_part_name} – Vui lòng để lộ toàn bộ khuôn mặt", "error"
     if face.mask_detected:
         return "Vui lòng tháo khẩu trang để tiếp tục", "error"
     if face.sunglasses_detected:

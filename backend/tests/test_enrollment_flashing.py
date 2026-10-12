@@ -37,7 +37,8 @@ def test_color_challenge_flow(client):
     assert data["session_id"] == sid
     assert "challenge_token" in data
     assert len(data["sequence"]) == 3
-    assert data["step_duration_ms"] == 330
+    import config as C
+    assert data["step_duration_ms"] == C.FLASH_STEP_DURATION_MS
     assert data["expires_at"] > 0
 
 

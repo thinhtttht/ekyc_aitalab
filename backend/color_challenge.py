@@ -11,6 +11,14 @@ import time
 from typing import Dict, List, Optional, Tuple
 from pydantic import BaseModel, Field
 
+try:
+    import config as C  # type: ignore
+    _STEP_DURATION_MS = int(getattr(C, "FLASH_STEP_DURATION_MS", 330))
+    _TTL_SEC = float(getattr(C, "FLASH_CHALLENGE_TIMEOUT_SEC", 15.0))
+except Exception:  # pragma: no cover
+    _STEP_DURATION_MS = 330
+    _TTL_SEC = 15.0
+
 # Bảng 5 màu quang học tiêu chuẩn an toàn thị giác W3C WCAG 2.1
 COLOR_PALETTE: List[Tuple[str, str, Tuple[int, int, int]]] = [
     ("EMERALD_GREEN", "#00E676", (0, 230, 118)),
@@ -20,7 +28,7 @@ COLOR_PALETTE: List[Tuple[str, str, Tuple[int, int, int]]] = [
     ("MAGENTA_PINK", "#F50057", (245, 0, 87)),
 ]
 
-CHALLENGE_TTL_SEC: float = 15.0
+CHALLENGE_TTL_SEC: float = _TTL_SEC
 CHALLENGE_SECRET: bytes = b"smart_ekyc_optical_flashing_secret_key_2026"
 
 
@@ -30,7 +38,7 @@ class ColorStep(BaseModel):
     name: str = Field(..., description="Tên định danh màu sắc")
     hex: str = Field(..., description="Mã màu HEX cho hiển thị CSS")
     rgb: Tuple[int, int, int] = Field(..., description="Giá trị (R, G, B) từ 0 đến 255")
-    duration_ms: int = Field(330, description="Thời lượng hiển thị tính bằng mili-giây")
+    duration_ms: int = Field(_STEP_DURATION_MS, description="Thời lượng hiển thị tính bằng mili-giây")
 
 
 class ChallengeSessionData(BaseModel):
@@ -87,7 +95,7 @@ class ChallengeManager:
                     name=name,
                     hex=hex_code,
                     rgb=rgb,
-                    duration_ms=330,
+                    duration_ms=_STEP_DURATION_MS,
                 )
             )
             last_idx = chosen_idx

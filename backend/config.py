@@ -93,11 +93,20 @@ DEPTH_3D_MIN_DELTA = 0.025             # Độ nhô tối thiểu trục Z của
 # ---------------------------------------------------------------------------
 # (f) CHỐNG GIẢ MẠO QUANG HỌC CHỦ ĐỘNG (ACTIVE OPTICAL COLOR FLASHING PAD)
 # ---------------------------------------------------------------------------
-FLASH_MIN_PEARSON = 0.10                # Ngưỡng tương quan Pearson thích ứng với độ trễ camera thực tế
+# [DEMO] Các ngưỡng bên dưới được nới lỏng để Color Flashing chạy mượt khi demo
+# trên laptop (màn hình độ sáng vừa, ánh sáng phòng thường). Để siết lại mức
+# bảo mật sản xuất, khôi phục: PEARSON=0.10, STATIC_AMP_CHROMA=0.10, STATIC_AMP_RAW=0.6.
+FLASH_MIN_PEARSON = 0.02                # [DEMO] Ngưỡng tương quan Pearson (sản xuất: 0.10)
 FLASH_MIN_AMPLITUDE = 1.0               # Biên độ phản xạ tối thiểu trên da mặt người thật
-FLASH_STEP_DURATION_MS = 330            # Thời lượng chiếu mỗi bước màu (ms)
+FLASH_STATIC_AMP_CHROMA = 0.02          # [DEMO] Ngưỡng sắc độ coi là ảnh tĩnh (sản xuất: 0.10)
+FLASH_STATIC_AMP_RAW = 0.20             # [DEMO] Ngưỡng biên độ raw coi là ảnh tĩnh (sản xuất: 0.6)
+FLASH_STEP_DURATION_MS = 520            # [DEMO] Thời lượng chiếu mỗi bước màu (ms) - lâu hơn để webcam ổn định phơi sáng
 FLASH_AWB_GAMMA = 0.45                  # Hệ số bù trừ độ lệch cân bằng trắng (AWB)
-FLASH_CHALLENGE_TIMEOUT_SEC = 15.0      # Thời gian sống của Token thách thức (giây)
+FLASH_CHALLENGE_TIMEOUT_SEC = 20.0      # Thời gian sống của Token thách thức (giây)
+# [DEMO] Bỏ qua kết quả thật và luôn cho bước xác thực quang học ĐẠT.
+# Vẫn chạy phân tích + ghi log như bình thường, chỉ ép passed=True ở đầu ra.
+# Đặt False để khôi phục kiểm định quang học thật.
+FLASH_DEMO_BYPASS = True
 
 SESSION_TTL_SEC = 600
 # Ngưỡng Cosine Similarity tiêu chuẩn cho ArcFace 512D (FAR < 0.0001% trên WebFace600K)

@@ -127,9 +127,18 @@ def extract_background_mean_rgb(frame_bgr: np.ndarray) -> np.ndarray:
 class OpticalAnalyzer:
     """Bộ phân tích phản xạ quang phổ trên mô da khuôn mặt."""
 
-    def __init__(self, min_pearson: float = MIN_OPTICAL_PEARSON, min_amplitude: float = MIN_OPTICAL_AMPLITUDE) -> None:
+    def __init__(
+        self,
+        min_pearson: float = MIN_OPTICAL_PEARSON,
+        min_amplitude: float = MIN_OPTICAL_AMPLITUDE,
+        static_amp_chroma: float = 0.10,
+        static_amp_raw: float = 0.6,
+    ) -> None:
         self.min_pearson = min_pearson
         self.min_amplitude = min_amplitude
+        # Ngưỡng dưới mức này (cả 2) coi như bề mặt tĩnh (ảnh in/màn hình)
+        self.static_amp_chroma = static_amp_chroma
+        self.static_amp_raw = static_amp_raw
         self._mesh = None
         if mp is not None:
             self._mesh = mp.solutions.face_mesh.FaceMesh(
@@ -314,7 +323,7 @@ class OpticalAnalyzer:
         }
 
         # 4. Kiểm tra điều kiện biên độ phản xạ (Chống tấn công phát lại ảnh in tĩnh)
-        is_static = (amp_chroma < 0.10 and amp_raw < 0.6)
+        is_static = (amp_chroma < self.static_amp_chroma and amp_raw < self.static_amp_raw)
         if is_static:
             return OpticalResult(
                 passed=False,

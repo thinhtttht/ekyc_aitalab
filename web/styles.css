@@ -2239,26 +2239,38 @@ body {
   transition: box-shadow 0.28s ease, background 0.28s ease, transform 0.28s ease;
 }
 
-.nav-pill:hover {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.92) 0%, rgba(255, 196, 140, 0.9) 100%);
-  box-shadow: 0 0 0 1px rgba(255, 180, 120, 0.5),
-    0 8px 22px rgba(255, 110, 30, 0.35),
-    0 0 34px rgba(255, 120, 30, 0.45),
+.nav-pill:hover,
+.nav-pill:active,
+.nav-pill:focus-visible {
+  background: linear-gradient(135deg, #ffd9a8 0%, #ffb46b 45%, #ff9a3d 100%);
+  box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.9),
+    0 0 0 4px rgba(255, 170, 90, 0.4),
+    0 8px 24px rgba(255, 110, 30, 0.45),
+    0 0 42px rgba(255, 130, 40, 0.6),
     inset 0 1px 0 rgba(255, 255, 255, 0.85);
   transform: translateY(-1px);
   color: #2a2a2a;
+  outline: none;
+}
+
+.nav-pill:active {
+  transform: translateY(0);
 }
 
 .nav-pill.active {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.92) 0%, rgba(255, 196, 140, 0.88) 100%);
-  box-shadow: 0 10px 28px rgba(255, 120, 30, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  background: linear-gradient(135deg, #ffd9a8 0%, #ffb46b 45%, #ff9a3d 100%);
+  box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.85),
+    0 8px 22px rgba(255, 110, 30, 0.32),
+    0 0 34px rgba(255, 130, 40, 0.42),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
   color: #2a2a2a;
 }
 
 .nav-pill.active:hover {
-  box-shadow: 0 0 0 1px rgba(255, 180, 120, 0.55),
-    0 10px 26px rgba(255, 110, 30, 0.4),
-    0 0 40px rgba(255, 120, 30, 0.5),
+  box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.9),
+    0 0 0 4px rgba(255, 170, 90, 0.45),
+    0 10px 26px rgba(255, 110, 30, 0.5),
+    0 0 46px rgba(255, 130, 40, 0.65),
     inset 0 1px 0 rgba(255, 255, 255, 0.85);
 }
 
@@ -2371,14 +2383,22 @@ body[data-view="viewEnroll"] .utility-bar {
   transition: box-shadow 0.28s ease, background 0.28s ease, transform 0.28s ease;
 }
 
-.cta-enroll:hover {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.92) 0%, rgba(255, 196, 140, 0.92) 100%);
-  box-shadow: 0 0 0 1px rgba(255, 180, 120, 0.5),
-    0 8px 22px rgba(255, 110, 30, 0.38),
-    0 0 36px rgba(255, 120, 30, 0.5),
+.cta-enroll:hover,
+.cta-enroll:active,
+.cta-enroll:focus-visible {
+  background: linear-gradient(135deg, #ffd9a8 0%, #ffb46b 45%, #ff9a3d 100%);
+  box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.9),
+    0 0 0 4px rgba(255, 170, 90, 0.4),
+    0 8px 24px rgba(255, 110, 30, 0.45),
+    0 0 42px rgba(255, 130, 40, 0.6),
     inset 0 1px 0 rgba(255, 255, 255, 0.85);
   transform: translateY(-1px);
   color: #2a2a2a;
+  outline: none;
+}
+
+.cta-enroll:active {
+  transform: translateY(0);
 }
 
 .portrait-oval {
@@ -2614,14 +2634,22 @@ body[data-view="viewEnroll"] .utility-bar {
   transition: box-shadow 0.28s ease, background 0.28s ease, transform 0.28s ease;
 }
 
-.btn-action-outline:hover {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.92) 0%, rgba(255, 196, 140, 0.92) 100%);
-  box-shadow: 0 0 0 1px rgba(255, 180, 120, 0.5),
-    0 8px 20px rgba(255, 110, 30, 0.35),
-    0 0 32px rgba(255, 120, 30, 0.45),
+.btn-action-outline:hover,
+.btn-action-outline:active,
+.btn-action-outline:focus-visible {
+  background: linear-gradient(135deg, #ffd9a8 0%, #ffb46b 45%, #ff9a3d 100%);
+  box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.9),
+    0 0 0 4px rgba(255, 170, 90, 0.4),
+    0 8px 22px rgba(255, 110, 30, 0.45),
+    0 0 38px rgba(255, 130, 40, 0.6),
     inset 0 1px 0 rgba(255, 255, 255, 0.85);
   transform: translateY(-1px);
   color: #2a2a2a;
+  outline: none;
+}
+
+.btn-action-outline:active {
+  transform: translateY(0);
 }
 
 .btn-action-outline svg {

@@ -30,7 +30,8 @@ def test_create_challenge_valid():
         for val in step.rgb:
             assert 0 <= val <= 255
         assert step.hex.startswith("#")
-        assert step.duration_ms == 330
+        import config as C
+        assert step.duration_ms == C.FLASH_STEP_DURATION_MS
 
 
 def test_token_verification_success():

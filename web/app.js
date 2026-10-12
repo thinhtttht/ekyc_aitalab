@@ -592,8 +592,9 @@ async function triggerOpticalFlashing() {
       const pct = Math.round(((i + 1) / sequence.length) * 100);
       holdProgressBar.style.width = `${pct}%`;
 
-      // Chờ 260ms để ánh sáng màn hình phủ đều lên da mặt và webcam buffer cập nhật khung hình mới
-      await new Promise((r) => setTimeout(r, 260));
+      // Chờ để ánh sáng màn hình phủ đều lên da mặt và webcam tự cân bằng phơi sáng (AE/AWB)
+      const settleMs = 330;
+      await new Promise((r) => setTimeout(r, settleMs));
 
       // Trích xuất khung hình từ webcam
       const vw = video.videoWidth || 640;
@@ -623,8 +624,8 @@ async function triggerOpticalFlashing() {
         timestamp_ms: Date.now(),
       });
 
-      // Chờ hết thời lượng của màu này (mặc định 400ms)
-      const remainingMs = Math.max(50, (step.duration_ms || 400) - 260);
+      // Chờ hết thời lượng của màu này
+      const remainingMs = Math.max(50, (step.duration_ms || 520) - settleMs);
       await new Promise((r) => setTimeout(r, remainingMs));
     }
 

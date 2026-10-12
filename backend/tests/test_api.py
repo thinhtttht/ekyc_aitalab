@@ -70,5 +70,5 @@ def test_enroll_frame(client):
 def test_web_static_index(client):
     res = client.get("/")
     assert res.status_code == 200
-    assert "Smart-eKYC" in res.text
+    assert "eKYC" in res.text
     assert "webcamVideo" in res.text

@@ -1,4 +1,4 @@
-# Smart-eKYC – Đăng ký và xác thực khuôn mặt
+# QAT eKYC – Đăng ký và xác thực khuôn mặt
 
 Bản thử nghiệm eKYC khuôn mặt chạy trên trình duyệt: kiểm tra camera và chất lượng ảnh mặt, kiểm tra liveness, 
 chống giả mạo thụ động bằng MiniFASNet, trích xuất vector ArcFace 512 chiều, lưu SQLite và so khớp 1:1 / 1:N.

@@ -26,6 +26,7 @@ from optical_analyzer import OpticalAnalyzer
 from database import get_user_repository
 from feature_extractor import get_arcface_extractor
 from face_analyzer import FaceAnalyzer
+from proctoring_service import get_proctoring_service
 
 optical_analyzer = OpticalAnalyzer(
     min_pearson=C.FLASH_MIN_PEARSON, min_amplitude=C.FLASH_MIN_AMPLITUDE
@@ -33,6 +34,7 @@ optical_analyzer = OpticalAnalyzer(
 user_repo = get_user_repository()
 arcface_extractor = get_arcface_extractor()
 verifier_analyzer = FaceAnalyzer()
+proctoring_svc = get_proctoring_service()
 
 app = FastAPI(
     title="Smart-eKYC Biometric PoC",
@@ -598,6 +600,73 @@ def verify_face_biometrics(payload: FaceVerifyPayload):
         "match_result": match_data,
         "latency_ms": latency_ms,
     }
+
+
+# ==============================================================================
+# HỆ THỐNG GIÁM SÁT THI VẤN ĐÁP TRỰC TUYẾN (AI ORAL EXAM PROCTORING)
+# ==============================================================================
+
+class ExamVerifyRequest(BaseModel):
+    image_b64: str = Field(..., description="Ảnh frame webcam từ phòng thi")
+    user_id: str = Field(..., description="Mã thí sinh (User ID)")
+
+
+class ExamViolationReportRequest(BaseModel):
+    user_id: str = Field(..., description="Mã thí sinh (User ID)")
+    full_name: Optional[str] = Field("", description="Tên thí sinh")
+    reason: str = Field(..., description="Lý do vi phạm (ví dụ: PRINT_ATTACK, REPLAY_ATTACK, ABSENT)")
+    details: Optional[Dict[str, Any]] = None
+
+
+class AdminUnlockRequest(BaseModel):
+    user_id: str = Field(..., description="Mã thí sinh cần mở khóa")
+
+
+@app.post("/api/exam/verify-frame")
+async def verify_exam_frame(payload: ExamVerifyRequest):
+    """Kiểm tra frame trong cửa sổ giám sát thi:
+
+    - Kiểm tra xem thí sinh có đang bị khóa (cooldown) hay bị cấm (banned) hay không
+    - Kiểm tra liveness & anti-spoofing (MiniFASNet v2)
+    - Đối sánh 1:1 đích danh khuôn mặt với ArcFace 512D
+    """
+    image_bytes = _decode_b64_image(payload.image_b64)
+    frame_bgr = cv2.imdecode(np.frombuffer(image_bytes, np.uint8), cv2.IMREAD_COLOR)
+    if frame_bgr is None:
+        raise HTTPException(status_code=400, detail="Không thể giải mã hình ảnh từ phòng thi.")
+
+    res = proctoring_svc.verify_frame_for_exam(frame_bgr, payload.user_id.strip())
+    return res
+
+
+@app.post("/api/exam/report-violation")
+async def report_exam_violation(payload: ExamViolationReportRequest):
+    """Ghi nhận vi phạm gian lận thi và áp dụng thang phạt leo thang (1p, 5p, cấm vĩnh viễn)."""
+    res = proctoring_svc.record_violation(
+        user_id=payload.user_id.strip(),
+        full_name=payload.full_name or "",
+        reason=payload.reason,
+        details=payload.details or {},
+    )
+    return res
+
+
+@app.get("/api/exam/status/{user_id}")
+async def get_exam_status(user_id: str):
+    """Lấy trạng thái phòng thi và thời gian bị phạt của thí sinh."""
+    return proctoring_svc.get_penalty_status(user_id.strip())
+
+
+@app.get("/api/admin/lockouts")
+async def get_admin_lockouts():
+    """Lấy danh sách tất cả thí sinh đang bị tạm khóa hoặc cấm thi."""
+    return proctoring_svc.admin_list_all_penalties()
+
+
+@app.post("/api/admin/unlock")
+async def admin_unlock_candidate(payload: AdminUnlockRequest):
+    """Giám thị mở khóa và khôi phục quyền thi cho thí sinh."""
+    return proctoring_svc.admin_unlock(payload.user_id.strip())
 
 
 WEB_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "web"))

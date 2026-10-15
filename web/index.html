@@ -44,6 +44,16 @@
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
         <span>Xác thực (1:1 & 1:N)</span>
       </button>
+      <button id="tabBtnExam" class="nav-tab-btn" data-tab="viewExam">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+        <span>🎓 Phòng Thi Vấn Đáp</span>
+        <span class="tab-badge" style="background:#10b981; color:white;">AI PROCTOR</span>
+      </button>
+      <button id="tabBtnAdmin" class="nav-tab-btn" data-tab="viewAdmin">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        <span>🛡️ Giám Thị / Kỷ Luật</span>
+        <span id="lockoutCountBadge" class="tab-badge" style="background:#ef4444; color:white; display:none;">0</span>
+      </button>
       <button id="tabBtnUsers" class="nav-tab-btn" data-tab="viewUsers">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
         <span>Quản lý Users</span>
@@ -636,6 +646,235 @@
           <button id="btnEmptyEnroll" class="btn-modal-primary">Đăng ký Hồ sơ Đầu tiên</button>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- 4. VIEW PHÒNG THI VẤN ĐÁP MẪU (ORAL EXAM DEMO ROOM) -->
+  <div id="viewExam" class="view-panel hidden">
+    <div class="exam-container">
+      
+      <!-- EXAM HEADER -->
+      <div class="exam-header-bar">
+        <div class="exam-info">
+          <div class="exam-title-badge">KỲ THI VẤN ĐÁP TRỰC TUYẾN CHỐNG GIAN LẬN</div>
+          <h2 class="exam-course-name">Học Phần: Trí Tuệ Nhân Tạo & Thị Giác Máy Tính (PoC Demo)</h2>
+        </div>
+
+        <div class="exam-candidate-selector-box">
+          <label for="examCandidateSelect">Thí sinh dự thi:</label>
+          <select id="examCandidateSelect" class="modern-select">
+            <option value="">-- Chọn hồ sơ thí sinh đã đăng ký --</option>
+          </select>
+          <button id="btnStartExam" class="btn-exam-primary">🚀 Bắt Đầu Buổi Thi</button>
+          <button id="btnEndExam" class="btn-exam-secondary hidden">⏹ Kết Thúc Buổi Thi</button>
+        </div>
+
+        <div class="exam-status-chips">
+          <div class="exam-timer-chip">
+            <span class="timer-icon">⏱️</span>
+            <span id="examTimer">15:00</span>
+          </div>
+          <div id="examViolationChip" class="exam-violation-chip normal">
+            <span>Vi phạm: </span>
+            <strong id="examViolationCount">0/4</strong>
+          </div>
+        </div>
+      </div>
+
+      <!-- EXAM MAIN BODY (2 CỘT) -->
+      <div class="exam-grid-layout">
+        
+        <!-- CỘT TRÁI: CAMERA GIÁM SÁT AI PROCTORING -->
+        <div class="exam-proctor-card">
+          <div class="exam-card-header">
+            <div class="card-title-flex">
+              <span class="pulse-live-dot"></span>
+              <h4>Camera Giám Sát AI Proctoring</h4>
+            </div>
+            <div id="proctorStateBadge" class="proctor-state-badge safe">
+              <span>🟢 Giám sát: Bình thường</span>
+            </div>
+          </div>
+
+          <!-- Video Wrapper -->
+          <div class="exam-video-wrap">
+            <video id="examVideo" autoplay playsinline muted></video>
+            <canvas id="examCanvas" style="display: none;"></canvas>
+
+            <!-- Lớp phủ khi đang quét ngẫu nhiên 3s -->
+            <div id="examScanningOverlay" class="exam-scan-overlay hidden">
+              <div class="scan-radar-line"></div>
+              <div class="scan-tag">
+                <span class="scan-spinner"></span>
+                <span>AI đang kiểm tra ngẫu nhiên 3s...</span>
+              </div>
+            </div>
+
+            <!-- Banner cảnh báo nóng (Lần 1) -->
+            <div id="examWarningBanner" class="exam-warning-banner hidden">
+              <span class="warn-icon">⚠️</span>
+              <span id="examWarningText">Cảnh báo: Phát hiện bất thường! Vui lòng nhìn thẳng vào camera.</span>
+            </div>
+          </div>
+
+          <!-- Chỉ số camera thời gian thực -->
+          <div class="exam-telemetry-row">
+            <div class="tele-item">
+              <span class="tele-k">Tần suất kiểm tra:</span>
+              <span class="tele-v text-cyan">Ngẫu nhiên 8s - 15s</span>
+            </div>
+            <div class="tele-item">
+              <span class="tele-k">Cửa sổ lấy mẫu:</span>
+              <span class="tele-v text-emerald">3 - 5 giây / đợt</span>
+            </div>
+            <div class="tele-item">
+              <span class="tele-k">Chống giả mạo:</span>
+              <span class="tele-v text-purple">MiniFASNet v2 PAD</span>
+            </div>
+            <div class="tele-item">
+              <span class="tele-k">Đối sánh sinh trắc:</span>
+              <span class="tele-v text-cyan">ArcFace 512D (1:1)</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- CỘT PHẢI: KHU VỰC THI VẤN ĐÁP & NHẬT KÝ GIÁM SÁT -->
+        <div class="exam-content-card">
+          
+          <!-- KHU VỰC CÂU HỎI -->
+          <div class="exam-question-box">
+            <div class="question-header">
+              <span class="q-badge">CÂU HỎI VẤN ĐÁP BỐC THĂM</span>
+              <button id="btnNextQuestion" class="btn-small-link">🎲 Đổi câu hỏi ngẫu nhiên</button>
+            </div>
+            <div class="q-content" id="examQuestionContent">
+              "Trình bày nguyên lý hoạt động của hàm mất mát ArcFace (Additive Angular Margin Loss) trong việc tối ưu khoảng cách góc trên mặt cầu siêu chiều S⁵¹¹?"
+            </div>
+          </div>
+
+          <!-- KHUNG HƯỚNG DẪN TRẢ LỜI -->
+          <div class="exam-answer-guide">
+            <div class="guide-title">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+              <span>Thí sinh trả lời trực tiếp qua micro và camera</span>
+            </div>
+            <p class="guide-desc">Hãy nhìn thẳng vào camera, nói to rõ ràng. Hệ thống AI đang liên tục giám sát tính toàn vẹn danh tính và chống gian lận trong suốt buổi thi.</p>
+          </div>
+
+          <!-- BẢNG NHẬT KÝ GIÁM SÁT REALTIME (AUDIT LOG) -->
+          <div class="exam-audit-log-box">
+            <div class="audit-header">
+              <span>📋 Nhật ký giám sát sinh trắc học thời gian thực:</span>
+              <span id="auditLogCount" class="audit-count">0 sự kiện</span>
+            </div>
+            <div class="audit-log-list" id="examAuditLogList">
+              <div class="log-empty">Chưa có phiên thi nào bắt đầu. Chọn thí sinh và nhấn 'Bắt Đầu Buổi Thi'.</div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- MODAL PHẠT KHÓA TẠM THỜI (1 PHÚT / 5 PHÚT) -->
+      <div id="examLockoutModal" class="modal-backdrop hidden">
+        <div class="modal-card penalty-lock-card">
+          <div class="penalty-icon-pulse">⏳</div>
+          <h2 class="penalty-title">PHÒNG THI TẠM THỜI BỊ ĐÓNG BĂNG!</h2>
+          <p class="penalty-subtitle" id="penaltyLockMessage">Hệ thống phát hiện dấu hiệu gian lận sinh trắc học.</p>
+          
+          <div class="countdown-circle">
+            <div class="countdown-val" id="penaltyCountdownVal">01:00</div>
+            <div class="countdown-lbl">Thời gian trì hoãn còn lại</div>
+          </div>
+
+          <div class="penalty-rules-box">
+            <div class="p-rule-item">⚠️ Lần 1: Cảnh cáo & xác thực lại</div>
+            <div class="p-rule-item active">⏳ Lần 2 & 3: Tạm khóa 1 phút / 5 phút</div>
+            <div class="p-rule-item danger">🚨 Lần 4: ĐÌNH CHỈ THI VĨNH VIỄN</div>
+          </div>
+
+          <p class="penalty-note">Hết thời gian đếm ngược, phòng thi sẽ tự động mở lại để bạn tiếp tục bài thi.</p>
+        </div>
+      </div>
+
+      <!-- MODAL ĐÌNH CHỈ THI VĨNH VIỄN (BANNED) -->
+      <div id="examBannedModal" class="modal-backdrop hidden">
+        <div class="modal-card penalty-banned-card">
+          <div class="banned-icon-ring">🚨</div>
+          <h2 class="banned-title">THÍ SINH ĐÃ BỊ ĐÌNH CHỈ THI!</h2>
+          <p class="banned-reason" id="bannedReasonText">Bạn đã cố tình vi phạm quy chế gian lận sinh trắc học 4 lần.</p>
+          <div class="banned-desc">
+            Toàn bộ thao tác phòng thi đã bị khóa vĩnh viễn. Dữ liệu vi phạm kèm ảnh chụp bằng chứng đã được chuyển đến Hội Đồng Thi.
+          </div>
+          <div class="banned-action-box">
+            <span>Yêu cầu mở khóa: </span>
+            <strong>Vui lòng liên hệ Giám thị phòng thi (Tab 'Giám Thị / Kỷ Luật') để giải trình.</strong>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- 5. VIEW GIÁM THỊ / ADMIN PANEL (PROCTORING ADMIN) -->
+  <div id="viewAdmin" class="view-panel hidden">
+    <div class="admin-container">
+      
+      <div class="admin-header-bar">
+        <div>
+          <h2>🛡️ Bảng Điều Khiển Giám Thị Phòng Thi (Proctoring Admin)</h2>
+          <p>Quản lý kỷ luật phòng thi, xem xét vi phạm và mở khóa cho thí sinh.</p>
+        </div>
+        <button id="btnRefreshAdminLockouts" class="btn-modal-secondary">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+          Làm mới danh sách
+        </button>
+      </div>
+
+      <!-- THẺ THỐNG KÊ KỶ LUẬT -->
+      <div class="admin-stats-grid">
+        <div class="admin-stat-card">
+          <span class="stat-lbl">Tổng số hồ sơ vi phạm</span>
+          <span class="stat-num text-cyan" id="statAdminTotal">0</span>
+        </div>
+        <div class="admin-stat-card">
+          <span class="stat-lbl">Đang bị tạm khóa (1p / 5p)</span>
+          <span class="stat-num text-amber" id="statAdminLocked">0</span>
+        </div>
+        <div class="admin-stat-card">
+          <span class="stat-lbl">Bị đình chỉ thi vĩnh viễn</span>
+          <span class="stat-num text-rose" id="statAdminBanned">0</span>
+        </div>
+      </div>
+
+      <!-- BẢNG DANH SÁCH THÍ SINH KỶ LUẬT -->
+      <div class="admin-table-wrap">
+        <table class="modern-table">
+          <thead>
+            <tr>
+              <th style="width: 140px;">Mã Thí Sinh</th>
+              <th>Họ và Tên</th>
+              <th style="width: 120px; text-align: center;">Số lần vi phạm</th>
+              <th style="width: 160px; text-align: center;">Tình trạng kỷ luật</th>
+              <th style="width: 120px; text-align: center;">Thời gian khóa</th>
+              <th>Lý do vi phạm gần nhất</th>
+              <th style="width: 160px;">Thời điểm</th>
+              <th style="width: 150px; text-align: center;">Thao tác Giám thị</th>
+            </tr>
+          </thead>
+          <tbody id="adminPenaltiesTableBody">
+            <!-- Render động từ API -->
+          </tbody>
+        </table>
+
+        <!-- Empty state admin -->
+        <div id="adminEmptyState" class="users-empty-state hidden">
+          <div class="empty-icon">✅</div>
+          <h4>Phòng thi an toàn! Chưa có thí sinh nào bị kỷ luật</h4>
+          <p>Mọi thí sinh đều đang tuân thủ nghiêm túc quy chế thi vấn đáp.</p>
+        </div>
+      </div>
+
     </div>
   </div>
 

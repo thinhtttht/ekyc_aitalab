@@ -1220,7 +1220,15 @@ function switchTab(targetTabId) {
   currentTab = targetTabId;
 
   // 1. Cập nhật trạng thái các nút Tabs
-  [tabBtnEnroll, tabBtnVerify, tabBtnUsers].forEach((btn) => {
+  const allTabBtns = [
+    document.getElementById('tabBtnEnroll'),
+    document.getElementById('tabBtnVerify'),
+    document.getElementById('tabBtnExam'),
+    document.getElementById('tabBtnAdmin'),
+    document.getElementById('tabBtnUsers'),
+  ];
+
+  allTabBtns.forEach((btn) => {
     if (!btn) return;
     if (btn.getAttribute('data-tab') === targetTabId) {
       btn.classList.add('active');
@@ -1231,9 +1239,11 @@ function switchTab(targetTabId) {
 
   // 2. Chuyển đổi hiển thị view panels
   const panels = [
-    { el: viewEnroll, id: 'viewEnroll' },
-    { el: viewVerify, id: 'viewVerify' },
-    { el: viewUsers, id: 'viewUsers' },
+    { el: document.getElementById('viewEnroll'), id: 'viewEnroll' },
+    { el: document.getElementById('viewVerify'), id: 'viewVerify' },
+    { el: document.getElementById('viewExam'), id: 'viewExam' },
+    { el: document.getElementById('viewAdmin'), id: 'viewAdmin' },
+    { el: document.getElementById('viewUsers'), id: 'viewUsers' },
   ];
 
   panels.forEach(({ el, id }) => {
@@ -1250,7 +1260,6 @@ function switchTab(targetTabId) {
   // 3. Xử lý logic đặc thù cho từng view
   if (targetTabId === 'viewVerify') {
     stopAutoVerify();
-    // Đảm bảo video verify nhận stream webcam hiện tại
     if (verifyVideo && currentStream) {
       verifyVideo.srcObject = currentStream;
       verifyVideo.play().catch(() => {});
@@ -1260,6 +1269,17 @@ function switchTab(targetTabId) {
   } else if (targetTabId === 'viewUsers') {
     stopAutoVerify();
     loadUsersTable();
+  } else if (targetTabId === 'viewExam') {
+    stopAutoVerify();
+    const examVideoEl = document.getElementById('examVideo');
+    if (examVideoEl && currentStream && examVideoEl.srcObject !== currentStream) {
+      examVideoEl.srcObject = currentStream;
+      examVideoEl.play().catch(() => {});
+    }
+    loadCandidateListForExam();
+  } else if (targetTabId === 'viewAdmin') {
+    stopAutoVerify();
+    loadAdminLockouts();
   } else if (targetTabId === 'viewEnroll') {
     stopAutoVerify();
     if (video && currentStream && video.srcObject !== currentStream) {
@@ -1270,9 +1290,17 @@ function switchTab(targetTabId) {
 }
 
 // Gắn sự kiện chuyển tab
-if (tabBtnEnroll) tabBtnEnroll.addEventListener('click', () => switchTab('viewEnroll'));
-if (tabBtnVerify) tabBtnVerify.addEventListener('click', () => switchTab('viewVerify'));
-if (tabBtnUsers) tabBtnUsers.addEventListener('click', () => switchTab('viewUsers'));
+const tabBtnEnrollEl = document.getElementById('tabBtnEnroll');
+const tabBtnVerifyEl = document.getElementById('tabBtnVerify');
+const tabBtnExamEl = document.getElementById('tabBtnExam');
+const tabBtnAdminEl = document.getElementById('tabBtnAdmin');
+const tabBtnUsersEl = document.getElementById('tabBtnUsers');
+
+if (tabBtnEnrollEl) tabBtnEnrollEl.addEventListener('click', () => switchTab('viewEnroll'));
+if (tabBtnVerifyEl) tabBtnVerifyEl.addEventListener('click', () => switchTab('viewVerify'));
+if (tabBtnExamEl) tabBtnExamEl.addEventListener('click', () => switchTab('viewExam'));
+if (tabBtnAdminEl) tabBtnAdminEl.addEventListener('click', () => switchTab('viewAdmin'));
+if (tabBtnUsersEl) tabBtnUsersEl.addEventListener('click', () => switchTab('viewUsers'));
 
 // -----------------------------------------------------------------------------
 // 8. LƯU HỒ SƠ NGƯỜI DÙNG VÀO CƠ SỞ DỮ LIỆU (SAVE TO USERS DB)
@@ -1988,7 +2016,543 @@ if (chkAutoVerify) {
 }
 
 // -----------------------------------------------------------------------------
-// 12. KHỞI CHẠY HỆ THỐNG KHI LOAD TRANG
+// 13. HỆ THỐNG PHÒNG THI VẤN ĐÁP MẪU & GIÁM SÁT AI PROCTORING
+// -----------------------------------------------------------------------------
+
+const examCandidateSelect = document.getElementById('examCandidateSelect');
+const btnStartExam = document.getElementById('btnStartExam');
+const btnEndExam = document.getElementById('btnEndExam');
+const examTimer = document.getElementById('examTimer');
+const examViolationCount = document.getElementById('examViolationCount');
+const examViolationChip = document.getElementById('examViolationChip');
+const proctorStateBadge = document.getElementById('proctorStateBadge');
+const examVideo = document.getElementById('examVideo');
+const examCanvas = document.getElementById('examCanvas');
+const examScanningOverlay = document.getElementById('examScanningOverlay');
+const examWarningBanner = document.getElementById('examWarningBanner');
+const examWarningText = document.getElementById('examWarningText');
+const examQuestionContent = document.getElementById('examQuestionContent');
+const btnNextQuestion = document.getElementById('btnNextQuestion');
+const examAuditLogList = document.getElementById('examAuditLogList');
+const auditLogCount = document.getElementById('auditLogCount');
+const examLockoutModal = document.getElementById('examLockoutModal');
+const penaltyCountdownVal = document.getElementById('penaltyCountdownVal');
+const penaltyLockMessage = document.getElementById('penaltyLockMessage');
+const examBannedModal = document.getElementById('examBannedModal');
+const bannedReasonText = document.getElementById('bannedReasonText');
+
+// Exam State
+let isExamActive = false;
+let examTimerSeconds = 15 * 60; // 15 phút
+let examTimerInterval = null;
+let examNextCheckTimeout = null;
+let isProctorWindowRunning = false;
+let penaltyTimerInterval = null;
+let selectedExamUser = null;
+let examAuditEventsCount = 0;
+
+// Ngân hàng câu hỏi thi vấn đáp mẫu
+const EXAM_QUESTIONS = [
+  "Câu 1: Trình bày nguyên lý hoạt động của hàm mất mát ArcFace (Additive Angular Margin Loss) trong việc tối ưu khoảng cách góc trên mặt cầu siêu chiều S⁵¹¹?",
+  "Câu 2: Phân tích cơ chế chống giả mạo sinh trắc học đa tầng (Defense-in-Depth). Tại sao cần kết hợp cả MiniFASNet v2 (Passive PAD) và Active Optical Color Flashing?",
+  "Câu 3: Phân biệt bản chất toán học và độ phức tạp tính toán giữa bài toán Xác minh 1:1 (Verification) và bài toán Định danh 1:N (Identification)?",
+  "Câu 4: Trình bày 7 trụ cột đánh giá chất lượng hình ảnh (FQA) trước khi nạp khuôn mặt vào mạng nơ-ron trích xuất vector đặc trưng?",
+  "Câu 5: Tại sao trong giám sát thi trực tuyến không được dùng 1 bức ảnh chụp tức thời (Snapshot trap) mà bắt buộc phải dùng Cửa sổ kiểm tra đa khung hình (Multi-frame Window)?"
+];
+
+// Tải danh sách thí sinh đã đăng ký vào Dropdown
+async function loadCandidateListForExam() {
+  if (!examCandidateSelect) return;
+  try {
+    const res = await fetch('/api/users');
+    if (!res.ok) return;
+    const data = await res.json();
+    const users = data.users || [];
+    
+    examCandidateSelect.innerHTML = '<option value="">-- Chọn hồ sơ thí sinh đã đăng ký --</option>';
+    users.forEach(u => {
+      const opt = document.createElement('option');
+      opt.value = u.user_id;
+      opt.textContent = `${u.full_name} (${u.user_id})`;
+      opt.dataset.name = u.full_name;
+      examCandidateSelect.appendChild(opt);
+    });
+  } catch (err) {
+    console.error('Lỗi tải danh sách thí sinh:', err);
+  }
+}
+
+// Bắt đầu buổi thi vấn đáp
+async function startExamSession() {
+  const userId = examCandidateSelect.value;
+  if (!userId) {
+    showToast('Vui lòng chọn hồ sơ thí sinh dự thi trước khi bắt đầu!', 'error');
+    return;
+  }
+
+  const selectedOpt = examCandidateSelect.options[examCandidateSelect.selectedIndex];
+  selectedExamUser = {
+    user_id: userId,
+    full_name: selectedOpt.dataset.name || 'Thí sinh'
+  };
+
+  // Kiểm tra trạng thái kỷ luật xem có đang bị khóa hay cấm thi không
+  try {
+    const res = await fetch(`/api/exam/status/${userId}`);
+    if (res.ok) {
+      const statusData = await res.json();
+      if (statusData.is_banned) {
+        showBannedModal(statusData.last_reason || 'Đã bị đình chỉ thi do vi phạm quy chế quá 3 lần.');
+        return;
+      }
+      if (statusData.is_locked && statusData.remaining_seconds > 0) {
+        startPenaltyCountdown(statusData.remaining_seconds, statusData.message);
+        return;
+      }
+    }
+  } catch (e) {
+    console.error('Lỗi kiểm tra trạng thái thí sinh:', e);
+  }
+
+  isExamActive = true;
+  examCandidateSelect.disabled = true;
+  btnStartExam.classList.add('hidden');
+  btnEndExam.classList.remove('hidden');
+
+  // Đổi câu hỏi ngẫu nhiên đầu tiên
+  nextRandomQuestion();
+
+  // Đảm bảo video kết nối webcam
+  if (examVideo && currentStream && examVideo.srcObject !== currentStream) {
+    examVideo.srcObject = currentStream;
+    examVideo.play().catch(() => {});
+  }
+
+  // Khởi động đồng hồ thi 15 phút
+  examTimerSeconds = 15 * 60;
+  updateExamTimerUI();
+  if (examTimerInterval) clearInterval(examTimerInterval);
+  examTimerInterval = setInterval(() => {
+    examTimerSeconds--;
+    updateExamTimerUI();
+    if (examTimerSeconds <= 0) {
+      endExamSession();
+      showToast('Đã hết thời gian làm bài thi vấn đáp!', 'info');
+    }
+  }, 1000);
+
+  // Xóa log cũ
+  examAuditLogList.innerHTML = '';
+  examAuditEventsCount = 0;
+  addExamAuditLog('pass', `Buổi thi bắt đầu cho thí sinh ${selectedExamUser.full_name} (${selectedExamUser.user_id}).`);
+
+  // Lên lịch kiểm tra ngẫu nhiên đầu tiên
+  scheduleNextProctorCheck();
+  showToast(`Bắt đầu buổi thi vấn đáp cho ${selectedExamUser.full_name}! Hệ thống AI Proctoring đang giám sát.`, 'success');
+}
+
+// Kết thúc buổi thi
+function endExamSession() {
+  isExamActive = false;
+  if (examTimerInterval) clearInterval(examTimerInterval);
+  if (examNextCheckTimeout) clearTimeout(examNextCheckTimeout);
+  isProctorWindowRunning = false;
+
+  examCandidateSelect.disabled = false;
+  btnStartExam.classList.remove('hidden');
+  btnEndExam.classList.add('hidden');
+  
+  if (examScanningOverlay) examScanningOverlay.classList.add('hidden');
+  if (examWarningBanner) examWarningBanner.classList.add('hidden');
+  setProctorBadge('safe', '🟢 Giám sát: Đã kết thúc buổi thi');
+  addExamAuditLog('warn', 'Buổi thi vấn đáp đã kết thúc.');
+}
+
+// Cập nhật đồng hồ thi
+function updateExamTimerUI() {
+  if (!examTimer) return;
+  const m = Math.floor(examTimerSeconds / 60).toString().padStart(2, '0');
+  const s = (examTimerSeconds % 60).toString().padStart(2, '0');
+  examTimer.textContent = `${m}:${s}`;
+}
+
+// Đổi câu hỏi ngẫu nhiên
+function nextRandomQuestion() {
+  if (!examQuestionContent) return;
+  const idx = Math.floor(Math.random() * EXAM_QUESTIONS.length);
+  examQuestionContent.textContent = `"${EXAM_QUESTIONS[idx]}"`;
+}
+
+// Lên lịch kiểm tra ngẫu nhiên tiếp theo (8s - 15s)
+function scheduleNextProctorCheck() {
+  if (!isExamActive) return;
+  const randomDelayMs = Math.floor(Math.random() * 7000) + 8000; // 8,000ms đến 15,000ms
+  examNextCheckTimeout = setTimeout(() => {
+    if (isExamActive) {
+      runProctorInspectionWindow();
+    }
+  }, randomDelayMs);
+}
+
+// Cửa sổ kiểm tra đa khung hình 3.5 giây (7 frames, 500ms/frame)
+async function runProctorInspectionWindow() {
+  if (!isExamActive || isProctorWindowRunning || !selectedExamUser) return;
+  isProctorWindowRunning = true;
+
+  // Hiển thị radar quét
+  if (examScanningOverlay) examScanningOverlay.classList.remove('hidden');
+  setProctorBadge('scanning', '🟡 Đang kiểm tra ngẫu nhiên 3s...');
+
+  let windowSuccessCount = 0;
+  let lastFailureReason = 'Không phát hiện khuôn mặt';
+  let lastFailureCode = 'ABSENT_NO_FACE';
+  const totalFrames = 7;
+
+  for (let i = 0; i < totalFrames; i++) {
+    if (!isExamActive) break;
+
+    // Chụp frame từ examVideo
+    const frameB64 = captureFrameFromVideo(examVideo);
+    if (frameB64) {
+      try {
+        const res = await fetch('/api/exam/verify-frame', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            image_b64: frameB64,
+            user_id: selectedExamUser.user_id,
+          }),
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          if (data.penalty && data.penalty.is_locked) {
+            handlePenaltyResponse(data.penalty);
+            isProctorWindowRunning = false;
+            if (examScanningOverlay) examScanningOverlay.classList.add('hidden');
+            return;
+          }
+
+          if (data.is_valid) {
+            windowSuccessCount++;
+            // Nếu đã có ít nhất 1-2 frames hợp lệ thì coi như ĐẠT, thí sinh chỉ cần nhìn thẳng 1 khoảnh khắc
+            if (windowSuccessCount >= 2) {
+              addExamAuditLog('pass', `Kiểm tra ngẫu nhiên ĐẠT: Đúng thí sinh (Score: ${Math.round((data.similarity || 0.9) * 100)}%)`);
+              break;
+            }
+          } else {
+            lastFailureReason = data.message || 'Không hợp lệ';
+            lastFailureCode = data.error_code || 'INVALID_FRAME';
+            // Nếu phát hiện giả mạo nặng (Ảnh in / Video) -> dừng ngay và phạt
+            if (data.error_code === 'PRINT_ATTACK' || data.error_code === 'REPLAY_ATTACK') {
+              break;
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Lỗi gọi API verify exam frame:', err);
+      }
+    }
+
+    // Nghỉ 500ms giữa các frame trong cửa sổ
+    await new Promise((r) => setTimeout(r, 500));
+  }
+
+  // Kết thúc cửa sổ kiểm tra
+  if (examScanningOverlay) examScanningOverlay.classList.add('hidden');
+  isProctorWindowRunning = false;
+
+  if (windowSuccessCount >= 1) {
+    // ĐẠT: Thí sinh hợp lệ
+    setProctorBadge('safe', '🟢 Giám sát: Bình thường');
+    scheduleNextProctorCheck();
+  } else {
+    // VI PHẠM: Suốt cả cửa sổ không có frame nào hợp lệ
+    setProctorBadge('danger', '🔴 Cảnh báo: Phát hiện vi phạm!');
+    await reportExamViolation(lastFailureCode, lastFailureReason);
+  }
+}
+
+// Gửi báo cáo vi phạm lên Backend để áp dụng thang phạt leo thang
+async function reportExamViolation(code, reason) {
+  if (!selectedExamUser) return;
+  try {
+    const res = await fetch('/api/exam/report-violation', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        user_id: selectedExamUser.user_id,
+        full_name: selectedExamUser.full_name,
+        reason: `${code}: ${reason}`,
+      }),
+    });
+
+    if (res.ok) {
+      const penaltyData = await res.json();
+      handlePenaltyResponse(penaltyData);
+    }
+  } catch (err) {
+    console.error('Lỗi gửi báo cáo vi phạm:', err);
+  }
+}
+
+// Xử lý hình phạt leo thang (1, 2, 3, 4)
+function handlePenaltyResponse(penalty) {
+  const count = penalty.violation_count || 1;
+  updateViolationCountUI(count);
+
+  if (penalty.status === 'warning' || count === 1) {
+    // Bậc 1: Cảnh báo nóng trên video 5 giây, reset lượt
+    addExamAuditLog('warn', `⚠️ Vi phạm lần 1: ${penalty.last_reason || 'Bất thường'}. Yêu cầu xác thực lại!`);
+    showWarningBanner(`Vi phạm lần 1: ${penalty.last_reason || 'Vui lòng nhìn thẳng vào camera!'}`);
+    scheduleNextProctorCheck();
+  } else if (penalty.status === 'locked_1m' || penalty.status === 'locked_5m' || (penalty.is_locked && !penalty.is_banned)) {
+    // Bậc 2 & 3: Tạm khóa 1 phút / 5 phút
+    addExamAuditLog('danger', `⏳ Vi phạm lần ${count}: Phòng thi bị đóng băng ${penalty.remaining_seconds} giây!`);
+    startPenaltyCountdown(penalty.remaining_seconds, penalty.message);
+  } else if (penalty.status === 'banned' || penalty.is_banned) {
+    // Bậc 4: ĐÌNH CHỈ THI VĨNH VIỄN
+    addExamAuditLog('danger', `🚨 ĐÌNH CHỈ THI: Thí sinh vi phạm lần 4. Tài khoản bị khóa vĩnh viễn!`);
+    showBannedModal(penalty.last_reason || 'Vi phạm gian lận sinh trắc học quá 3 lần.');
+    endExamSession();
+  }
+}
+
+// Hiển thị banner cảnh báo nóng
+function showWarningBanner(msg) {
+  if (!examWarningBanner) return;
+  examWarningText.textContent = msg;
+  examWarningBanner.classList.remove('hidden');
+  setTimeout(() => {
+    if (examWarningBanner) examWarningBanner.classList.add('hidden');
+  }, 5000);
+}
+
+// Đếm ngược thời gian phạt (1p / 5p)
+function startPenaltyCountdown(seconds, msg) {
+  if (penaltyTimerInterval) clearInterval(penaltyTimerInterval);
+  let rem = seconds;
+
+  if (examLockoutModal) {
+    penaltyLockMessage.textContent = msg || 'Phòng thi tạm thời bị đóng băng do vi phạm quy chế.';
+    examLockoutModal.classList.remove('hidden');
+  }
+
+  const updateCD = () => {
+    const m = Math.floor(rem / 60).toString().padStart(2, '0');
+    const s = (rem % 60).toString().padStart(2, '0');
+    if (penaltyCountdownVal) penaltyCountdownVal.textContent = `${m}:${s}`;
+  };
+
+  updateCD();
+  penaltyTimerInterval = setInterval(() => {
+    rem--;
+    if (rem <= 0) {
+      clearInterval(penaltyTimerInterval);
+      if (examLockoutModal) examLockoutModal.classList.add('hidden');
+      showToast('Đã hết thời gian phạt! Bạn có thể tiếp tục làm bài thi.', 'info');
+      if (isExamActive) scheduleNextProctorCheck();
+    } else {
+      updateCD();
+    }
+  }, 1000);
+}
+
+// Hiển thị modal Đình chỉ thi vĩnh viễn (Lần 4)
+function showBannedModal(reason) {
+  if (examBannedModal) {
+    bannedReasonText.textContent = `Lý do: ${reason}`;
+    examBannedModal.classList.remove('hidden');
+  }
+}
+
+// Cập nhật số lần vi phạm trên Header
+function updateViolationCountUI(count) {
+  if (examViolationCount) examViolationCount.textContent = `${count}/4`;
+  if (examViolationChip) {
+    examViolationChip.className = 'exam-violation-chip ' + (count === 0 ? 'normal' : (count <= 2 ? 'warn' : 'danger'));
+  }
+}
+
+// Cập nhật badge trạng thái giám sát
+function setProctorBadge(state, text) {
+  if (!proctorStateBadge) return;
+  proctorStateBadge.className = `proctor-state-badge ${state}`;
+  proctorStateBadge.querySelector('span').textContent = text;
+}
+
+// Ghi nhật ký sự kiện vào Audit Log
+function addExamAuditLog(type, text) {
+  if (!examAuditLogList) return;
+  examAuditEventsCount++;
+  if (auditLogCount) auditLogCount.textContent = `${examAuditEventsCount} sự kiện`;
+
+  const item = document.createElement('div');
+  item.className = `audit-log-item ${type}`;
+
+  const timeStr = new Date().toLocaleTimeString('vi-VN');
+  item.innerHTML = `
+    <span>${text}</span>
+    <span class="audit-time">${timeStr}</span>
+  `;
+
+  examAuditLogList.insertBefore(item, examAuditLogList.firstChild);
+}
+
+// Chụp ảnh từ video ra Base64 JPEG
+function captureFrameFromVideo(videoEl) {
+  if (!videoEl || videoEl.videoWidth === 0) return null;
+  const canvas = examCanvas || document.createElement('canvas');
+  canvas.width = 640;
+  canvas.height = 480;
+  const ctx = canvas.getContext('2d');
+  ctx.save();
+  ctx.translate(canvas.width, 0);
+  ctx.scale(-1, 1);
+  ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
+  ctx.restore();
+  return canvas.toDataURL('image/jpeg', 0.85);
+}
+
+// Sự kiện cho các nút phòng thi
+if (btnStartExam) btnStartExam.addEventListener('click', startExamSession);
+if (btnEndExam) btnEndExam.addEventListener('click', endExamSession);
+if (btnNextQuestion) btnNextQuestion.addEventListener('click', nextRandomQuestion);
+
+
+// -----------------------------------------------------------------------------
+// 14. BẢNG ĐIỀU KHIỂN GIÁM THỊ / ADMIN (PROCTORING ADMIN DASHBOARD)
+// -----------------------------------------------------------------------------
+
+const btnRefreshAdminLockouts = document.getElementById('btnRefreshAdminLockouts');
+const adminPenaltiesTableBody = document.getElementById('adminPenaltiesTableBody');
+const adminEmptyState = document.getElementById('adminEmptyState');
+const statAdminTotal = document.getElementById('statAdminTotal');
+const statAdminLocked = document.getElementById('statAdminLocked');
+const statAdminBanned = document.getElementById('statAdminBanned');
+const lockoutCountBadge = document.getElementById('lockoutCountBadge');
+
+async function loadAdminLockouts() {
+  if (!adminPenaltiesTableBody) return;
+  try {
+    const res = await fetch('/api/admin/lockouts');
+    if (!res.ok) return;
+    const list = await res.json();
+
+    let total = list.length;
+    let locked = 0;
+    let banned = 0;
+
+    adminPenaltiesTableBody.innerHTML = '';
+
+    if (list.length === 0) {
+      if (adminEmptyState) adminEmptyState.classList.remove('hidden');
+      if (lockoutCountBadge) lockoutCountBadge.style.display = 'none';
+    } else {
+      if (adminEmptyState) adminEmptyState.classList.add('hidden');
+      list.forEach((p) => {
+        if (p.is_banned) banned++;
+        else if (p.is_locked) locked++;
+
+        const tr = document.createElement('tr');
+        
+        let statusBadge = '<span class="status-badge normal">Bình thường</span>';
+        if (p.is_banned) {
+          statusBadge = '<span class="status-badge danger" style="background:#fef2f2; color:#dc2626; border:1px solid #fecaca; font-weight:bold; padding:4px 8px; border-radius:6px;">🚨 ĐÃ ĐÌNH CHỈ</span>';
+        } else if (p.status === 'locked_1m') {
+          statusBadge = '<span class="status-badge warn" style="background:#fef3c7; color:#b45309; border:1px solid #fde68a; font-weight:bold; padding:4px 8px; border-radius:6px;">⏳ Tạm khóa 1p</span>';
+        } else if (p.status === 'locked_5m') {
+          statusBadge = '<span class="status-badge warn" style="background:#fff1f2; color:#e11d48; border:1px solid #fecdd3; font-weight:bold; padding:4px 8px; border-radius:6px;">⏳ Tạm khóa 5p</span>';
+        } else if (p.violation_count > 0) {
+          statusBadge = '<span class="status-badge warn" style="background:#fefce8; color:#a16207; font-weight:bold; padding:4px 8px; border-radius:6px;">⚠️ Cảnh cáo</span>';
+        }
+
+        let timeRemStr = '--';
+        if (p.remaining_seconds > 0) {
+          const m = Math.floor(p.remaining_seconds / 60);
+          const s = p.remaining_seconds % 60;
+          timeRemStr = `${m}p ${s}s`;
+        } else if (p.is_banned) {
+          timeRemStr = 'Vĩnh viễn';
+        }
+
+        tr.innerHTML = `
+          <td><code class="user-id-code">${p.user_id}</code></td>
+          <td><strong>${p.full_name || '--'}</strong></td>
+          <td style="text-align: center;"><span style="font-weight:800; font-size:14px; color:${p.violation_count >= 4 ? '#dc2626' : (p.violation_count > 0 ? '#d97706' : '#16a34a')}">${p.violation_count}/4</span></td>
+          <td style="text-align: center;">${statusBadge}</td>
+          <td style="text-align: center; font-family:'JetBrains Mono',monospace; font-weight:700;">${timeRemStr}</td>
+          <td style="font-size: 12px; color: #475569;">${p.last_reason || '--'}</td>
+          <td style="font-size: 11px; color: #64748b;">${p.last_violation_at || '--'}</td>
+          <td style="text-align: center;">
+            <button class="btn-admin-unlock" onclick="handleAdminUnlock('${p.user_id}')">
+              🔓 Mở Khóa
+            </button>
+          </td>
+        `;
+        adminPenaltiesTableBody.appendChild(tr);
+      });
+
+      if (lockoutCountBadge) {
+        const activeLockouts = locked + banned;
+        if (activeLockouts > 0) {
+          lockoutCountBadge.textContent = activeLockouts;
+          lockoutCountBadge.style.display = 'inline-block';
+        } else {
+          lockoutCountBadge.style.display = 'none';
+        }
+      }
+    }
+
+    if (statAdminTotal) statAdminTotal.textContent = total;
+    if (statAdminLocked) statAdminLocked.textContent = locked;
+    if (statAdminBanned) statAdminBanned.textContent = banned;
+  } catch (err) {
+    console.error('Lỗi tải danh sách kỷ luật admin:', err);
+  }
+}
+
+// Xử lý mở khóa từ Giám thị
+window.handleAdminUnlock = async function(userId) {
+  if (!confirm(`Giám thị xác nhận MỞ KHÓA và khôi phục quyền thi cho thí sinh ${userId}?`)) {
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/admin/unlock', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: userId }),
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      showToast(data.message || 'Đã mở khóa thành công cho thí sinh!', 'success');
+      loadAdminLockouts();
+
+      if (selectedExamUser && selectedExamUser.user_id === userId) {
+        if (examLockoutModal) examLockoutModal.classList.add('hidden');
+        if (examBannedModal) examBannedModal.classList.add('hidden');
+        if (penaltyTimerInterval) clearInterval(penaltyTimerInterval);
+        updateViolationCountUI(0);
+        setProctorBadge('safe', '🟢 Giám sát: Bình thường (Đã mở khóa)');
+        addExamAuditLog('pass', 'Giám thị đã mở khóa kỷ luật. Thí sinh tiếp tục làm bài.');
+      }
+    } else {
+      showToast('Không thể mở khóa. Vui lòng kiểm tra lại.', 'error');
+    }
+  } catch (err) {
+    console.error('Lỗi mở khóa thí sinh:', err);
+    showToast('Lỗi kết nối khi mở khóa.', 'error');
+  }
+};
+
+if (btnRefreshAdminLockouts) {
+  btnRefreshAdminLockouts.addEventListener('click', loadAdminLockouts);
+}
+
+// -----------------------------------------------------------------------------
+// 15. KHỞI CHẠY HỆ THỐNG KHI LOAD TRANG
 // -----------------------------------------------------------------------------
 
 window.addEventListener('DOMContentLoaded', async () => {

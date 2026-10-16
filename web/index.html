@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@200;400;500;600;700&family=Racing+Sans+One&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=4.7">
+  <link rel="stylesheet" href="styles.css?v=5.6">
 </head>
 <body data-view="viewLanding">
 
@@ -633,8 +633,7 @@
     <div class="modal-card">
       <div class="modal-header">
         <div class="modal-icon-success">✓</div>
-        <h3>Đăng Ký Khuôn Mặt Thành Công!</h3>
-        <p>Khuôn mặt đã vượt qua toàn bộ cơ chế kiểm định Camera, FQA và Active Liveness.</p>
+        <h3>Xác minh khuôn mặt thành công!</h3>
       </div>
 
       <!-- Ảnh chụp HD -->
@@ -673,19 +672,15 @@
 
       <!-- Form nhập Tên & Lưu CSDL với ArcFace 512D -->
       <div class="user-enroll-form-box" id="enrollFormBox">
-        <div class="arcface-status-badge">
-          <span class="pulse-dot"></span>
-          <span>Đã trích xuất đặc trưng ArcFace 512 chiều (L2 Norm 1.0)</span>
-        </div>
         <div class="form-row">
-          <label for="inputUserName">Họ và tên người dùng (*):</label>
-          <input type="text" id="inputUserName" class="modern-input" placeholder="Ví dụ: Nguyễn Văn A" />
+          <label for="inputUserName">Họ và tên</label>
+          <input type="text" id="inputUserName" class="modern-input" placeholder="VD: Nguyễn Văn A" />
         </div>
         <div class="modal-actions">
           <button id="btnModalRetake" class="btn-modal-secondary">Chụp lại</button>
           <button id="btnSaveUser" class="btn-modal-primary">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-            Lưu hồ sơ vào CSDL
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+            <span>Lưu hồ sơ</span>
           </button>
         </div>
       </div>

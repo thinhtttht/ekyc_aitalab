@@ -613,7 +613,7 @@ body {
   color: #f8fafc;
   letter-spacing: -0.01em;
   text-align: center;
-  white-space: normal;
+  white-space: pre-line;
   z-index: 10;
   display: flex;
   align-items: center;
@@ -849,10 +849,11 @@ body {
   background: rgba(15, 23, 42, 0.65);
   backdrop-filter: blur(8px);
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   z-index: 100;
-  padding: 20px;
+  padding: 98px 20px 28px;
+  overflow-y: auto;
 }
 
 .modal-card {
@@ -860,33 +861,34 @@ body {
   border-radius: 22px;
   width: 100%;
   max-width: 520px;
-  padding: 28px;
+  margin: auto;
+  padding: 22px 26px;
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.25);
   text-align: center;
 }
 
 .modal-header {
-  margin-bottom: 18px;
+  margin-bottom: 14px;
 }
 
 .modal-icon-success {
-  width: 52px;
-  height: 52px;
+  width: 46px;
+  height: 46px;
   border-radius: 50%;
   background: var(--color-green-light);
   color: var(--color-green);
-  font-size: 26px;
+  font-size: 23px;
   font-weight: 900;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: 0 auto 12px;
+  margin: 0 auto 10px;
 }
 
 .modal-header h3 {
   font-size: 20px;
   color: var(--text-main);
-  margin-bottom: 6px;
+  margin-bottom: 4px;
 }
 
 .modal-header p {
@@ -897,8 +899,8 @@ body {
 .snapshot-box {
   position: relative;
   width: 100%;
-  max-width: 380px;
-  margin: 0 auto 18px;
+  max-width: 340px;
+  margin: 0 auto 14px;
   border-radius: 16px;
   overflow: hidden;
   border: 2px solid var(--border-card);
@@ -907,6 +909,7 @@ body {
 
 #snapshotImg {
   width: 100%;
+  max-height: 210px;
   display: block;
   object-fit: cover;
 }
@@ -927,7 +930,7 @@ body {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 8px;
-  margin-bottom: 22px;
+  margin-bottom: 14px;
 }
 
 .metric-item {
@@ -957,26 +960,44 @@ body {
 
 .btn-modal-secondary {
   flex: 1;
-  padding: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 16px;
   background: #f1f5f9;
   color: #475569;
   border: none;
   border-radius: 12px;
   font-size: 14px;
   font-weight: 600;
+  line-height: 1;
   cursor: pointer;
 }
 
 .btn-modal-primary {
   flex: 1.4;
-  padding: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 16px;
   background: var(--color-primary);
   color: #ffffff;
   border: none;
   border-radius: 12px;
   font-size: 14px;
   font-weight: 600;
+  line-height: 1;
   cursor: pointer;
+}
+
+.btn-modal-primary svg,
+.btn-modal-secondary svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  display: block;
 }
 
 /* REJECTION MODAL (FINTECH SECURITY REJECTION) */
@@ -2185,8 +2206,8 @@ body {
   z-index: 5;
   width: min(1440px, 100%);
   margin: 0 auto;
-  min-height: 122px;
-  padding: 61px 0 0;
+  min-height: 85px;
+  padding: 24px 0 0;
   display: flex;
   align-items: flex-start;
   box-sizing: border-box;
@@ -2323,7 +2344,7 @@ body[data-view="viewEnroll"] .utility-bar {
   position: relative;
   width: min(1440px, 100%);
   height: 1024px;
-  margin: -122px auto 0;
+  margin: -85px auto 0;
   overflow: hidden;
 }
 
@@ -2431,15 +2452,15 @@ body[data-view="viewEnroll"] .utility-bar {
 }
 
 #viewEnroll {
-  height: calc(100vh - 122px);
+  height: calc(100vh - 85px);
   min-height: 0;
 }
 
 #viewEnroll .main-layout {
   width: min(1280px, calc(100% - 32px));
   max-width: 1280px;
-  height: calc(100% - 28px);
-  margin: 16px auto 12px;
+  height: calc(100% - 48px);
+  margin: 14px auto 34px;
   padding: 0;
   display: grid;
   grid-template-columns: 260px minmax(300px, 1fr) minmax(320px, 380px);

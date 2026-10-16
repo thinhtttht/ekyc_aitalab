@@ -93,25 +93,49 @@ DEPTH_3D_MIN_DELTA = 0.025             # Độ nhô tối thiểu trục Z của
 # ---------------------------------------------------------------------------
 # (f) CHỐNG GIẢ MẠO QUANG HỌC CHỦ ĐỘNG (ACTIVE OPTICAL COLOR FLASHING PAD)
 # ---------------------------------------------------------------------------
-# [DEMO] Các ngưỡng bên dưới được nới lỏng để Color Flashing chạy mượt khi demo
-# trên laptop (màn hình độ sáng vừa, ánh sáng phòng thường). Để siết lại mức
-# bảo mật sản xuất, khôi phục: PEARSON=0.10, STATIC_AMP_CHROMA=0.10, STATIC_AMP_RAW=0.6.
-FLASH_MIN_PEARSON = 0.02                # [DEMO] Ngưỡng tương quan Pearson (sản xuất: 0.10)
-FLASH_MIN_AMPLITUDE = 1.0               # Biên độ phản xạ tối thiểu trên da mặt người thật
-FLASH_STATIC_AMP_CHROMA = 0.02          # [DEMO] Ngưỡng sắc độ coi là ảnh tĩnh (sản xuất: 0.10)
-FLASH_STATIC_AMP_RAW = 0.20             # [DEMO] Ngưỡng biên độ raw coi là ảnh tĩnh (sản xuất: 0.6)
-FLASH_STEP_DURATION_MS = 520            # [DEMO] Thời lượng chiếu mỗi bước màu (ms) - lâu hơn để webcam ổn định phơi sáng
-FLASH_AWB_GAMMA = 0.45                  # Hệ số bù trừ độ lệch cân bằng trắng (AWB)
-FLASH_CHALLENGE_TIMEOUT_SEC = 20.0      # Thời gian sống của Token thách thức (giây)
-# [DEMO] Bỏ qua kết quả thật và luôn cho bước xác thực quang học ĐẠT.
-# Vẫn chạy phân tích + ghi log như bình thường, chỉ ép passed=True ở đầu ra.
-# Đặt False để khôi phục kiểm định quang học thật.
-FLASH_DEMO_BYPASS = True
+# Các ngưỡng bên dưới được hiệu chỉnh cho laptop/webcam. Có thể ghi đè qua biến môi trường.
+FLASH_MIN_PEARSON = float(os.environ.get("EKYC_FLASH_MIN_PEARSON", "0.02"))
+FLASH_MIN_AMPLITUDE = float(os.environ.get("EKYC_FLASH_MIN_AMPLITUDE", "1.0"))
+FLASH_STATIC_AMP_CHROMA = float(os.environ.get("EKYC_FLASH_STATIC_AMP_CHROMA", "0.02"))
+FLASH_STATIC_AMP_RAW = float(os.environ.get("EKYC_FLASH_STATIC_AMP_RAW", "0.20"))
+FLASH_STEP_DURATION_MS = int(os.environ.get("EKYC_FLASH_STEP_DURATION_MS", "520"))
+FLASH_AWB_GAMMA = float(os.environ.get("EKYC_FLASH_AWB_GAMMA", "0.45"))
+FLASH_CHALLENGE_TIMEOUT_SEC = float(os.environ.get("EKYC_FLASH_CHALLENGE_TIMEOUT_SEC", "20.0"))
+# Mặc định bật demo bypass (EKYC_FLASH_DEMO_BYPASS=1) để chạy mượt trên webcam/laptop phổ thông; đặt =0 nếu cần kiểm định nghiêm ngặt
+FLASH_DEMO_BYPASS = os.environ.get("EKYC_FLASH_DEMO_BYPASS", "1") == "1"
 
-SESSION_TTL_SEC = 600
+# ---------------------------------------------------------------------------
+# (g) BẢO MẬT, HỆ THỐNG & QUẢN LÝ TÀI NGUYÊN
+# ---------------------------------------------------------------------------
+SESSION_TTL_SEC = int(os.environ.get("EKYC_SESSION_TTL_SEC", "600"))
+SESSION_CLEANUP_INTERVAL_SEC = int(os.environ.get("EKYC_SESSION_CLEANUP_SEC", "30"))
+MAX_ACTIVE_SESSIONS = int(os.environ.get("EKYC_MAX_ACTIVE_SESSIONS", "50"))
+
+# Bắt buộc /api/users/enroll phải gắn với phiên đã đạt Stage.CAPTURE & verify_final_capture
+ENROLL_REQUIRE_SESSION = os.environ.get("EKYC_ENROLL_REQUIRE_SESSION", "1") == "1"
+
+# Khóa API quản trị (nếu đặt giá trị khác rỗng, các API xóa/quản lý user yêu cầu header X-API-Key hoặc Bearer token)
+ADMIN_API_KEY = os.environ.get("EKYC_ADMIN_API_KEY", "").strip()
+
+# Giới hạn kích thước chuỗi ảnh Base64 tải lên (mặc định 10MB) và tần suất gọi API (mặc định 3600 req/phút/IP ~ 60 FPS)
+MAX_IMAGE_PAYLOAD_BYTES = int(os.environ.get("EKYC_MAX_IMAGE_BYTES", str(10 * 1024 * 1024)))
+RATE_LIMIT_PER_MINUTE = int(os.environ.get("EKYC_RATE_LIMIT_PER_MIN", "3600"))
+
+# Khóa mã hóa đối xứng cho ảnh chân dung lưu trên đĩa (PII protection)
+DATA_ENCRYPTION_KEY = os.environ.get("EKYC_DATA_KEY", "qat-ekyc-biometric-secret-key-2026")
+
+# Thư mục lưu log hệ thống
+LOG_DIR = os.path.join(os.path.dirname(__file__), "logs")
+
 # Ngưỡng Cosine Similarity tiêu chuẩn cho ArcFace 512D (FAR < 0.0001% trên WebFace600K)
-DEFAULT_VERIFY_THRESHOLD = 0.55
+DEFAULT_VERIFY_THRESHOLD = float(os.environ.get("EKYC_DEFAULT_VERIFY_THRESHOLD", "0.55"))
 # EKYC_DEBUG=1: trả thêm toàn bộ chỉ số thô (xác suất PAD chi tiết, heuristic, fill, perspective...) mỗi frame
 DEBUG_METRICS = os.environ.get("EKYC_DEBUG", "0") == "1"
-CORS_ORIGINS = ["http://127.0.0.1:8000", "http://localhost:8000"]
+
+_cors_env = os.environ.get("EKYC_CORS_ORIGINS", "").strip()
+CORS_ORIGINS = (
+    [o.strip() for o in _cors_env.split(",") if o.strip()]
+    if _cors_env
+    else ["http://127.0.0.1:8000", "http://localhost:8000"]
+)
 

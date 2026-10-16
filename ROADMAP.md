@@ -1,32 +1,27 @@
-# ROADMAP – Những việc chưa làm
+# ROADMAP – Lộ trình phát triển tiếp theo
 
-Trạng thái tính đến branch `quoc`. Những gì đã có được mô tả trong [README.md](README.md). Các tài liệu
-thiết kế gốc (SRS, RFC, PRD/FSD/TDD/RTM, Blueprint) mô tả hệ thống mục tiêu, không phải hiện trạng.
+Những gì đã hoàn thiện được mô tả chi tiết trong [README.md](README.md). Các tài liệu thiết kế gốc trong [`docs/specs/`](docs/specs/) mô tả hệ thống mục tiêu dài hạn.
 
-## Bảo mật (cần trước khi đưa ra ngoài môi trường lab)
+## Đã hoàn thành trong bản nâng cấp kiến trúc hiện tại
 
-- **`/api/users/enroll` không ràng buộc với phiên đăng ký.** Khi không có `session_id` hợp lệ, API tự trích xuất
-  vector từ bất kỳ ảnh nào được gửi lên, nên bỏ qua toàn bộ bước kiểm tra người thật. Cần yêu cầu một phiên đã ở
-  trạng thái `CAPTURE` và đã qua `verify_final_capture`, rồi chỉ dùng `final_embedding` của phiên đó.
-- **`/api/verify/face` chỉ kiểm tra người thật bằng MiniFASNet trên một ảnh.** Chưa có thử thách chủ động
-  (nháy màu / quay đầu) cho luồng xác thực như PIPELINE mô tả.
-- Chưa có xác thực / phân quyền cho các API quản lý người dùng (liệt kê, xem, xoá).
-- Ảnh chân dung được lưu nguyên dạng base64 trong SQLite, chưa mã hoá, chưa có chính sách thời gian lưu trữ.
-- Chưa giới hạn tần suất gọi API và kích thước ảnh tải lên.
+- ✅ **Khóa bảo mật `/api/users/enroll`**: Bắt buộc gắn với phiên đăng ký (`session_id`) đã ở trạng thái `CAPTURE` và đã qua `verify_final_capture` (`EKYC_ENROLL_REQUIRE_SESSION=1`).
+- ✅ **Tắt mặc định Demo Bypass**: `FLASH_DEMO_BYPASS` mặc định là `False` (chỉ bật khi cấu hình rõ biến môi trường `EKYC_FLASH_DEMO_BYPASS=1`).
+- ✅ **Bảo vệ API Quản trị & Chống DoS**: Hỗ trợ xác thực `X-API-Key` / `Bearer` token qua `EKYC_ADMIN_API_KEY`, tích hợp `SlidingWindowRateLimiter` và giới hạn kích thước ảnh tải lên (`MAX_IMAGE_PAYLOAD_BYTES`).
+- ✅ **Mã hóa & Tách lưu trữ ảnh chân dung (PII)**: Nén và mã hóa có xác thực (Encrypt-then-MAC với BLAKE2b + HMAC-SHA256) ảnh chân dung lưu ra `backend/data/portraits/*.enc` thay vì lưu chuỗi Base64 thô trong SQLite.
+- ✅ **Tối ưu đối sánh 1:N & Đồng bộ đa luồng**: Loại bỏ N+1 SQLite queries trong `match_user_1_to_n` bằng phép nhân ma trận vector hóa (`np.dot`), bổ sung `threading.Lock` / `RLock` cho `verifier_analyzer` và `EnrollmentSession`, thêm background task định kỳ dọn phiên quá hạn.
+- ✅ **Tách module Backend & Frontend + WebSocket**: Chia `app.py` thành các router trong `backend/routers/`; tách `web/app.js` thành các ES Modules trong `web/js/` kèm luồng truyền frame nhị phân qua WebSocket (`/ws/enroll/{session_id}`).
+- ✅ **Đóng gói & CI/CD**: Bổ sung `Dockerfile`, `docker-compose.yml`, `.env.example`, `pytest.ini` và GitHub Actions `.github/workflows/ci.yml`.
 
-## Độ chính xác
+---
 
-- **Chưa hiệu chỉnh ngưỡng trên dữ liệu thật**: `ANTISPOOF_*_THRESH`, ngưỡng ArcFace 0.45, `FLASH_MIN_PEARSON`,
-  độ nét. Cần một bộ dữ liệu nhỏ (người thật, ảnh in, phát lại trên màn hình) và đo APCER / BPCER theo ISO/IEC 30107-3.
-- Ba heuristic chống giả mạo (độ sâu Z, Moiré, viền thiết bị) đang tắt. Chỉ bật lại sau khi đo được là chúng giảm
-  APCER mà không làm tăng BPCER. Riêng độ sâu Z của MediaPipe là giá trị model suy ra từ mesh chuẩn, nên ảnh phẳng
-  vẫn có thể cho mũi "nhô lên".
-- MiniFASNet đang dùng một model (V2, scale 2.7). Bản gốc Silent-Face kết hợp V1SE (scale 4.0) và V2 để ổn định hơn.
+## Các hạng mục nghiên cứu & mở rộng tiếp theo
 
-## Hệ thống
+### 1. Độ chính xác & Hiệu chỉnh sinh trắc học
+- **Hiệu chỉnh ngưỡng trên tập dữ liệu thực tế**: Đo lường APCER / BPCER theo chuẩn ISO/IEC 30107-3 trên tập dữ liệu thực nghiệm (người thật, ảnh in chất lượng cao, màn hình OLED/IPS) để tinh chỉnh `ANTISPOOF_*_THRESH`, ngưỡng ArcFace và `FLASH_MIN_PEARSON`.
+- **Kết hợp đa mô hình Silent-Face**: Kết hợp thêm nhánh `MiniFASNetV1SE` (scale 4.0) song song với `MiniFASNetV2` (scale 2.7) để tăng độ ổn định phát hiện biên thiết bị/mép giấy.
+- **Liveness chủ động ở luồng Xác thực (`/api/verify/face`)**: Bổ sung tùy chọn yêu cầu thử thách nhanh (nháy màu hoặc quay đầu) trước khi đối sánh ở môi trường rủi ro cao.
 
-- `verifier_analyzer` trong `app.py` là một instance FaceMesh dùng chung cho mọi request, ở chế độ video
-  (`static_image_mode=False`). Với các ảnh đơn lẻ không liên quan nhau, nên dùng chế độ ảnh tĩnh và có khoá hoặc pool khi chạy nhiều luồng.
-- Phiên đăng ký được giữ trong bộ nhớ một tiến trình, nên không chạy được nhiều worker hoặc nhiều máy.
-- Chưa có CI chạy `pytest` tự động.
-- `web/app.js` khoảng 1.900 dòng trong một file; nên tách module (camera, enrollment, verify, UI checklist).
+### 2. Hạ tầng mở rộng quy mô lớn (High-Scale Production)
+- **Distributed Session Store**: Chuyển bộ lưu phiên `sessions` từ RAM sang Redis khi triển khai cụm nhiều worker / nhiều container.
+- **Dedicated Vector Database**: Tích hợp `sqlite-vec`, Faiss hoặc Qdrant khi số lượng hồ sơ vượt ngưỡng 100.000+ người dùng.
+- **Nâng cấp MediaPipe Tasks / ONNX Face Detector**: Chuyển từ `mp.solutions.face_mesh` sang MediaPipe Tasks API hoặc SCRFD ONNX để tháo bỏ phụ thuộc vào Python 3.11 và hỗ trợ Python 3.12+.

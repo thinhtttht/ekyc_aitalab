@@ -346,6 +346,8 @@ function startFpsWatcher() {
 // 3. QUẢN LÝ PHIÊN (SESSION) & VÒNG LẶP GỬI FRAME
 // -----------------------------------------------------------------------------
 
+let lastSessionRetryAt = 0;
+
 async function startSession() {
   try {
     const res = await fetch(`${API_BASE}/api/enroll/start`, {
@@ -364,6 +366,21 @@ async function startSession() {
     return null;
   }
 }
+
+// Tự động kết nối lại nếu lúc mở trình duyệt (sau 2s) Uvicorn vẫn đang nạp model
+setInterval(async () => {
+  if (!backendStatus.classList.contains('offline') && currentSessionId) return;
+  try {
+    const res = await fetch(`${API_BASE}/api/health`);
+    if (res.ok) {
+      updateBackendStatus(true);
+      if (!currentSessionId) {
+        await startSession();
+        loadUsersCount();
+      }
+    }
+  } catch (e) {}
+}, 1500);
 
 async function restartSession() {
   summaryModal.classList.add('hidden');
@@ -414,7 +431,20 @@ async function frameLoop() {
     return;
   }
 
-  if (isSendingFrame || !currentSessionId || video.readyState < 2) {
+  if (isSendingFrame || video.readyState < 2) {
+    requestAnimationFrame(frameLoop);
+    return;
+  }
+
+  if (!currentSessionId) {
+    const now = performance.now();
+    if (now - lastSessionRetryAt > 1500) {
+      lastSessionRetryAt = now;
+      isSendingFrame = true;
+      await startSession().finally(() => {
+        isSendingFrame = false;
+      });
+    }
     requestAnimationFrame(frameLoop);
     return;
   }
@@ -466,6 +496,10 @@ async function frameLoop() {
       body: JSON.stringify(payload),
     });
 
+    if (res.status === 404) {
+      await startSession();
+      return;
+    }
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     updateBackendStatus(true);
@@ -895,7 +929,7 @@ function updateOvalSvg(oval, color, progress) {
   svgOvalBorder.setAttribute('cy', cy);
   svgOvalBorder.setAttribute('rx', rx);
   svgOvalBorder.setAttribute('ry', ry);
-  svgOvalBorder.className = `oval-stroke ${color || 'cyan'}`;
+  svgOvalBorder.setAttribute('class', `oval-stroke ${color || 'cyan'}`);
 
   // Cập nhật viền tiến độ (chu vi elip Ramanujan: P ≈ π * [3(a+b) - sqrt((3a+b)(a+3b))])
   const a = rx;

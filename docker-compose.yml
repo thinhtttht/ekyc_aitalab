@@ -1,0 +1,16 @@
+version: "3.9"
+
+services:
+  ekyc-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: qat-ekyc-server
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env.example
+    volumes:
+      - ./backend/data:/app/backend/data
+      - ./backend/logs:/app/backend/logs
+    restart: unless-stopped

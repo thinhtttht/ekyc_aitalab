@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import random
+import threading
 import time
 from enum import Enum
 from typing import Any, Dict, Optional
@@ -47,7 +48,9 @@ class EnrollmentSession:
     def __init__(self, session_id: str) -> None:
         self.session_id = session_id
         self.created_at = time.time()
+        self.last_active = self.created_at
         self.stage = Stage.CAMERA_CHECK
+        self._lock = threading.RLock()
 
         turns = [Stage.TURN_LEFT, Stage.TURN_RIGHT]
         random.shuffle(turns)
@@ -68,6 +71,7 @@ class EnrollmentSession:
         self.enrolled_image_bgr: Optional[np.ndarray] = None
         self.enrolled_face: Optional[FaceResult] = None
         self.final_embedding: Optional[np.ndarray] = None
+        self.capture_verified: bool = False
         self.history: Dict[str, Any] = {
             "session_id": session_id,
             "challenges": [t.value for t in self.challenge_sequence],
@@ -90,9 +94,10 @@ class EnrollmentSession:
         return self.face_analyzer
 
     def close(self) -> None:
-        if self.face_analyzer is not None:
-            self.face_analyzer.close()
-            self.face_analyzer = None
+        with self._lock:
+            if self.face_analyzer is not None:
+                self.face_analyzer.close()
+                self.face_analyzer = None
 
     def current_oval(self) -> dict:
         return C.OVAL_ZOOM if self.stage == Stage.ZOOM_IN else C.OVAL_NORMAL
@@ -102,34 +107,36 @@ class EnrollmentSession:
     # ------------------------------------------------------------------
 
     def process_frame(self, frame_bgr: Any, client_stats: ClientStats) -> Dict[str, Any]:
-        """Xử lý một frame từ client và trả về lệnh điều khiển UI."""
-        self._now = time.time()
-        self._cam = self.camera_monitor.evaluate(frame_bgr, client_stats)
-        self._face = self._get_analyzer().analyze(frame_bgr, self.current_oval())
-        self._verdict = evaluate_face(
-            self._face,
-            require_oval=self.stage in (Stage.FACE_QUALITY, Stage.ZOOM_IN),
-            is_turning=self.stage in TURN_STAGES,
-        )
+        """Xử lý một frame từ client và trả về lệnh điều khiển UI (an toàn đa luồng)."""
+        with self._lock:
+            self._now = time.time()
+            self.last_active = self._now
+            self._cam = self.camera_monitor.evaluate(frame_bgr, client_stats)
+            self._face = self._get_analyzer().analyze(frame_bgr, self.current_oval())
+            self._verdict = evaluate_face(
+                self._face,
+                require_oval=self.stage in (Stage.FACE_QUALITY, Stage.ZOOM_IN),
+                is_turning=self.stage in TURN_STAGES,
+            )
 
-        # Lỗi camera nghiêm trọng (đen/đóng băng) -> lùi về CAMERA_CHECK
-        if not self._cam.signal_ok:
-            if self.stage not in (Stage.CAMERA_CHECK, Stage.FAILED):
-                self.stage = Stage.CAMERA_CHECK
-                self.stable_start_time = None
-                self.fqa_consecutive_passes = 0
-            return self._reply(self._cam.message, "red")
+            # Lỗi camera nghiêm trọng (đen/đóng băng) -> lùi về CAMERA_CHECK
+            if not self._cam.signal_ok:
+                if self.stage not in (Stage.CAMERA_CHECK, Stage.FAILED):
+                    self.stage = Stage.CAMERA_CHECK
+                    self.stable_start_time = None
+                    self.fqa_consecutive_passes = 0
+                return self._reply(self._cam.message, "red")
 
-        handler = {
-            Stage.CAMERA_CHECK: self._on_camera_check,
-            Stage.FACE_QUALITY: self._on_face_quality,
-            Stage.TURN_LEFT: self._on_turn,
-            Stage.TURN_RIGHT: self._on_turn,
-            Stage.RECENTER: self._on_recenter,
-            Stage.ZOOM_IN: self._on_zoom,
-            Stage.FLASHING: self._on_flashing,
-        }.get(self.stage, self._on_done)
-        return handler()
+            handler = {
+                Stage.CAMERA_CHECK: self._on_camera_check,
+                Stage.FACE_QUALITY: self._on_face_quality,
+                Stage.TURN_LEFT: self._on_turn,
+                Stage.TURN_RIGHT: self._on_turn,
+                Stage.RECENTER: self._on_recenter,
+                Stage.ZOOM_IN: self._on_zoom,
+                Stage.FLASHING: self._on_flashing,
+            }.get(self.stage, self._on_done)
+            return handler()
 
     def _on_camera_check(self) -> Dict[str, Any]:
         cam, face = self._cam, self._face
@@ -333,80 +340,86 @@ class EnrollmentSession:
         details: Optional[Dict[str, Any]] = None,
     ) -> None:
         """Cập nhật kết quả xác thực quang học từ endpoint verify."""
-        now = time.time()
-        self.history["optical_liveness"] = {
-            "passed": passed,
-            "correlation_score": round(correlation, 3),
-            "amplitude": round(amplitude, 2),
-            "verdict": verdict,
-            "details": details or {},
-        }
-        if passed:
-            self.stage = Stage.CAPTURE
-            self.history["timings"]["optical"] = round(now - self.stage_start_time, 2)
-            self.history["timings"]["total"] = round(now - self.created_at, 2)
-        else:
-            self.stage = Stage.FAILED
+        with self._lock:
+            now = time.time()
+            self.last_active = now
+            self.history["optical_liveness"] = {
+                "passed": passed,
+                "correlation_score": round(correlation, 3),
+                "amplitude": round(amplitude, 2),
+                "verdict": verdict,
+                "details": details or {},
+            }
+            if passed:
+                self.stage = Stage.CAPTURE
+                self.history["timings"]["optical"] = round(now - self.stage_start_time, 2)
+                self.history["timings"]["total"] = round(now - self.created_at, 2)
+            else:
+                self.stage = Stage.FAILED
 
     def verify_final_capture(self, frame_bgr: np.ndarray) -> Dict[str, Any]:
         """Kiểm định ảnh chân dung cuối cùng; không đạt -> FAILED, bắt buộc đăng ký lại từ đầu."""
-        face = self._get_analyzer().analyze(frame_bgr, C.OVAL_NORMAL, fresh=True)
+        with self._lock:
+            self.last_active = time.time()
+            face = self._get_analyzer().analyze(frame_bgr, C.OVAL_NORMAL, fresh=True)
 
-        issue = _final_capture_issue(face)
-        if issue is not None:
-            self.stage = Stage.FAILED
-            error_type, message, details = issue
-            resp: Dict[str, Any] = {"passed": False, "error_type": error_type, "message": message}
-            if details:
-                resp["details"] = details
-            return resp
+            issue = _final_capture_issue(face)
+            if issue is not None:
+                self.stage = Stage.FAILED
+                self.capture_verified = False
+                error_type, message, details = issue
+                resp: Dict[str, Any] = {"passed": False, "error_type": error_type, "message": message}
+                if details:
+                    resp["details"] = details
+                return resp
 
-        self.enrolled_image_bgr = frame_bgr
-        self.enrolled_face = face
-        self.stage = Stage.CAPTURE
-        h, w = frame_bgr.shape[:2]
+            self.enrolled_image_bgr = frame_bgr
+            self.enrolled_face = face
+            self.stage = Stage.CAPTURE
+            self.capture_verified = True
+            h, w = frame_bgr.shape[:2]
 
-        emb_preview: list[float] = []
-        try:
-            extractor = get_arcface_extractor()
-            if extractor.is_ready:
-                self.final_embedding = extractor.extract_embedding(
-                    frame_bgr, landmarks_5pts=face.arcface_kps, bbox=face.bbox
-                )
-                emb_preview = [round(float(v), 4) for v in self.final_embedding[:5]]
-        except Exception as emb_err:
-            print("[ArcFace] Extraction warning:", emb_err)
-            self.final_embedding = None
+            emb_preview: list[float] = []
+            try:
+                extractor = get_arcface_extractor()
+                if extractor.is_ready:
+                    self.final_embedding = extractor.extract_embedding(
+                        frame_bgr, landmarks_5pts=face.arcface_kps, bbox=face.bbox
+                    )
+                    emb_preview = [round(float(v), 4) for v in self.final_embedding[:5]]
+            except Exception as emb_err:
+                print("[ArcFace] Extraction warning:", emb_err)
+                self.final_embedding = None
 
-        real_prob = round(face.anti_spoof.real_prob, 3) if face.anti_spoof else None
-        embedding_dim = 512 if self.final_embedding is not None else 0
-        metrics = {
-            "resolution": f"{w}x{h}",
-            "sharpness": round(face.sharpness, 1),
-            "brightness": round(face.brightness_mean, 1),
-            "anti_spoof_prob": real_prob,
-            "embedding_dim": embedding_dim,
-            "embedding_preview": emb_preview,
-        }
-        self.history["final_capture"] = {
-            "passed": True,
-            "resolution": metrics["resolution"],
-            "sharpness": metrics["sharpness"],
-            "brightness": metrics["brightness"],
-            "yaw": face.yaw,
-            "pitch": face.pitch,
-            "roll": face.roll,
-            "anti_spoof_real_prob": real_prob,
-            "embedding_dim": embedding_dim,
-            "embedding_preview": emb_preview,
-            "verified_at": round(time.time(), 2),
-        }
-        return {
-            "passed": True,
-            "message": "Kiểm định khuôn mặt toàn vẹn & chống giả mạo thành công!",
-            "summary": self.history,
-            "metrics": metrics,
-        }
+            real_prob = round(face.anti_spoof.real_prob, 3) if face.anti_spoof else None
+            embedding_dim = 512 if self.final_embedding is not None else 0
+            metrics = {
+                "resolution": f"{w}x{h}",
+                "sharpness": round(face.sharpness, 1),
+                "brightness": round(face.brightness_mean, 1),
+                "anti_spoof_prob": real_prob,
+                "embedding_dim": embedding_dim,
+                "embedding_preview": emb_preview,
+            }
+            self.history["final_capture"] = {
+                "passed": True,
+                "resolution": metrics["resolution"],
+                "sharpness": metrics["sharpness"],
+                "brightness": metrics["brightness"],
+                "yaw": face.yaw,
+                "pitch": face.pitch,
+                "roll": face.roll,
+                "anti_spoof_real_prob": real_prob,
+                "embedding_dim": embedding_dim,
+                "embedding_preview": emb_preview,
+                "verified_at": round(time.time(), 2),
+            }
+            return {
+                "passed": True,
+                "message": "Kiểm định khuôn mặt toàn vẹn & chống giả mạo thành công!",
+                "summary": self.history,
+                "metrics": metrics,
+            }
 
     # ------------------------------------------------------------------
     # Gói JSON trả về frontend

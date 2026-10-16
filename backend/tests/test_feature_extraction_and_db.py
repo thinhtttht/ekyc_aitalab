@@ -110,16 +110,38 @@ def test_user_repository_crud():
 
 
 def test_api_user_enroll_and_verify():
+    from app import sessions
+    from enrollment import EnrollmentSession, Stage
+
     repo = get_user_repository()
     repo.delete_user("USR-API-01")
 
     img = make_dummy_face_bgr((150, 160, 170))
     b64 = img_to_b64(img)
 
-    # 1. API Enroll
+    # 0. Kiểm tra bảo mật: gọi /api/users/enroll không có session_id hợp lệ phải bị chặn (403)
+    res_unauth = client.post(
+        "/api/users/enroll",
+        json={
+            "user_id": "USR-API-01",
+            "full_name": "Lê Thị Test API",
+            "image": b64,
+        },
+    )
+    assert res_unauth.status_code == 403
+
+    # 1. Tạo phiên hợp lệ đã qua bước CAPTURE & có final_embedding
+    sid = "sess-test-api-01"
+    sess = EnrollmentSession(sid)
+    sess.stage = Stage.CAPTURE
+    sess.capture_verified = True
+    sess.final_embedding = get_arcface_extractor().extract_embedding(img)
+    sessions[sid] = sess
+
     res_enroll = client.post(
         "/api/users/enroll",
         json={
+            "session_id": sid,
             "user_id": "USR-API-01",
             "full_name": "Lê Thị Test API",
             "image": b64,

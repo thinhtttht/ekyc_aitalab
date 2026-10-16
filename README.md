@@ -1,8 +1,8 @@
 # QAT eKYC – Đăng ký và xác thực khuôn mặt
 
-Hệ thống eKYC khuôn mặt chạy trên trình duyệt: kiểm tra camera và chất lượng ảnh mặt (FQA), kiểm tra liveness chủ động (quay đầu, tiến gần, nháy màu quang học), chống giả mạo thụ động bằng MiniFASNet (PAD), trích xuất vector ArcFace 512 chiều, mã hóa ảnh chân dung và so khớp 1:1 / 1:N tốc độ cao.
+Hệ thống eKYC khuôn mặt chạy dưới dạng web: kiểm tra camera và chất lượng ảnh mặt (FQA), kiểm tra liveness chủ động (quay đầu, tiến gần, nháy màu quang học), chống giả mạo thụ động bằng MiniFASNet (PAD), trích xuất vector ArcFace 512 chiều, mã hóa ảnh chân dung và so khớp 1:1 / 1:N.
 
-> Những hạng mục mở rộng tiếp theo được liệt kê trong [ROADMAP.md](ROADMAP.md). Các tài liệu đặc tả gốc nằm trong [`docs/specs/`](docs/specs/).
+> Những hướng mở rộng tiếp theo được liệt kê trong [ROADMAP.md](ROADMAP.md). Các tài liệu nằm trong [`docs/specs/`](docs/specs/).
 
 ---
 

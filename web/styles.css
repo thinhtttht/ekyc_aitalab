@@ -2739,7 +2739,161 @@ body[data-view="viewEnroll"] .utility-bar {
     flex: none;
     height: auto;
   }
+  #viewIdCard .main-layout {
+    grid-template-columns: 1fr;
+    max-width: 520px;
+  }
+  #viewIdCard {
+    height: auto;
+  }
 }
 
+/* ---------------------------------------------------------------------------
+   BƯỚC QUÉT & OCR THẺ CCCD (VIEW ID CARD & CONFIRMATION MODAL)
+--------------------------------------------------------------------------- */
+body[data-view="viewIdCard"] .utility-bar {
+  display: flex;
+  left: 28px;
+  right: auto;
+}
 
+#viewIdCard {
+  height: calc(100vh - 85px);
+  min-height: 0;
+}
 
+#viewIdCard .main-layout {
+  width: min(1420px, calc(100% - 28px));
+  max-width: 1420px;
+  height: calc(100% - 48px);
+  margin: 14px auto 34px;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 220px minmax(520px, 1fr) minmax(300px, 340px);
+  gap: 18px;
+  align-items: stretch;
+}
+
+#idcardVideo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+#idcardMaskHole,
+#idcardFrame {
+  transition: x 0.25s ease, y 0.25s ease, width 0.25s ease, height 0.25s ease, stroke 0.25s ease, filter 0.25s ease;
+}
+
+.idcard-quad {
+  fill: rgba(16, 185, 129, 0.12);
+  stroke: #10b981;
+  stroke-width: 2.5;
+  stroke-dasharray: 6 4;
+}
+
+.idcard-info-card .check-group {
+  flex: 0 0 auto;
+  margin-bottom: 16px;
+}
+
+.idcard-info-card .group-title {
+  font-size: 13px;
+  padding-bottom: 6px;
+  margin-bottom: 6px;
+}
+
+.idcard-info-card .check-row {
+  flex: 0 0 auto;
+  padding: 9px 4px;
+  font-size: 13px;
+}
+
+.idcard-info-card .chk-val {
+  font-size: 11.5px;
+  padding: 3px 8px;
+  max-width: 185px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.idcard-modal-card {
+  max-width: 520px;
+}
+
+.modal-icon-warning {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: #fef3c7;
+  color: #d97706;
+  font-size: 22px;
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 10px;
+}
+
+.idcard-snapshot-box {
+  width: 100%;
+  max-width: 360px;
+  margin: 0 auto 14px;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 2px solid var(--border-card);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  background: #0f172a;
+}
+
+#idModalSnapshot {
+  width: 100%;
+  max-height: 200px;
+  display: block;
+  object-fit: cover;
+}
+
+.idcard-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-bottom: 14px;
+  text-align: left;
+}
+
+.idcard-field {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 11px;
+  padding: 9px 12px;
+}
+
+.idf-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
+  margin-bottom: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.idf-val {
+  display: block;
+  font-size: 14px;
+  font-weight: 700;
+  color: #0f172a;
+  word-break: break-word;
+}
+
+.idcard-registered-note {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+  border-radius: 12px;
+  padding: 11px 14px;
+  font-size: 13px;
+  line-height: 1.45;
+  text-align: left;
+  margin-bottom: 14px;
+}

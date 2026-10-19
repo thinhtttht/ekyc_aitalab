@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@200;400;500;600;700&family=Racing+Sans+One&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=5.6">
+  <link rel="stylesheet" href="styles.css?v=5.8">
 </head>
 <body data-view="viewLanding">
 
@@ -63,6 +63,136 @@
       <img class="portrait-oval oval-right" src="assets/guide_portrait_right.png" alt="">
     </div>
   </section>
+
+  <!-- 1.5. BƯỚC QUÉT CCCD (OCR) TRƯỚC KHI ĐĂNG KÝ KHUÔN MẶT -->
+  <div id="viewIdCard" class="view-panel hidden">
+  <main class="main-layout">
+    <aside class="stepper-card">
+      <h3 class="panel-title">Quét CCCD</h3>
+      <div class="stepper-list">
+        <div class="step-item" id="idstep-place">
+          <div class="step-indicator">
+            <span class="step-num">1</span>
+            <span class="step-check">✓</span>
+            <div class="step-tail"></div>
+          </div>
+          <div class="step-body">
+            <div class="step-heading">Đặt thẻ vào khung</div>
+            <div class="step-sub">Mặt trước CCCD</div>
+          </div>
+        </div>
+        <div class="step-item" id="idstep-detect">
+          <div class="step-indicator">
+            <span class="step-num">2</span>
+            <span class="step-check">✓</span>
+            <div class="step-tail"></div>
+          </div>
+          <div class="step-body">
+            <div class="step-heading">Nhận diện thẻ</div>
+            <div class="step-sub">Biên thẻ, độ nét, lóa sáng</div>
+          </div>
+        </div>
+        <div class="step-item" id="idstep-ocr">
+          <div class="step-indicator">
+            <span class="step-num">3</span>
+            <span class="step-check">✓</span>
+            <div class="step-tail"></div>
+          </div>
+          <div class="step-body">
+            <div class="step-heading">Trích xuất OCR</div>
+            <div class="step-sub">Số, Họ tên, Ngày sinh, Giới tính</div>
+          </div>
+        </div>
+        <div class="step-item" id="idstep-confirm">
+          <div class="step-indicator">
+            <span class="step-num">4</span>
+            <span class="step-check">✓</span>
+          </div>
+          <div class="step-body">
+            <div class="step-heading">Xác nhận</div>
+            <div class="step-sub">Chuyển sang khuôn mặt</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <section class="camera-center">
+      <div class="camera-viewport-box idcard-viewport-box" id="idcardViewportBox">
+        <video id="idcardVideo" autoplay playsinline muted></video>
+        <svg id="idcardSvg" class="oval-overlay-svg" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <mask id="idcardMask">
+              <rect x="0" y="0" width="100%" height="100%" fill="#ffffff" />
+              <rect id="idcardMaskHole" x="0" y="0" width="0" height="0" rx="18" fill="#000000" />
+            </mask>
+          </defs>
+          <rect x="0" y="0" width="100%" height="100%" fill="rgba(10, 15, 29, 0.52)" mask="url(#idcardMask)" />
+          <rect id="idcardFrame" x="0" y="0" width="0" height="0" rx="18" class="oval-stroke cyan" />
+          <polygon id="idcardQuad" points="" class="idcard-quad hidden" />
+        </svg>
+        <div id="idcardPill" class="bottom-guidance-pill cyan">Đưa mặt trước CCCD vào khung chữ nhật</div>
+      </div>
+
+      <div class="hold-progress-container">
+        <div class="hold-progress-header">
+          <span id="idcardProgressLabel">Đã đọc 0/4 trường thông tin</span>
+        </div>
+        <div class="hold-progress-track">
+          <div id="idcardProgressBar" class="hold-progress-fill" style="width: 0%;"></div>
+        </div>
+      </div>
+
+      <div class="camera-actions">
+        <button id="btnIdcardRestart" class="btn-action-outline" type="button">Quét lại</button>
+      </div>
+    </section>
+
+    <aside class="checklist-card idcard-info-card">
+      <h3 class="panel-title">Thông tin trích xuất</h3>
+      <div class="check-group">
+        <div class="group-title"><span>1 - Nhận diện thẻ</span></div>
+        <div class="check-row" id="idchk-card">
+          <span class="chk-icon">⚪</span>
+          <span class="chk-label">Phát hiện thẻ trong khung</span>
+          <span class="chk-val" id="idval-card">--</span>
+        </div>
+        <div class="check-row" id="idchk-quality">
+          <span class="chk-icon">⚪</span>
+          <span class="chk-label">Độ nét / Ánh sáng / Lóa</span>
+          <span class="chk-val" id="idval-quality">--</span>
+        </div>
+        <div class="check-row" id="idchk-ocr">
+          <span class="chk-icon">⚪</span>
+          <span class="chk-label">Mô hình OCR (EasyOCR)</span>
+          <span class="chk-val" id="idval-ocr">--</span>
+        </div>
+      </div>
+      <div class="check-group">
+        <div class="group-title"><span>2 - Trường thông tin CCCD</span></div>
+        <div class="check-row" id="idchk-id_number">
+          <span class="chk-icon">⚪</span>
+          <span class="chk-label">Số CCCD</span>
+          <span class="chk-val" id="idval-id_number">--</span>
+        </div>
+        <div class="check-row" id="idchk-full_name">
+          <span class="chk-icon">⚪</span>
+          <span class="chk-label">Họ và tên</span>
+          <span class="chk-val" id="idval-full_name">--</span>
+        </div>
+        <div class="check-row" id="idchk-dob">
+          <span class="chk-icon">⚪</span>
+          <span class="chk-label">Ngày sinh</span>
+          <span class="chk-val" id="idval-dob">--</span>
+        </div>
+        <div class="check-row" id="idchk-gender">
+          <span class="chk-icon">⚪</span>
+          <span class="chk-label">Giới tính</span>
+          <span class="chk-val" id="idval-gender">--</span>
+        </div>
+      </div>
+    </aside>
+  </main>
+  </div>
 
   <!-- 2. MAIN ENROLLMENT PANEL -->
   <div id="viewEnroll" class="view-panel hidden">
@@ -672,7 +802,14 @@
 
       <!-- Form nhập Tên & Lưu CSDL với ArcFace 512D -->
       <div class="user-enroll-form-box" id="enrollFormBox">
-        <div class="form-row">
+        <!-- Thông tin tự động từ OCR CCCD (thay cho ô nhập tên thủ công) -->
+        <div id="enrollIdInfoBox" class="idcard-summary-grid hidden">
+          <div class="idcard-field"><span class="idf-label">Họ và tên</span><span class="idf-val" id="sumIdName">--</span></div>
+          <div class="idcard-field"><span class="idf-label">Số CCCD</span><span class="idf-val" id="sumIdNumber">--</span></div>
+          <div class="idcard-field"><span class="idf-label">Ngày sinh</span><span class="idf-val" id="sumIdDob">--</span></div>
+          <div class="idcard-field"><span class="idf-label">Giới tính</span><span class="idf-val" id="sumIdGender">--</span></div>
+        </div>
+        <div class="form-row" id="enrollNameRow">
           <label for="inputUserName">Họ và tên</label>
           <input type="text" id="inputUserName" class="modern-input" placeholder="VD: Nguyễn Văn A" />
         </div>
@@ -692,6 +829,32 @@
           <button id="btnGoToVerify" class="btn-modal-primary">⚡ Xác thực thử ngay</button>
           <button id="btnGoToUsers" class="btn-modal-secondary">👥 Quản lý Users</button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL XÁC NHẬN THÔNG TIN CCCD (OCR) -->
+  <div id="idCardModal" class="modal-backdrop hidden">
+    <div class="modal-card idcard-modal-card">
+      <div class="modal-header">
+        <div id="idModalIcon" class="modal-icon-success">✓</div>
+        <h3 id="idModalTitle">Xác nhận thông tin CCCD</h3>
+        <p id="idModalSubtitle">Vui lòng kiểm tra thông tin được trích xuất tự động từ thẻ.</p>
+      </div>
+      <div class="idcard-snapshot-box">
+        <img id="idModalSnapshot" alt="Ảnh CCCD" />
+      </div>
+      <div class="idcard-summary-grid">
+        <div class="idcard-field"><span class="idf-label">Số CCCD</span><span class="idf-val" id="idModalNumber">--</span></div>
+        <div class="idcard-field"><span class="idf-label">Họ và tên</span><span class="idf-val" id="idModalName">--</span></div>
+        <div class="idcard-field"><span class="idf-label">Ngày sinh</span><span class="idf-val" id="idModalDob">--</span></div>
+        <div class="idcard-field"><span class="idf-label">Giới tính</span><span class="idf-val" id="idModalGender">--</span></div>
+      </div>
+      <div id="idModalRegisteredNote" class="idcard-registered-note hidden"></div>
+      <div class="modal-actions">
+        <button id="btnIdModalRescan" class="btn-modal-secondary" type="button">Quét lại</button>
+        <button id="btnIdModalConfirm" class="btn-modal-primary" type="button">Xác nhận &amp; Đăng ký khuôn mặt</button>
+        <button id="btnIdModalHome" class="btn-modal-primary hidden" type="button">Về trang chủ</button>
       </div>
     </div>
   </div>
@@ -782,6 +945,7 @@
   <!-- CONTAINER HIỂN THỊ TOAST NOTIFICATION -->
   <div id="toastContainer" class="toast-container"></div>
 
-  <script src="app.js?v=5.2"></script>
+  <script src="app.js?v=5.3"></script>
+  <script src="idcard.js?v=1.2"></script>
 </body>
 </html>

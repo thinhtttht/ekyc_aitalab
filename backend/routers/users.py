@@ -61,6 +61,21 @@ def enroll_user(payload: UserEnrollPayload):
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Lỗi trích xuất ArcFace: {e}")
 
+    # Chặn đăng ký trùng khi hồ sơ đến từ bước OCR CCCD
+    meta = payload.metadata or {}
+    if meta.get("id_number"):
+        existing = state.user_repo.find_by_identity(
+            id_number=meta.get("id_number"),
+            full_name=payload.full_name,
+            dob=meta.get("dob"),
+            gender=meta.get("gender"),
+        )
+        if existing and existing["user_id"] != (payload.user_id or "").strip():
+            raise HTTPException(
+                status_code=409,
+                detail=f"CCCD này đã được đăng ký (User ID: {existing['user_id']} - {existing['full_name']}).",
+            )
+
     # Đảm bảo format Data URL
     snapshot_b64 = payload.image
     if not snapshot_b64.startswith("data:image/"):

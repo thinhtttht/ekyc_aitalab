@@ -6,3 +6,4 @@ protobuf>=4.25.3,<5
 numpy>=1.26.0,<2.3.0
 pydantic>=2.6.0
 onnxruntime>=1.16.0
+easyocr>=1.7.1

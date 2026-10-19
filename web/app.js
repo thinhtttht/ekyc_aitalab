@@ -138,6 +138,7 @@ let autoVerifyIntervalId = null;
 let isVerifyingFace = false;
 let cachedUsersList = [];
 let currentVectorJsonRaw = '';
+let idCardInfo = null; // Thông tin CCCD đã xác nhận ở bước OCR: { id_number, full_name, dob, gender }
 
 // FPS & Signal Meter
 let measuredFps = 0;
@@ -1179,6 +1180,20 @@ async function captureHdAndVerify(initialSummary = {}) {
         inputUserName.value = '';
         inputUserName.classList.remove('error');
       }
+      // Có thông tin CCCD từ OCR -> ẩn ô nhập tên thủ công, hiển thị thông tin tự động
+      const idInfoBox = document.getElementById('enrollIdInfoBox');
+      const nameRow = document.getElementById('enrollNameRow');
+      if (idInfoBox && nameRow) {
+        const hasId = Boolean(idCardInfo && idCardInfo.full_name);
+        idInfoBox.classList.toggle('hidden', !hasId);
+        nameRow.classList.toggle('hidden', hasId);
+        if (hasId) {
+          document.getElementById('sumIdName').textContent = idCardInfo.full_name;
+          document.getElementById('sumIdNumber').textContent = idCardInfo.id_number || '--';
+          document.getElementById('sumIdDob').textContent = idCardInfo.dob || '--';
+          document.getElementById('sumIdGender').textContent = idCardInfo.gender || '--';
+        }
+      }
       // Hiển thị modal hoàn tất
       summaryModal.classList.remove('hidden');
     } else {
@@ -1270,10 +1285,13 @@ function switchTab(targetTabId) {
   // 2. Chuyển đổi hiển thị view panels
   const panels = [
     { el: viewLanding, id: 'viewLanding' },
+    { el: document.getElementById('viewIdCard'), id: 'viewIdCard' },
     { el: viewEnroll, id: 'viewEnroll' },
     { el: viewVerify, id: 'viewVerify' },
     { el: viewUsers, id: 'viewUsers' },
   ];
+  // Bước quét CCCD thuộc quy trình Đăng ký -> giữ sáng tab Đăng ký
+  if (targetTabId === 'viewIdCard' && tabBtnEnroll) tabBtnEnroll.classList.add('active');
 
   document.body.dataset.view = targetTabId;
 
@@ -1287,6 +1305,9 @@ function switchTab(targetTabId) {
       el.classList.remove('active');
     }
   });
+
+  // Bật / tắt vòng quét CCCD theo view hiện tại (định nghĩa trong idcard.js)
+  if (typeof idcardOnTabChange === 'function') idcardOnTabChange(targetTabId);
 
   // 3. Xử lý logic đặc thù cho từng view
   if (targetTabId === 'viewVerify') {
@@ -1310,12 +1331,12 @@ function switchTab(targetTabId) {
   }
 }
 
-// Gắn sự kiện chuyển tab
-if (tabBtnEnroll) tabBtnEnroll.addEventListener('click', () => switchTab('viewEnroll'));
+// Gắn sự kiện chuyển tab (Đăng ký luôn bắt đầu bằng bước quét CCCD)
+if (tabBtnEnroll) tabBtnEnroll.addEventListener('click', () => startIdCardFlow());
 if (tabBtnVerify) tabBtnVerify.addEventListener('click', () => switchTab('viewVerify'));
 if (tabBtnUsers) tabBtnUsers.addEventListener('click', () => switchTab('viewUsers'));
 if (logoHome) logoHome.addEventListener('click', () => switchTab('viewLanding'));
-if (btnLandingEnroll) btnLandingEnroll.addEventListener('click', () => switchTab('viewEnroll'));
+if (btnLandingEnroll) btnLandingEnroll.addEventListener('click', () => startIdCardFlow());
 
 // -----------------------------------------------------------------------------
 // 8. LƯU HỒ SƠ NGƯỜI DÙNG VÀO CƠ SỞ DỮ LIỆU (SAVE TO USERS DB)
@@ -1323,7 +1344,8 @@ if (btnLandingEnroll) btnLandingEnroll.addEventListener('click', () => switchTab
 
 async function handleSaveUser() {
   if (!inputUserName) return;
-  const fullName = inputUserName.value.trim();
+  const useIdCard = Boolean(idCardInfo && idCardInfo.full_name);
+  const fullName = useIdCard ? idCardInfo.full_name : inputUserName.value.trim();
 
   if (!fullName) {
     inputUserName.classList.add('error');
@@ -1347,6 +1369,14 @@ async function handleSaveUser() {
       metadata: {
         enrolled_via: 'web_ekyc',
         timestamp: new Date().toISOString(),
+        ...(useIdCard
+          ? {
+              id_number: idCardInfo.id_number,
+              dob: idCardInfo.dob,
+              gender: idCardInfo.gender,
+              identity_source: 'cccd_ocr',
+            }
+          : {}),
       },
     };
 
@@ -1363,6 +1393,7 @@ async function handleSaveUser() {
 
     const data = await res.json();
     lastSavedUserId = data.user?.user_id;
+    idCardInfo = null; // Hồ sơ đã lưu -> lần đăng ký sau phải quét CCCD mới
 
     // Chuyển sang box thông báo thành công
     if (enrollFormBox && enrollSavedBox) {
@@ -1564,16 +1595,10 @@ if (btnRefreshUsers) {
 
 // Nút đăng ký mới từ toolbar hoặc empty state
 if (btnNewEnroll) {
-  btnNewEnroll.addEventListener('click', () => {
-    switchTab('viewEnroll');
-    restartSession();
-  });
+  btnNewEnroll.addEventListener('click', () => startIdCardFlow());
 }
 if (btnEmptyEnroll) {
-  btnEmptyEnroll.addEventListener('click', () => {
-    switchTab('viewEnroll');
-    restartSession();
-  });
+  btnEmptyEnroll.addEventListener('click', () => startIdCardFlow());
 }
 
 // Chuyển nhanh sang xác thực đích danh 1:1

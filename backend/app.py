@@ -29,6 +29,7 @@ from routers import enroll as enroll_router
 from routers import health as health_router
 from routers import users as users_router
 from routers import verify as verify_router
+from routers import idcard as idcard_router
 from security import decode_base64_image, decode_or_400, rate_limiter
 import state
 
@@ -56,6 +57,9 @@ async def _periodic_session_cleaner() -> None:
 @asynccontextmanager
 async def lifespan(app_instance: FastAPI):
     cleaner_task = asyncio.create_task(_periodic_session_cleaner())
+    # Nạp nền mô hình OCR CCCD để lần quét đầu tiên không phải chờ
+    if os.environ.get("EKYC_IDCARD_OCR_PRELOAD", "1") == "1" and "pytest" not in sys.modules:
+        idcard_router.ocr_engine.warmup_async()
     try:
         yield
     finally:
@@ -114,6 +118,7 @@ app.include_router(health_router.router)
 app.include_router(enroll_router.router)
 app.include_router(users_router.router)
 app.include_router(verify_router.router)
+app.include_router(idcard_router.router)
 
 WEB_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "web"))
 app.mount("/", StaticFiles(directory=WEB_DIR, html=True), name="web")

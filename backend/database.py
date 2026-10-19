@@ -288,6 +288,53 @@ class UserRepository:
             "metadata": meta,
         }
 
+    def find_by_identity(
+        self,
+        id_number: Optional[str] = None,
+        full_name: Optional[str] = None,
+        dob: Optional[str] = None,
+        gender: Optional[str] = None,
+    ) -> Optional[Dict[str, Any]]:
+        """Tìm hồ sơ đã đăng ký theo thông tin CCCD lưu trong metadata_json.
+
+        Trùng khi: cùng Số CCCD, HOẶC cùng (Họ tên + Ngày sinh + Giới tính).
+        """
+        def _norm(s: Optional[str]) -> str:
+            return re.sub(r"\s+", " ", (s or "").strip()).upper()
+
+        id_number = (id_number or "").strip()
+        key_name, key_dob, key_gender = _norm(full_name), (dob or "").strip(), _norm(gender)
+        with _db_lock:
+            conn = _get_connection()
+            try:
+                cur = conn.cursor()
+                cur.execute("SELECT user_id, full_name, created_at, metadata_json FROM users WHERE metadata_json LIKE '%id_number%'")
+                rows = cur.fetchall()
+            finally:
+                conn.close()
+
+        for r in rows:
+            try:
+                meta = json.loads(r["metadata_json"] or "{}")
+            except Exception:
+                continue
+            same_id = bool(id_number) and str(meta.get("id_number", "")).strip() == id_number
+            same_person = (
+                bool(key_name and key_dob and key_gender)
+                and _norm(r["full_name"]) == key_name
+                and str(meta.get("dob", "")).strip() == key_dob
+                and _norm(meta.get("gender")) == key_gender
+            )
+            if same_id or same_person:
+                return {
+                    "user_id": r["user_id"],
+                    "full_name": r["full_name"],
+                    "created_at": r["created_at"],
+                    "id_number": meta.get("id_number"),
+                    "matched_by": "id_number" if same_id else "name_dob_gender",
+                }
+        return None
+
     def delete_user(self, user_id: str) -> bool:
         """Xoá người dùng theo user_id kèm file ảnh mã hóa trên đĩa."""
         with _db_lock:

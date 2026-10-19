@@ -79,14 +79,14 @@ def test_user_repository_crud():
         metadata={"department": "Security R&D"},
     )
     assert user["user_id"] == "USR-TEST-01"
-    assert user["full_name"] == "Nguyễn Văn Kiểm Thử"
+    assert user["full_name"] == "Nguyen Van Kiem Thu"
     assert user["embedding_dim"] == 512
     assert len(user["embedding_preview"]) == 5
 
     # 2. Get user
     fetched = repo.get_user("USR-TEST-01")
     assert fetched is not None
-    assert fetched["full_name"] == "Nguyễn Văn Kiểm Thử"
+    assert fetched["full_name"] == "Nguyen Van Kiem Thu"
     assert fetched["embedding"].shape == (512,)
 
     # 3. Match 1:1

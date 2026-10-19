@@ -143,10 +143,10 @@ def _looks_like_name(text: str) -> bool:
 
 
 def _clean_name(text: str) -> str:
-    text = re.sub(r"[^\w\s]", " ", text, flags=re.UNICODE)
-    text = re.sub(r"[\d_]", " ", text)
+    text = fold(text)
+    text = re.sub(r"[^a-z\s]", " ", text)
     text = re.sub(r"\s+", " ", text).strip()
-    return unicodedata.normalize("NFC", text.upper())
+    return text.upper()
 
 
 def _strip_name_label(line: str) -> str:
@@ -220,7 +220,8 @@ def parse_cccd_lines(
     """
     known = known_fields or {}
     locked_id = (known.get("id_number") or "").strip() or None
-    locked_name = (known.get("full_name") or "").strip() or None
+    raw_locked_name = (known.get("full_name") or "").strip()
+    locked_name = _clean_name(raw_locked_name) if raw_locked_name else None
     focus_lower = bool(locked_id and locked_name)
 
     lines = [re.sub(r"\s+", " ", ln).strip() for ln in lines if ln and ln.strip()]
@@ -556,6 +557,8 @@ class IdCardOCREngine:
         # Nếu truyền vào tên giả (ví dụ từ frame cũ bị nhầm tiêu đề), tự động lọc sạch
         if locked_name and not _looks_like_name(locked_name):
             locked_name = None
+        elif locked_name:
+            locked_name = _clean_name(locked_name)
 
         # Pha 2: đã có Tên & Số CCCD hợp lệ -> khóa lại, không bắt buộc đặt trọn thẻ vào khung chữ nhật
         focus_lower = bool(locked_id and locked_name)

@@ -14,6 +14,7 @@ import re
 import sqlite3
 import threading
 import time
+import unicodedata
 import uuid
 import zlib
 from typing import Any, Dict, List, Optional
@@ -33,6 +34,16 @@ PORTRAIT_DIR = os.path.join(DB_DIR, "portraits")
 ENC_PREFIX = "enc_file://"
 
 _db_lock = threading.Lock()
+
+
+def strip_vietnamese_accents(text: str) -> str:
+    """Bỏ dấu tiếng Việt khỏi chuỗi họ tên."""
+    if not text:
+        return ""
+    text = text.replace("đ", "d").replace("Đ", "D")
+    nfkd = unicodedata.normalize("NFD", text)
+    no_marks = "".join(ch for ch in nfkd if unicodedata.category(ch) != "Mn")
+    return re.sub(r"\s+", " ", no_marks).strip()
 
 
 def _safe_filename(user_id: str) -> str:
@@ -131,7 +142,7 @@ def _get_connection() -> sqlite3.Connection:
 
 
 def init_db():
-    """Khởi tạo cấu trúc bảng SQLite nếu chưa tồn tại."""
+    """Khởi tạo cấu trúc bảng SQLite nếu chưa tồn tại và chuẩn hóa họ tên không dấu."""
     with _db_lock:
         conn = _get_connection()
         try:
@@ -150,6 +161,11 @@ def init_db():
                 """
             )
             cur.execute("CREATE INDEX IF NOT EXISTS idx_user_id ON users(user_id)")
+            cur.execute("SELECT id, full_name FROM users")
+            for row in cur.fetchall():
+                cleaned = strip_vietnamese_accents(row["full_name"])
+                if cleaned and cleaned != row["full_name"]:
+                    cur.execute("UPDATE users SET full_name = ? WHERE id = ?", (cleaned, row["id"]))
             conn.commit()
         finally:
             conn.close()
@@ -176,7 +192,8 @@ class UserRepository:
         else:
             user_id = user_id.strip()
 
-        full_name = full_name.strip() if full_name else "Người dùng Chưa đặt tên"
+        cleaned_name = strip_vietnamese_accents(full_name) if full_name else ""
+        full_name = cleaned_name if cleaned_name else "Nguoi dung Chua dat ten"
         emb_arr = np.array(embedding, dtype=np.float32).flatten()
         if emb_arr.shape != (512,):
             raise ValueError(f"Vector ArcFace phải có 512 chiều, hiện tại: {emb_arr.shape}")
@@ -246,7 +263,7 @@ class UserRepository:
 
             results.append({
                 "user_id": r["user_id"],
-                "full_name": r["full_name"],
+                "full_name": strip_vietnamese_accents(r["full_name"]),
                 "embedding_dim": len(emb),
                 "embedding_preview": [round(float(v), 4) for v in emb[:5]],
                 "created_at": r["created_at"],
@@ -279,7 +296,7 @@ class UserRepository:
 
         return {
             "user_id": r["user_id"],
-            "full_name": r["full_name"],
+            "full_name": strip_vietnamese_accents(r["full_name"]),
             "embedding": emb,
             "embedding_dim": len(emb),
             "embedding_preview": [round(float(v), 4) for v in emb[:5]],
@@ -300,7 +317,7 @@ class UserRepository:
         Trùng khi: cùng Số CCCD, HOẶC cùng (Họ tên + Ngày sinh + Giới tính).
         """
         def _norm(s: Optional[str]) -> str:
-            return re.sub(r"\s+", " ", (s or "").strip()).upper()
+            return strip_vietnamese_accents(s or "").upper()
 
         id_number = (id_number or "").strip()
         key_name, key_dob, key_gender = _norm(full_name), (dob or "").strip(), _norm(gender)
@@ -328,7 +345,7 @@ class UserRepository:
             if same_id or same_person:
                 return {
                     "user_id": r["user_id"],
-                    "full_name": r["full_name"],
+                    "full_name": strip_vietnamese_accents(r["full_name"]),
                     "created_at": r["created_at"],
                     "id_number": meta.get("id_number"),
                     "matched_by": "id_number" if same_id else "name_dob_gender",
@@ -473,7 +490,7 @@ class UserRepository:
             v_res = self.extractor.verify(q_emb, emb_list[int(idx)], threshold=threshold)
             candidates.append({
                 "user_id": r["user_id"],
-                "full_name": r["full_name"],
+                "full_name": strip_vietnamese_accents(r["full_name"]),
                 "similarity": v_res["similarity"],
                 "distance": v_res["distance"],
                 "is_match": v_res["is_match"],

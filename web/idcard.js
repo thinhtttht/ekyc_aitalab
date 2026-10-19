@@ -168,7 +168,9 @@ function renderIdCardScanFeedback(data, snapshotB64) {
   if (data.is_id_card || incoming.id_number || incoming.full_name || hadLockedPair) {
     ID_FIELDS.forEach((k) => {
       if (!accumFields[k] && incoming[k]) {
-        accumFields[k] = incoming[k];
+        accumFields[k] = k === 'full_name' && typeof removeVietnameseTones === 'function'
+          ? removeVietnameseTones(incoming[k]).toUpperCase()
+          : incoming[k];
       }
     });
     // Lưu ảnh chụp toàn thẻ ở Pha 1 làm ảnh đại diện trên popup
@@ -374,7 +376,8 @@ function setModalRegisteredState(existingUser) {
     idModalSubtitle.textContent = 'Thẻ CCCD này đã tồn tại trong cơ sở dữ liệu sinh trắc học.';
   }
   if (idModalRegisteredNote) {
-    const uName = existingUser?.full_name || accumFields.full_name || '--';
+    const rawName = existingUser?.full_name || accumFields.full_name || '--';
+    const uName = typeof removeVietnameseTones === 'function' ? removeVietnameseTones(rawName) : rawName;
     const uId = existingUser?.user_id || '--';
     const uDate = existingUser?.created_at ? formatDateTime(existingUser.created_at) : '--';
     idModalRegisteredNote.innerHTML = `
@@ -413,9 +416,12 @@ function setModalConfirmableState() {
 async function checkAndOpenIdCardModal(fields, snapshotB64) {
   if (!idCardModal) return;
 
+  const cleanName = fields.full_name
+    ? (typeof removeVietnameseTones === 'function' ? removeVietnameseTones(fields.full_name) : fields.full_name)
+    : '--';
   if (idModalSnapshot) idModalSnapshot.src = snapshotB64 || '';
   if (idModalNumber) idModalNumber.textContent = fields.id_number || '--';
-  if (idModalName) idModalName.textContent = fields.full_name || '--';
+  if (idModalName) idModalName.textContent = cleanName;
   if (idModalDob) idModalDob.textContent = fields.dob || '--';
   if (idModalGender) idModalGender.textContent = fields.gender || '--';
 

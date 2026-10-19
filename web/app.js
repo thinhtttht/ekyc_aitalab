@@ -1188,7 +1188,7 @@ async function captureHdAndVerify(initialSummary = {}) {
         idInfoBox.classList.toggle('hidden', !hasId);
         nameRow.classList.toggle('hidden', hasId);
         if (hasId) {
-          document.getElementById('sumIdName').textContent = idCardInfo.full_name;
+          document.getElementById('sumIdName').textContent = removeVietnameseTones(idCardInfo.full_name);
           document.getElementById('sumIdNumber').textContent = idCardInfo.id_number || '--';
           document.getElementById('sumIdDob').textContent = idCardInfo.dob || '--';
           document.getElementById('sumIdGender').textContent = idCardInfo.gender || '--';
@@ -1216,6 +1216,17 @@ async function captureHdAndVerify(initialSummary = {}) {
 // -----------------------------------------------------------------------------
 // 6. TIỆN ÍCH HELPER (FORMAT, ESCAPE, CLIPBOARD)
 // -----------------------------------------------------------------------------
+
+function removeVietnameseTones(str) {
+  if (!str) return '';
+  return String(str)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
 
 function escapeHtml(str) {
   if (!str) return '';
@@ -1345,7 +1356,8 @@ if (btnLandingEnroll) btnLandingEnroll.addEventListener('click', () => startIdCa
 async function handleSaveUser() {
   if (!inputUserName) return;
   const useIdCard = Boolean(idCardInfo && idCardInfo.full_name);
-  const fullName = useIdCard ? idCardInfo.full_name : inputUserName.value.trim();
+  const rawName = useIdCard ? idCardInfo.full_name : inputUserName.value.trim();
+  const fullName = removeVietnameseTones(rawName);
 
   if (!fullName) {
     inputUserName.classList.add('error');
@@ -1486,11 +1498,12 @@ async function loadUsersTable() {
 function renderUsersTable(users) {
   if (!usersTableBody) return;
 
-  const searchTerm = inputSearchUsers ? inputSearchUsers.value.trim().toLowerCase() : '';
+  const searchTerm = inputSearchUsers ? removeVietnameseTones(inputSearchUsers.value).toLowerCase() : '';
   const filtered = users.filter((u) => {
     if (!searchTerm) return true;
+    const normName = removeVietnameseTones(u.full_name).toLowerCase();
     return (
-      (u.full_name && u.full_name.toLowerCase().includes(searchTerm)) ||
+      normName.includes(searchTerm) ||
       (u.user_id && u.user_id.toLowerCase().includes(searchTerm))
     );
   });
@@ -1518,12 +1531,13 @@ function renderUsersTable(users) {
     .map((u, idx) => {
       const previewStr = (u.embedding_preview || []).map((v) => Number(v).toFixed(3)).join(', ');
       const avatarSrc = u.snapshot_b64 || '';
+      const displayName = removeVietnameseTones(u.full_name);
       return `
         <tr>
           <td class="col-center" style="color: var(--text-dim);">${idx + 1}</td>
           <td>
             <div class="user-avatar-cell">
-              ${avatarSrc ? `<img src="${avatarSrc}" alt="Avatar" class="tbl-avatar" />` : '<div class="tbl-avatar-placeholder">👤</div>'}
+              ${avatarSrc ? `<img src="${avatarSrc}" alt="Avatar" class="tbl-avatar" /><span class="avatar-blur-overlay" title="Đã làm mờ để bảo mật riêng tư" aria-hidden="true"></span>` : '<div class="tbl-avatar-placeholder">👤</div>'}
             </div>
           </td>
           <td>
@@ -1532,12 +1546,12 @@ function renderUsersTable(users) {
             </span>
           </td>
           <td class="user-name-cell">
-            <strong>${escapeHtml(u.full_name)}</strong>
+            <strong>${escapeHtml(displayName)}</strong>
           </td>
           <td>
             <div class="vector-preview-cell">
               <span class="vec-chip" title="5 số đầu của vector ArcFace">[${previewStr} ...]</span>
-              <button class="btn-tbl-code" onclick="openVectorModal('${u.user_id}', '${escapeHtml(u.full_name)}')" title="Xem chi tiết toàn bộ 512 số float">
+              <button class="btn-tbl-code" onclick="openVectorModal('${u.user_id}', '${escapeHtml(displayName)}')" title="Xem chi tiết toàn bộ 512 số float">
                 { } 512D
               </button>
             </div>
@@ -1547,7 +1561,7 @@ function renderUsersTable(users) {
             <button class="btn-tbl-verify" onclick="quickVerifyUser('${u.user_id}')" title="Chuyển sang xác thực thử với người này">
               ⚡ Xác thực
             </button>
-            <button class="btn-tbl-del" onclick="promptDeleteUser('${u.user_id}', '${escapeHtml(u.full_name)}', '${u.snapshot_b64 || ''}')" title="Xóa hồ sơ khỏi CSDL">
+            <button class="btn-tbl-del" onclick="promptDeleteUser('${u.user_id}', '${escapeHtml(displayName)}', '${u.snapshot_b64 || ''}')" title="Xóa hồ sơ khỏi CSDL">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
               Xóa
             </button>
@@ -1624,12 +1638,15 @@ window.promptDeleteUser = function (userId, userName, avatarSrc) {
   if (deleteUserPreviewBox) deleteUserPreviewBox.classList.remove('hidden');
   if (deleteUserName) deleteUserName.textContent = userName;
   if (deleteUserId) deleteUserId.textContent = `User ID: ${userId}`;
+  const deleteBlurEl = document.getElementById('deleteUserBlurOverlay');
   if (deleteUserImg) {
     if (avatarSrc) {
       deleteUserImg.src = avatarSrc;
       deleteUserImg.style.display = 'block';
+      if (deleteBlurEl) deleteBlurEl.style.display = 'block';
     } else {
       deleteUserImg.style.display = 'none';
+      if (deleteBlurEl) deleteBlurEl.style.display = 'none';
     }
   }
   if (deleteModalWarningText) {
@@ -1805,7 +1822,7 @@ async function loadUsersListForSelect() {
     users.forEach((u) => {
       const opt = document.createElement('option');
       opt.value = u.user_id;
-      opt.textContent = `${u.full_name} (${u.user_id})`;
+      opt.textContent = `${removeVietnameseTones(u.full_name)} (${u.user_id})`;
       selectVerifyUser.appendChild(opt);
     });
   } catch (e) {
@@ -1919,17 +1936,28 @@ function renderVerifyResult(data) {
   // Xử lý Verdict Banner & User Card
   if (data.verdict === 'MATCH_SUCCESS') {
     playTingSound();
+    const matchedCleanName = removeVietnameseTones(match.matched_user?.full_name || '');
     if (verifyVerdictBox) verifyVerdictBox.className = 'verify-verdict-box success';
     if (verdictIcon) verdictIcon.textContent = '✅';
     if (verdictTitle) verdictTitle.textContent = 'XÁC THỰC THÀNH CÔNG';
     if (verdictSubtitle) {
-      verdictSubtitle.textContent = `Khớp danh tính: ${match.matched_user?.full_name || ''} (Sim: ${sim} ≥ ${match.threshold || 0.55})`;
+      verdictSubtitle.textContent = `Khớp danh tính: ${matchedCleanName} (Sim: ${sim} ≥ ${match.threshold || 0.55})`;
     }
 
     if (matchedUserCard && match.matched_user) {
       matchedUserCard.classList.remove('hidden');
-      if (matchedAvatar) matchedAvatar.src = match.matched_user.snapshot_b64 || '';
-      if (matchedName) matchedName.textContent = match.matched_user.full_name;
+      const mBlurEl = document.getElementById('matchedAvatarBlur');
+      if (matchedAvatar) {
+        if (match.matched_user.snapshot_b64) {
+          matchedAvatar.src = match.matched_user.snapshot_b64;
+          matchedAvatar.style.display = 'block';
+          if (mBlurEl) mBlurEl.style.display = 'block';
+        } else {
+          matchedAvatar.style.display = 'none';
+          if (mBlurEl) mBlurEl.style.display = 'none';
+        }
+      }
+      if (matchedName) matchedName.textContent = matchedCleanName;
       if (matchedId) matchedId.textContent = match.matched_user.user_id;
       if (matchedTime) matchedTime.textContent = new Date().toLocaleTimeString('vi-VN');
     }
@@ -1999,12 +2027,15 @@ function renderVerifyResult(data) {
           const cPct = Math.max(0, Math.min(100, Math.round(c.similarity * 100)));
           const isTop = i === 0 && isMatch;
           const matchLabel = isTop ? '✓ ĐÃ XÁC THỰC' : (c.is_match ? '✓ Đạt ngưỡng' : '✗ Dưới ngưỡng');
+          const cAvatarHtml = c.snapshot_b64
+            ? `<img src="${c.snapshot_b64}" alt="Avatar" class="c-avatar" /><span class="avatar-blur-overlay" title="Đã làm mờ để bảo mật riêng tư" aria-hidden="true"></span>`
+            : '<div class="tbl-avatar-placeholder">👤</div>';
           return `
             <div class="candidate-row ${isTop ? 'matched' : ''}">
               <span class="c-rank">#${i + 1}</span>
-              <img src="${c.snapshot_b64 || ''}" alt="Avatar" class="c-avatar" />
+              <div class="c-avatar-wrap">${cAvatarHtml}</div>
               <div class="c-info">
-                <div class="c-name">${escapeHtml(c.full_name)}</div>
+                <div class="c-name">${escapeHtml(removeVietnameseTones(c.full_name))}</div>
                 <div class="c-id">${c.user_id} · <span style="font-size: 11px; opacity: 0.85;">${matchLabel}</span></div>
               </div>
               <div class="c-meter">

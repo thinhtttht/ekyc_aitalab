@@ -42,7 +42,7 @@ def test_parse_cccd_2021_chip_format():
     res = parse_cccd_lines(lines)
     assert res == {
         "id_number": "079203001234",
-        "full_name": "NGUYỄN VĂN AN",
+        "full_name": "NGUYEN VAN AN",
         "dob": "15/08/2003",
         "gender": "Nam",
     }
@@ -61,7 +61,7 @@ def test_parse_can_cuoc_2024_female_and_ocr_noise():
     res = parse_cccd_lines(lines)
     assert res == {
         "id_number": "001198005670",
-        "full_name": "TRẦN THỊ BÍCH NGỌC",
+        "full_name": "TRAN THI BICH NGOC",
         "dob": "02/11/1998",
         "gender": "Nữ",
     }
@@ -111,6 +111,7 @@ def test_find_by_identity_and_api_check_and_duplicate_block(monkeypatch):
             "identity_source": "cccd_ocr",
         },
     )
+    assert saved["full_name"] == "NGUYEN VAN AN"
 
     # 1. Khớp theo Số CCCD
     by_id = repo.find_by_identity(id_number="079203001234")
@@ -161,7 +162,7 @@ def test_find_by_identity_and_api_check_and_duplicate_block(monkeypatch):
     assert scan_data["complete"] is True
     assert scan_data["fields"] == {
         "id_number": "079203001234",
-        "full_name": "NGUYỄN VĂN AN",
+        "full_name": "NGUYEN VAN AN",
         "dob": "15/08/2003",
         "gender": "Nam",
     }
@@ -187,7 +188,7 @@ def test_phase2_locked_name_id_and_noisy_dob_gender(monkeypatch):
     parsed = parse_cccd_lines(zoomed_lines, known_fields=known)
     assert parsed == {
         "id_number": "079203001234",
-        "full_name": "NGUYỄN HOÀI NAM",
+        "full_name": "NGUYEN HOAI NAM",
         "dob": "15/08/2003",
         "gender": "Nữ",
     }
@@ -217,7 +218,7 @@ def test_phase2_locked_name_id_and_noisy_dob_gender(monkeypatch):
     assert data["complete"] is True
     assert data["fields"] == {
         "id_number": "079203001234",
-        "full_name": "NGUYỄN HOÀI NAM",
+        "full_name": "NGUYEN HOAI NAM",
         "dob": "15/08/2003",
         "gender": "Nam",
     }
@@ -246,7 +247,7 @@ def test_reject_can_cuoc_cong_dan_as_name_and_require_name_below_id():
     res_full = parse_cccd_lines(with_real_name_below)
     assert res_full == {
         "id_number": "079203001234",
-        "full_name": "PHẠM MINH KIỆT",
+        "full_name": "PHAM MINH KIET",
         "dob": "15/08/2003",
         "gender": "Nam",
     }

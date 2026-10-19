@@ -18,7 +18,7 @@
         <circle cx="12" cy="12" r="4"/>
         <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
       </svg>
-      <span id="flashingColorText">Đang chuẩn bị quét quang học...</span>
+      <span id="flashingColorText">Đang chuẩn bị quét quang học</span>
     </div>
   </div>
 
@@ -41,7 +41,7 @@
     <div class="camera-select-box">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
       <select id="cameraSelect" title="Chọn thiết bị camera">
-        <option value="">Đang tìm thiết bị camera...</option>
+        <option value="">Đang tìm thiết bị camera</option>
       </select>
     </div>
     <div id="backendStatus" class="status-chip online">
@@ -100,7 +100,7 @@
           </div>
           <div class="step-body">
             <div class="step-heading">Trích xuất OCR</div>
-            <div class="step-sub">Số, Họ tên, Ngày sinh, Giới tính</div>
+            <div class="step-sub">ID, Họ tên, Ngày sinh, Giới tính</div>
           </div>
         </div>
         <div class="step-item" id="idstep-confirm">
@@ -212,7 +212,7 @@
           </div>
           <div class="step-body">
             <div class="step-heading">Kiểm tra thiết bị</div>
-            <div class="step-sub">Độ phân giải và Tín hiệu</div>
+            <div class="step-sub">Độ phân giải và tín hiệu</div>
           </div>
         </div>
 
@@ -381,13 +381,13 @@
         <div id="cameraErrorOverlay" class="camera-error-layer hidden">
           <div class="error-icon">⚠️</div>
           <h4 id="cameraErrorTitle">Không thể mở Camera</h4>
-          <p id="cameraErrorDesc">Vui lòng kiểm tra quyền truy cập hoặc chọn thiết bị khác.</p>
+          <p id="cameraErrorDesc">Vui lòng kiểm tra quyền truy cập hoặc chọn camera khác.</p>
           <button id="btnRetryCamera" class="btn-retry">Thử lại</button>
         </div>
 
         <!-- Pill thông báo hướng dẫn động ở đáy video -->
         <div id="bottomPill" class="bottom-guidance-pill cyan">
-          Đang khởi động camera và hệ thống kiểm tra...
+          Đang khởi động camera và hệ thống kiểm tra
         </div>
       </div>
 
@@ -421,22 +421,22 @@
         </div>
         <div class="check-row" id="chk-resolution">
           <span class="chk-icon">⚪</span>
-          <span class="chk-label">Độ phân giải (≥ 640×480)</span>
+          <span class="chk-label">Độ phân giải</span>
           <span class="chk-val" id="val-resolution">--</span>
         </div>
         <div class="check-row" id="chk-signal">
           <span class="chk-icon">⚪</span>
-          <span class="chk-label">Tín hiệu camera (Không đen/treo)</span>
+          <span class="chk-label">Tín hiệu camera</span>
           <span class="chk-val" id="val-signal">--</span>
         </div>
         <div class="check-row" id="chk-cam-bright">
           <span class="chk-icon">⚪</span>
-          <span class="chk-label">Độ sáng khung hình (Đủ sáng)</span>
+          <span class="chk-label">Độ sáng khung hình</span>
           <span class="chk-val" id="val-cam-bright">--</span>
         </div>
         <div class="check-row" id="chk-cam-noise">
           <span class="chk-icon">⚪</span>
-          <span class="chk-label">Độ nhiễu hạt (Chuẩn Immerkær)</span>
+          <span class="chk-label">Độ nhiễu hạt</span>
           <span class="chk-val" id="val-cam-noise">--</span>
         </div>
       </div>
@@ -480,7 +480,7 @@
         </div>
         <div class="check-row" id="chk-inside-oval">
           <span class="chk-icon">⚪</span>
-          <span class="chk-label">Viền mặt nằm trong khung Oval (d ≤ 1.0)</span>
+          <span class="chk-label">Viền mặt nằm trong khung Oval</span>
           <span class="chk-val" id="val-inside-oval">--</span>
         </div>
         <div class="check-row" id="chk-straight">
@@ -490,12 +490,12 @@
         </div>
         <div class="check-row" id="chk-face-bright">
           <span class="chk-icon">⚪</span>
-          <span class="chk-label">Độ sáng khuôn mặt (40 - 210)</span>
+          <span class="chk-label">Độ sáng khuôn mặt</span>
           <span class="chk-val" id="val-face-bright">--</span>
         </div>
         <div class="check-row" id="chk-backlight">
           <span class="chk-icon">⚪</span>
-          <span class="chk-label">Không bị ngược sáng (Std ≥ 15)</span>
+          <span class="chk-label">Không bị ngược sáng</span>
           <span class="chk-val" id="val-backlight">--</span>
         </div>
         <div class="check-row" id="chk-mask">
@@ -525,12 +525,12 @@
         </div>
         <div class="check-row" id="chk-nose">
           <span class="chk-icon">⚪</span>
-          <span class="chk-label">Sống mũi & chóp mũi rõ</span>
+          <span class="chk-label">Sống mũi và chóp mũi</span>
           <span class="chk-val" id="val-nose">--</span>
         </div>
         <div class="check-row" id="chk-eyebrows">
           <span class="chk-icon">⚪</span>
-          <span class="chk-label">Chân mày 2 bên rõ ràng</span>
+          <span class="chk-label">Chân mày 2 bên</span>
           <span class="chk-val" id="val-eyebrows">--</span>
         </div>
       </div>
@@ -547,7 +547,7 @@
         </div>
         <div class="check-row" id="chk-zoom">
           <span class="chk-icon">⚪</span>
-          <span class="chk-label">Tiến gần (Tăng trưởng mặt ≥ 125%)</span>
+          <span class="chk-label">Tiến gần (Zoom mặt ≥ 125%)</span>
           <span class="chk-val" id="val-zoom">Chờ</span>
         </div>
         <div class="check-row" id="chk-optical-liveness">
@@ -568,20 +568,20 @@
       <section class="verify-camera-card">
         <div class="verify-header">
           <div>
-            <h3 class="panel-title">Trạm Xác Thực Sinh Trắc Học</h3>
-            <p class="panel-subtitle">Đối sánh khuôn mặt thời gian thực bằng ArcFace 512D & MiniFASNet</p>
+            <h3 class="panel-title">Xác Thực Sinh Trắc Học</h3>
+            <p class="panel-subtitle">Đối sánh khuôn mặt real-time bằng ArcFace 512D và MiniFASNet</p>
           </div>
           <div class="mode-pills">
-            <button id="btnMode1N" class="mode-pill active" title="Tìm kiếm khuôn mặt trong toàn bộ CSDL">1:N (Nhận diện)</button>
+            <button id="btnMode1N" class="mode-pill active" title="Tìm kiếm danh tính khuôn mặt">1:N (Nhận diện)</button>
             <button id="btnMode11" class="mode-pill" title="So khớp với một người dùng cụ thể">1:1 (So khớp đích danh)</button>
           </div>
         </div>
 
         <!-- Khung chọn user khi ở chế độ 1:1 -->
         <div id="verifyUserSelectBox" class="verify-user-select-row hidden">
-          <label for="selectVerifyUser">Chọn hồ sơ đối sánh:</label>
+          <label for="selectVerifyUser">Chọn hồ sơ đối sánh</label>
           <select id="selectVerifyUser" class="verify-select">
-            <option value="">-- Đang tải danh sách người dùng... --</option>
+            <option value="">-- Đang tải danh sách người dùng --</option>
           </select>
         </div>
 
@@ -592,7 +592,7 @@
 
           <!-- Trạng thái Overlay khi quét -->
           <div id="verifyOverlayBanner" class="verify-overlay-banner hidden">
-            <span id="verifyOverlayText">Đang so khớp sinh trắc học...</span>
+            <span id="verifyOverlayText">Đang so khớp sinh trắc học</span>
           </div>
         </div>
 
@@ -600,7 +600,7 @@
         <div class="verify-controls-bar">
           <div class="threshold-slider-box">
             <div class="slider-header">
-              <label for="verifyThreshold">Ngưỡng Cosine Similarity:</label>
+              <label for="verifyThreshold">Cosine Similarity:</label>
               <strong id="valVerifyThreshold">0.55</strong>
             </div>
             <input type="range" id="verifyThreshold" min="0.30" max="0.80" step="0.05" value="0.55" />
@@ -609,7 +609,7 @@
           <div class="verify-actions">
             <button id="btnTriggerVerify" class="btn-verify-primary">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
-              Chụp & Xác thực ngay
+              Chụp và xác thực ngay
             </button>
             <label class="auto-scan-toggle">
               <input type="checkbox" id="chkAutoVerify" />
@@ -621,15 +621,15 @@
 
       <!-- CỘT PHẢI: KẾT QUẢ KỸ THUẬT (DÂN KỸ THUẬT LÀM UI) -->
       <aside class="verify-result-card">
-        <h3 class="panel-title">Báo Cáo Đối Sánh Chi Tiết</h3>
-        <p class="panel-subtitle">Chỉ số suy luận ArcFace & MiniFASNet PAD</p>
+        <h3 class="panel-title">Kết quả đối sánh</h3>
+        <p class="panel-subtitle">Chỉ số ArcFace và MiniFASNet </p>
 
         <!-- Banner kết quả -->
         <div id="verifyVerdictBox" class="verify-verdict-box idle">
           <div class="verdict-icon-box" id="verdictIcon">👁️</div>
           <div class="verdict-text-box">
             <h4 id="verdictTitle">Sẵn sàng đối sánh</h4>
-            <p id="verdictSubtitle">Nhìn thẳng vào camera và nhấn 'Chụp & Xác thực ngay'</p>
+            <p id="verdictSubtitle">Nhìn thẳng vào camera và nhấn 'Chụp và xác thực ngay'</p>
           </div>
         </div>
 
@@ -652,7 +652,7 @@
             <span class="t-val" id="metSim">--</span>
           </div>
           <div class="t-metric-item">
-            <span class="t-label">Độ tự tin (Confidence)</span>
+            <span class="t-label">Confidence</span>
             <span class="t-val" id="metConf">--%</span>
           </div>
           <div class="t-metric-item">
@@ -682,7 +682,7 @@
     </div>
   </div>
 
-  <!-- 4. MAIN USERS DASHBOARD PANEL (DÂN KỸ THUẬT LÀM UI) -->
+  <!-- 4. MAIN USERS DASHBOARD PANEL -->
   <div id="viewUsers" class="view-panel hidden">
     <div class="users-dashboard-layout">
       <!-- Header Stats Bar -->
@@ -692,7 +692,7 @@
           <strong id="statTotalUsers" class="u-stat-val">0</strong>
         </div>
         <div class="u-stat-badge">
-          <span class="u-stat-label">Model Trích xuất:</span>
+          <span class="u-stat-label">Model trích xuất:</span>
           <strong class="u-stat-val">ArcFace WebFace600K R50</strong>
         </div>
         <div class="u-stat-badge">
@@ -723,12 +723,12 @@
           </button>
           <button id="btnNewEnroll" class="btn-tool-primary">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Đăng ký User Mới
+            Đăng ký User mới
           </button>
         </div>
       </div>
 
-      <!-- Bảng người dùng phong cách dân kỹ thuật -->
+      <!-- Bảng người dùng-->
       <div class="table-card">
         <table class="tech-table">
           <thead>
@@ -738,7 +738,7 @@
               <th style="width: 150px;">User ID</th>
               <th>Họ và Tên</th>
               <th style="width: 250px;">Vector ArcFace (512D)</th>
-              <th style="width: 170px;">Ngày Đăng ký</th>
+              <th style="width: 170px;">Ngày đăng ký</th>
               <th style="width: 190px; text-align: center;">Thao tác</th>
             </tr>
           </thead>
@@ -752,7 +752,7 @@
           <div class="empty-icon">📂</div>
           <h4>Chưa có hồ sơ người dùng trong cơ sở dữ liệu</h4>
           <p>Thực hiện quy trình eKYC ở Tab 'Đăng ký eKYC' để trích xuất ArcFace và lưu hồ sơ đầu tiên.</p>
-          <button id="btnEmptyEnroll" class="btn-modal-primary">Đăng ký Hồ sơ Đầu tiên</button>
+          <button id="btnEmptyEnroll" class="btn-modal-primary">Đăng ký hồ sơ đầu tiên</button>
         </div>
       </div>
     </div>
@@ -824,10 +824,10 @@
 
       <!-- Khung thông báo lưu thành công & nút chuyển sang Xác thực thử -->
       <div id="enrollSavedBox" class="user-saved-box hidden">
-        <div class="save-ok-chip">✓ Hồ sơ sinh trắc học đã được lưu vào CSDL SQLite!</div>
+        <div class="save-ok-chip">Hồ sơ sinh trắc học đã được lưu vào hệ thống!</div>
         <div class="modal-actions">
-          <button id="btnGoToVerify" class="btn-modal-primary">⚡ Xác thực thử ngay</button>
-          <button id="btnGoToUsers" class="btn-modal-secondary">👥 Quản lý Users</button>
+          <button id="btnGoToVerify" class="btn-modal-primary">Xác thực thử ngay</button>
+          <button id="btnGoToUsers" class="btn-modal-secondary">Quản lý Users</button>
         </div>
       </div>
     </div>
@@ -864,7 +864,7 @@
     <div class="modal-card vector-inspect-card">
       <div class="modal-header">
         <div class="modal-icon-code">{ }</div>
-        <h3 id="vectorModalTitle">Vector Đặc Trưng ArcFace 512D</h3>
+        <h3 id="vectorModalTitle">Vector đặc trưng ArcFace 512D</h3>
         <p id="vectorModalSubtitle">User ID: --</p>
       </div>
       <div class="vector-json-box">
@@ -912,7 +912,7 @@
             <line x1="14" y1="11" x2="14" y2="17"></line>
           </svg>
         </div>
-        <h3 id="deleteModalTitle">Xác Nhận Xóa Hồ Sơ</h3>
+        <h3 id="deleteModalTitle">Xác nhận xóa hồ sơ</h3>
         <p id="deleteModalSubtitle">Bạn có chắc chắn muốn xóa hồ sơ sinh trắc học này khỏi hệ thống?</p>
       </div>
 
@@ -929,7 +929,7 @@
 
       <div class="delete-warning-note">
         <span class="warn-badge">⚠️ Lưu ý:</span>
-        <span id="deleteModalWarningText">Toàn bộ vector ArcFace 512D và ảnh chân dung đối sánh sẽ bị xóa vĩnh viễn khỏi CSDL SQLite. Hành động này không thể hoàn tác.</span>
+        <span id="deleteModalWarningText">Toàn bộ vector ArcFace 512D và ảnh chân dung đối sánh sẽ bị xóa vĩnh viễn. Hành động này không thể hoàn tác.</span>
       </div>
 
       <div class="modal-actions">

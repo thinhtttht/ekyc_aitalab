@@ -128,6 +128,7 @@ let currentStream = null;
 let currentSessionId = null;
 let isLoopRunning = false;
 let isSendingFrame = false;
+let receivedEnrollFrame = false;
 let isFlashingActive = false;
 let activeDeviceId = localStorage.getItem('ekyc_preferred_camera') || '';
 let currentTab = 'viewLanding';
@@ -237,37 +238,58 @@ cameraSelect.addEventListener('change', async (e) => {
   await restartSession();
 });
 
+function playVideoElement(el) {
+  if (!el) return;
+  const pending = el.play();
+  if (pending && typeof pending.catch === 'function') pending.catch(() => {});
+}
+
+function waitForVideoMetadata(el, timeoutMs = 1500) {
+  if (!el || el.readyState >= 1) return Promise.resolve();
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      el.removeEventListener('loadedmetadata', finish);
+      resolve();
+    };
+    el.addEventListener('loadedmetadata', finish, { once: true });
+    setTimeout(finish, timeoutMs);
+  });
+}
+
 async function startCamera(deviceId = '') {
   hideCameraError();
+  setGuidance('Đang mở camera...', 'cyan', true);
   if (currentStream) {
     currentStream.getTracks().forEach((track) => track.stop());
     currentStream = null;
   }
 
-  const constraints = {
-    audio: false,
-    video: {
-      deviceId: deviceId ? { exact: deviceId } : undefined,
-      width: { ideal: 1280, min: 640 },
-      height: { ideal: 720, min: 480 },
-      frameRate: { ideal: 30, min: 20 },
-      facingMode: 'user',
-    },
+  const videoConstraints = {
+    width: { ideal: 1280, min: 640 },
+    height: { ideal: 720, min: 480 },
+    frameRate: { ideal: 30, min: 20 },
   };
+  if (deviceId) {
+    videoConstraints.deviceId = { exact: deviceId };
+  } else {
+    videoConstraints.facingMode = 'user';
+  }
 
   try {
-    currentStream = await navigator.mediaDevices.getUserMedia(constraints);
+    currentStream = await navigator.mediaDevices.getUserMedia({ audio: false, video: videoConstraints });
     video.srcObject = currentStream;
-
-    await new Promise((resolve) => {
-      video.onloadedmetadata = () => {
-        video.play().then(resolve).catch(resolve);
-      };
-    });
+    await waitForVideoMetadata(video);
+    playVideoElement(video);
 
     // Cập nhật lại nhãn camera nếu trước đó chưa cấp quyền
     await initCameraDevices();
     startFpsWatcher();
+    if (!receivedEnrollFrame && currentTab === 'viewEnroll') {
+      setGuidance('Đang kết nối hệ thống kiểm tra...', 'cyan', true);
+    }
   } catch (err) {
     console.error('Không thể mở camera:', err);
     if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
@@ -286,6 +308,7 @@ function showCameraError(title, desc) {
   cameraErrorTitle.textContent = title;
   cameraErrorDesc.textContent = desc;
   cameraErrorOverlay.classList.remove('hidden');
+  setGuidance(title, 'red', true);
 }
 
 function hideCameraError() {
@@ -360,10 +383,16 @@ async function startSession() {
     currentSessionId = data.session_id;
     updateBackendStatus(true);
     updateOvalSvg(data.oval, 'cyan', 0);
+    if (!receivedEnrollFrame && currentTab === 'viewEnroll' && video.readyState >= 2) {
+      setGuidance('Đang kết nối hệ thống kiểm tra...', 'cyan', true);
+    }
     return data;
   } catch (err) {
     console.error('Không thể khởi tạo phiên backend:', err);
     updateBackendStatus(false);
+    if (currentTab === 'viewEnroll') {
+      setGuidance('Không kết nối được hệ thống kiểm tra. Đang thử lại...', 'red', true);
+    }
     return null;
   }
 }
@@ -384,6 +413,7 @@ setInterval(async () => {
 }, 1500);
 
 async function restartSession() {
+  receivedEnrollFrame = false;
   summaryModal.classList.add('hidden');
   resetChecklistUI();
   resetStepperUI();
@@ -432,9 +462,21 @@ async function frameLoop() {
     return;
   }
 
-  if (isSendingFrame || video.readyState < 2) {
+  if (!receivedEnrollFrame && !cameraErrorOverlay.classList.contains('hidden')) {
     requestAnimationFrame(frameLoop);
     return;
+  }
+
+  if (isSendingFrame || video.readyState < 2) {
+    if (!receivedEnrollFrame && video.readyState < 2 && !bottomPill.classList.contains('red')) {
+      setGuidance('Đang mở camera...', 'cyan', true);
+    }
+    requestAnimationFrame(frameLoop);
+    return;
+  }
+
+  if (!receivedEnrollFrame && !bottomPill.classList.contains('red')) {
+    setGuidance('Đang kết nối hệ thống kiểm tra...', 'cyan', true);
   }
 
   if (!currentSessionId) {
@@ -498,27 +540,33 @@ async function frameLoop() {
     });
 
     if (res.status === 404) {
+      currentSessionId = null;
       await startSession();
-      return;
-    }
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = await res.json();
-    updateBackendStatus(true);
-    renderFeedback(data);
+    } else if (!res.ok) {
+      throw new Error(`HTTP ${res.status}`);
+    } else {
+      const data = await res.json();
+      updateBackendStatus(true);
+      receivedEnrollFrame = true;
+      renderFeedback(data);
 
-    // Nếu đạt giai đoạn FLASHING -> kích hoạt chuỗi nháy màu quang học an toàn
-    if (data.stage === 'flashing' && !isFlashingActive) {
-      triggerOpticalFlashing();
-    }
+      // Nếu đạt giai đoạn FLASHING -> kích hoạt chuỗi nháy màu quang học an toàn
+      if (data.stage === 'flashing' && !isFlashingActive) {
+        triggerOpticalFlashing();
+      }
 
-    // Nếu đạt giai đoạn CAPTURE -> tự động chụp snapshot HD và dừng vòng lặp
-    if (data.stage === 'capture') {
-      isLoopRunning = false;
-      captureHdAndVerify(data.summary || {});
+      // Nếu đạt giai đoạn CAPTURE -> tự động chụp snapshot HD và dừng vòng lặp
+      if (data.stage === 'capture') {
+        isLoopRunning = false;
+        captureHdAndVerify(data.summary || {});
+      }
     }
   } catch (err) {
     console.warn('Lỗi gửi frame:', err);
     updateBackendStatus(false);
+    if (currentTab === 'viewEnroll') {
+      setGuidance('Mất kết nối hệ thống kiểm tra. Đang thử lại...', 'red', true);
+    }
   } finally {
     isSendingFrame = false;
   }
@@ -1335,9 +1383,16 @@ function switchTab(targetTabId) {
     loadUsersTable();
   } else if (targetTabId === 'viewEnroll') {
     stopAutoVerify();
-    if (video && currentStream && video.srcObject !== currentStream) {
-      video.srcObject = currentStream;
-      video.play().catch(() => {});
+    if (video && currentStream) {
+      if (video.srcObject !== currentStream) video.srcObject = currentStream;
+      playVideoElement(video);
+    }
+    if (!receivedEnrollFrame && cameraErrorOverlay.classList.contains('hidden')) {
+      setGuidance(
+        !currentStream || video.readyState < 2 ? 'Đang mở camera...' : 'Đang kết nối hệ thống kiểm tra...',
+        'cyan',
+        true,
+      );
     }
   }
 }
@@ -2090,11 +2145,10 @@ if (chkAutoVerify) {
 // 12. KHỞI CHẠY HỆ THỐNG KHI LOAD TRANG
 // -----------------------------------------------------------------------------
 
-window.addEventListener('DOMContentLoaded', async () => {
-  await initCameraDevices();
-  await startCamera(activeDeviceId);
-  await startSession();
-  await loadUsersCount();
+window.addEventListener('DOMContentLoaded', () => {
   isLoopRunning = true;
   requestAnimationFrame(frameLoop);
+  initCameraDevices().then(() => startCamera(activeDeviceId));
+  startSession();
+  loadUsersCount();
 });

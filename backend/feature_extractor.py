@@ -151,6 +151,8 @@ class ArcFaceExtractor:
 
         return self.extract_from_aligned(aligned)
 
+    extract = extract_embedding
+
     @staticmethod
     def compute_similarity(emb1: np.ndarray, emb2: np.ndarray) -> float:
         """Tính Cosine Similarity giữa 2 vector đã chuẩn hoá L2. Kết quả trong [-1.0, 1.0]."""

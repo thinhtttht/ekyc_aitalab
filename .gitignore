@@ -39,3 +39,7 @@ desktop.ini
 .vscode/
 *.swp
 *.swo
+
+# Runtime data & snapshots
+backend/data/*.json
+realsense_snapshots/

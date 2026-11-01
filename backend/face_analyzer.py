@@ -170,8 +170,10 @@ class FaceAnalyzer:
             self._last_hands = self._hands.process(rgb).multi_hand_landmarks or []
         return self._last_hands
 
-    def analyze(self, frame_bgr: np.ndarray, oval: dict, fresh: bool = False) -> FaceResult:
+    def analyze(self, frame_bgr: np.ndarray, oval: Optional[dict] = None, fresh: bool = False) -> FaceResult:
         """fresh=True: bỏ qua mọi bộ đệm, phân tích đầy đủ đúng frame này (dùng cho ảnh chụp cuối)."""
+        if oval is None:
+            oval = {"cx": C.OVAL_CX, "cy": C.OVAL_CY, "rx": C.OVAL_RX, "ry": C.OVAL_RY}
         rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
         res = self._mesh.process(rgb)
         hands = self._detect_hands(rgb, fresh)
@@ -404,8 +406,16 @@ def analyze_landmarks(frame_bgr: np.ndarray, lm3: np.ndarray, oval: dict, out: F
         eye_mean = float(all_eye_pixels.mean())
         eye_std = float(all_eye_pixels.std())
 
-        # Kính râm đen: Mean < 30 VÀ Std < 10 (mắt tối đồng nhất)
-        black_sunglasses = bool(eye_mean < C.SUNGLASSES_EYE_MEAN_MAX and eye_std < C.SUNGLASSES_EYE_STD_MAX)
+        # Kính râm đen: Chỉ kiểm tra khi bật cờ SUNGLASSES_CHECK_ENABLED (mặc định tắt để tránh chặn kính cận)
+        if getattr(C, "SUNGLASSES_CHECK_ENABLED", False):
+            face_bright = max(1.0, out.brightness_mean)
+            eye_ratio = eye_mean / face_bright
+            max_mean = getattr(C, "SUNGLASSES_EYE_MEAN_MAX", 20.0)
+            max_std = getattr(C, "SUNGLASSES_EYE_STD_MAX", 8.0)
+            max_ratio = getattr(C, "SUNGLASSES_EYE_RATIO_MAX", 0.25)
+            black_sunglasses = bool(eye_mean < max_mean and eye_std < max_std and eye_ratio < max_ratio)
+        else:
+            black_sunglasses = False
 
         # Kính lóa phản quang: Điểm ảnh > 240 chiếm > 30% diện tích mắt
         glare_pixels = int(np.count_nonzero(all_eye_pixels >= C.GLARE_PIXEL_THRESH))

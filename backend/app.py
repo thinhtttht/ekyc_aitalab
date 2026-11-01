@@ -19,7 +19,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 import config as C
-from camera_quality import ClientStats
+from camera_quality import ClientStats, auto_enhance_brightness
 from enrollment import EnrollmentSession, Stage
 from color_challenge import challenge_manager
 from optical_analyzer import OpticalAnalyzer
@@ -305,6 +305,7 @@ class FaceVerifyPayload(BaseModel):
 def enroll_user(payload: UserEnrollPayload):
     """Lưu hồ sơ người dùng kèm vector ArcFace 512D vào cơ sở dữ liệu."""
     frame_bgr = decode_or_400(payload.image)
+    frame_bgr = auto_enhance_brightness(frame_bgr)
 
     # 1. Nếu có session_id và đã có final_embedding thì ưu tiên sử dụng
     sess = sessions.get(payload.session_id) if payload.session_id else None
@@ -392,6 +393,7 @@ def delete_all_users_records():
 def verify_face_biometrics(payload: FaceVerifyPayload):
     """Xác thực khuôn mặt thời gian thực với FQA & Anti-Spoofing nghiêm ngặt (1:1 & 1:N)."""
     frame_bgr = decode_or_400(payload.image)
+    frame_bgr = auto_enhance_brightness(frame_bgr)
 
     start_t = time.time()
     face_res = verifier_analyzer.analyze(frame_bgr, oval=C.OVAL_NORMAL, fresh=True)

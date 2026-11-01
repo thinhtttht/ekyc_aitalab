@@ -17,7 +17,7 @@ from typing import Any, Dict, Optional
 import numpy as np
 
 import config as C
-from camera_quality import CameraMonitor, CameraResult, ClientStats
+from camera_quality import CameraMonitor, CameraResult, ClientStats, auto_enhance_brightness
 from face_analyzer import FaceAnalyzer, FaceResult, FaceVerdict, evaluate_face
 from feature_extractor import get_arcface_extractor
 
@@ -103,6 +103,7 @@ class EnrollmentSession:
 
     def process_frame(self, frame_bgr: Any, client_stats: ClientStats) -> Dict[str, Any]:
         """Xử lý một frame từ client và trả về lệnh điều khiển UI."""
+        frame_bgr = auto_enhance_brightness(frame_bgr)
         self._now = time.time()
         self._cam = self.camera_monitor.evaluate(frame_bgr, client_stats)
         self._face = self._get_analyzer().analyze(frame_bgr, self.current_oval())
@@ -350,6 +351,7 @@ class EnrollmentSession:
 
     def verify_final_capture(self, frame_bgr: np.ndarray) -> Dict[str, Any]:
         """Kiểm định ảnh chân dung cuối cùng; không đạt -> FAILED, bắt buộc đăng ký lại từ đầu."""
+        frame_bgr = auto_enhance_brightness(frame_bgr)
         face = self._get_analyzer().analyze(frame_bgr, C.OVAL_NORMAL, fresh=True)
 
         issue = _final_capture_issue(face)

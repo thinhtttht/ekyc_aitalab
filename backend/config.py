@@ -17,6 +17,11 @@ FRAME_BRIGHTNESS = (45.0, 215.0)       # độ sáng tổng thể khung hình
 MAX_NOISE_SIGMA = 10.0                 # độ lệch chuẩn nhiễu (Immerkær) tối đa
 CAMERA_STABLE_SEC = 1.5                # camera phải đạt chuẩn liên tục trong 1.5s
 
+# Tự động nâng độ sáng lên mức lý tưởng khi phát hiện không gian tối
+AUTO_ENHANCE_BRIGHTNESS = True         # Bật tự động nâng sáng cho toàn bộ hệ thống
+TARGET_IDEAL_BRIGHTNESS = 115.0        # Mức sáng mục tiêu lý tưởng cho FQA & ArcFace (sweet spot 100-130)
+LOW_BRIGHTNESS_THRESHOLD = 80.0        # Ảnh có độ sáng trung bình < 80 sẽ tự động được kéo sáng
+
 # ---------------------------------------------------------------------------
 # (b) KIỂM TRA CHẤT LƯỢNG KHUÔN MẶT (FQA - FACE QUALITY ASSESSMENT)
 # ---------------------------------------------------------------------------
@@ -41,8 +46,10 @@ MIN_FACE_SHARPNESS = 15.0              # laplacian_var < 15 -> Báo Vàng ("Gi�
 MIN_FACE_SHARPNESS_TURNING = 10.0      # Dung sai độ nét khi quay đầu (nhoè chuyển động)
 
 # 4. Occlusion Check (Kính râm đen, Kính lóa phản quang, Khẩu trang, Bàn tay)
-SUNGLASSES_EYE_MEAN_MAX = 30.0         # Eye ROI Mean < 30 VÀ Std < 10 -> Kính râm đen -> Báo Đỏ
-SUNGLASSES_EYE_STD_MAX = 10.0
+SUNGLASSES_CHECK_ENABLED = False        # Đặt False để không chặn nhầm người đeo kính cận / bóng hốc mắt (đặt True nếu muốn bật)
+SUNGLASSES_EYE_MEAN_MAX = 20.0         # Hạ từ 30.0 xuống 20.0: chỉ kính đen sì thực sự mới bắt
+SUNGLASSES_EYE_STD_MAX = 8.0           # Độ lệch chuẩn cực thấp (mặt kính đen đồng nhất)
+SUNGLASSES_EYE_RATIO_MAX = 0.25        # Độ sáng mắt / mặt < 25% (kính râm đen chắn sáng mạnh)
 GLARE_PIXEL_THRESH = 240               # Điểm ảnh > 240 trong vùng mắt
 GLARE_AREA_RATIO_MAX = 0.30            # Glare > 30% diện tích mắt -> Báo Vàng ("Nghiêng mặt nhẹ để tránh lóa kính")
 MASK_CHROMA_DIST = 32.0                # Chênh lệch sắc độ má dưới so với trán (khi mũi/miệng bị che)
@@ -67,8 +74,9 @@ MAX_ATTEMPTS = 3
 # ---------------------------------------------------------------------------
 # (d) PHÓNG TO OVAL / TIẾN GẦN
 # ---------------------------------------------------------------------------
-ZOOM_MIN_GROWTH = 1.25                 # chiều cao mặt phải tăng >= 25% so với mốc ở bước (b)
+ZOOM_MIN_GROWTH = 1.10                 # chiều cao mặt tăng >= 10% so với mốc ở bước (b)
 ZOOM_TIMEOUT_SEC = 12.0
+ZOOM_HOLD_SEC = 0.35                   # Giữ cự ly gần trong 0.35s (~10 frames)
 
 # Ảnh chân dung cuối cùng (verify_final_capture) cho phép lệch tư thế nhiều hơn bước FQA một chút
 FINAL_MAX_POSE = dict(yaw=16.0, pitch=16.0, roll=12.0)
@@ -105,4 +113,3 @@ DEFAULT_VERIFY_THRESHOLD = 0.55
 # EKYC_DEBUG=1: trả thêm toàn bộ chỉ số thô (xác suất PAD chi tiết, heuristic, fill, perspective...) mỗi frame
 DEBUG_METRICS = os.environ.get("EKYC_DEBUG", "0") == "1"
 CORS_ORIGINS = ["http://127.0.0.1:8000", "http://localhost:8000"]
-

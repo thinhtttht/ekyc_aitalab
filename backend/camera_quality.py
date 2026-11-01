@@ -34,6 +34,61 @@ def global_sharpness(gray: np.ndarray) -> float:
     return float(cv2.Laplacian(gray, cv2.CV_64F).var())
 
 
+def auto_enhance_brightness(
+    frame_bgr: np.ndarray,
+    target_mean: Optional[float] = None,
+    low_threshold: Optional[float] = None,
+    black_threshold: Optional[float] = None,
+) -> np.ndarray:
+    """Tự động nâng sáng và cân bằng tương phản thích ứng (Adaptive CLAHE + Gamma) cho ảnh 2D RGB.
+
+    Khi người dùng ở trong môi trường thiếu sáng hoặc camera bị tối:
+      1. Kiểm tra độ sáng trung bình của khung hình.
+      2. Nếu [black_threshold <= mean < low_threshold], tự động chuyển sang không gian màu LAB.
+      3. Áp dụng CLAHE lên kênh L (Lightness) để tăng chi tiết cục bộ không gây cháy sáng.
+      4. Tính toán Gamma thích ứng để đưa độ sáng trung bình lên mức lý tưởng target_mean (~115.0).
+      5. Giữ nguyên 100% màu sắc và sắc tố da tự nhiên (kênh A và B).
+    """
+    if not getattr(C, "AUTO_ENHANCE_BRIGHTNESS", True):
+        return frame_bgr
+    if frame_bgr is None or frame_bgr.size == 0:
+        return frame_bgr
+
+    tgt = target_mean if target_mean is not None else getattr(C, "TARGET_IDEAL_BRIGHTNESS", 115.0)
+    low_th = low_threshold if low_threshold is not None else getattr(C, "LOW_BRIGHTNESS_THRESHOLD", 80.0)
+    blk_th = black_threshold if black_threshold is not None else getattr(C, "BLACK_FRAME_MEAN", 18.0)
+
+    # Tính độ sáng trung bình trên ảnh xám
+    gray = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2GRAY)
+    current_mean = float(gray.mean())
+
+    # Nếu camera bị che / đen hoàn toàn (< 18) hoặc đã đủ sáng (>= 80), giữ nguyên
+    if current_mean < blk_th or current_mean >= low_th:
+        return frame_bgr
+
+    # Tách kênh LAB
+    lab = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2LAB)
+    l_channel, a_channel, b_channel = cv2.split(lab)
+
+    # 1. CLAHE trên kênh L
+    clahe = cv2.createCLAHE(clipLimit=2.2, tileGridSize=(8, 8))
+    l_clahe = clahe.apply(l_channel)
+
+    # 2. Adaptive Gamma Curve
+    clahe_mean = max(1.0, float(l_clahe.mean()))
+    if clahe_mean < tgt:
+        # gamma < 1.0 làm sáng vùng tối
+        gamma = float(np.clip(np.log(tgt / 255.0) / np.log(clahe_mean / 255.0), 0.35, 1.0))
+        lut = np.array([((i / 255.0) ** gamma) * 255.0 for i in range(256)], dtype=np.uint8)
+        l_enhanced = cv2.LUT(l_clahe, lut)
+    else:
+        l_enhanced = l_clahe
+
+    # Ghép lại kênh LAB và chuyển về BGR
+    enhanced_lab = cv2.merge((l_enhanced, a_channel, b_channel))
+    return cv2.cvtColor(enhanced_lab, cv2.COLOR_LAB2BGR)
+
+
 @dataclass
 class ClientStats:
     fps: Optional[float] = None

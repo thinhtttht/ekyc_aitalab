@@ -18,6 +18,7 @@
 | **[`03_CODE_COOKBOOK.md`](./03_CODE_COOKBOOK.md)** | Hướng dẫn lập trình thực chiến (Copy-Paste là chạy) cho: MediaPipe FaceMesh, Head Pose, Eye Tracking, MiniFASNet, ArcFace 512D |
 | **[`04_POLICY_AND_FQA_RULES.md`](./04_POLICY_AND_FQA_RULES.md)** | Bộ quy chuẩn chất lượng khuôn mặt (FQA Policy): Tiêu chuẩn cấm khẩu trang, kính râm, che tay, góc nghiêng, cự ly và thông điệp UI/UX |
 | **[`05_CAMERA_AND_LIGHTING_CHECK.md`](./05_CAMERA_AND_LIGHTING_CHECK.md)** | Kiểm tra phần cứng camera: Phát hiện camera đen, đóng băng, phân giải thấp, nhiễu hạt & Thuật toán tự động tăng sáng CLAHE thích ứng |
+| **[`06_LESSONS_LEARNED_AND_BEST_PRACTICES.md`](./06_LESSONS_LEARNED_AND_BEST_PRACTICES.md)** | Bài học kinh nghiệm & thủ thuật thực chiến: Khử nghẽn FPS, chống giả mạo đa tầng, tránh chặn nhầm người thật (FRR) và xử phạt leo thang |
 | **[`quick_start_demo.py`](./quick_start_demo.py)** | File mã nguồn Python độc lập hoàn chỉnh, chạy thử nghiệm trực tiếp trên Webcam máy tính |
 
 ---

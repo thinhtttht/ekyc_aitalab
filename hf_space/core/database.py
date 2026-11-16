@@ -109,6 +109,24 @@ def count_users() -> int:
     return count
 
 
+def get_all_embeddings() -> List[Dict[str, Any]]:
+    """Lấy danh sách toàn bộ thí sinh kèm vector 512D để phục vụ tìm kiếm 1:N."""
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT user_id, full_name, embedding FROM users")
+    rows = cur.fetchall()
+    conn.close()
+    results = []
+    for r in rows:
+        emb = np.frombuffer(r["embedding"], dtype=np.float32)
+        results.append({
+            "user_id": r["user_id"],
+            "full_name": r["full_name"],
+            "embedding": emb,
+        })
+    return results
+
+
 def get_db_dump() -> bytes:
     """Đọc toàn bộ file SQLite ra mảng bytes để sao lưu."""
     if not os.path.exists(DB_FILE):

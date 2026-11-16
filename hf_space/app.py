@@ -19,7 +19,7 @@ from fastapi.responses import JSONResponse, Response, FileResponse, HTMLResponse
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from core.face_engine import FaceEngine
-from core.database import init_db, save_user, get_user, list_users, delete_user, count_users, get_db_dump, restore_db_dump
+from core.database import init_db, save_user, get_user, list_users, delete_user, count_users, get_all_embeddings, get_db_dump, restore_db_dump
 
 MODELS_DIR = os.environ.get("MODELS_DIR", os.path.join(os.path.dirname(os.path.abspath(__file__)), "models"))
 
@@ -254,6 +254,101 @@ async def verify_face(
             "full_name": user_record["full_name"],
         },
         "message": "Xác thực danh tính thành công." if is_match else f"Khuôn mặt không khớp với hồ sơ ({int(similarity*100)}% < {int(threshold*100)}%).",
+        "policy_checks": fqa["policy_checks"],
+        "warnings": fqa["warnings"],
+    }
+
+
+@app.post("/api/v1/identify", tags=["eKYC Core"])
+async def identify_face(
+    image: UploadFile = File(..., description="File ảnh khuôn mặt cần tìm kiếm (1:N)"),
+    threshold: float = Form(0.55, description="Ngưỡng trùng khớp ArcFace Cosine (mặc định 0.55)"),
+    top_k: int = Form(3, description="Số lượng ứng viên phù hợp nhất muốn lấy"),
+    enforce_oval: bool = Form(False, description="Bắt buộc đầu phải lọt trọn vẹn trong khung Oval"),
+    require_liveness: bool = Form(True, description="Bắt buộc kiểm tra người thật 3D/2D"),
+):
+    """Tìm kiếm khuôn mặt 1:N trong toàn bộ Cơ sở dữ liệu (Không cần truyền user_id).
+    Hệ thống sẽ đối chiếu vector với toàn bộ thí sinh và trả về người trùng khớp nhất.
+    """
+    assert engine is not None, "FaceEngine chưa sẵn sàng"
+
+    all_users = get_all_embeddings()
+    if not all_users:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Cơ sở dữ liệu hiện chưa có thí sinh nào. Vui lòng đăng ký trước.",
+        )
+
+    frame = read_image_from_upload(image)
+
+    # 1. Phát hiện khuôn mặt và bàn tay
+    faces, hands = engine.detect_face_and_hands(frame)
+
+    # 2. Đánh giá chất lượng & Policy FQA
+    fqa = engine.evaluate_fqa_and_policy(frame, faces, hands, enforce_oval=enforce_oval)
+    if not fqa["is_valid"]:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={
+                "found": False,
+                "error_code": fqa["error_code"],
+                "message": fqa["message"],
+                "policy_checks": fqa["policy_checks"],
+                "metrics": fqa.get("metrics", {}),
+            },
+        )
+
+    bbox = fqa["bbox"]
+    landmarks = fqa["landmarks"]
+
+    # 3. Kiểm tra người thật (Anti-Spoofing PAD)
+    liveness = engine.check_liveness(frame, bbox)
+    if require_liveness and not liveness["is_real"]:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={
+                "found": False,
+                "error_code": "SPOOFING_DETECTED",
+                "message": liveness["message"],
+                "liveness_score": liveness["real_prob"],
+                "policy_checks": fqa["policy_checks"],
+            },
+        )
+
+    # 4. Trích xuất ArcFace 512D
+    query_emb = engine.extract_embedding(frame, landmarks)
+
+    # 5. So sánh 1:N bằng tích ma trận (Vectorized Cosine Similarity)
+    embeddings_matrix = np.vstack([u["embedding"] for u in all_users])
+    sim_scores = np.dot(embeddings_matrix, query_emb)
+
+    # Sắp xếp giảm dần theo độ tương đồng
+    top_indices = np.argsort(sim_scores)[::-1][:top_k]
+
+    candidates = []
+    for idx in top_indices:
+        score = float(sim_scores[idx])
+        u = all_users[idx]
+        candidates.append({
+            "user_id": u["user_id"],
+            "full_name": u["full_name"],
+            "similarity": round(score, 4),
+            "is_match": bool(score >= threshold),
+        })
+
+    best_match = candidates[0] if candidates else None
+    is_identified = best_match is not None and best_match["is_match"]
+
+    return {
+        "found": bool(is_identified),
+        "total_database_users": len(all_users),
+        "threshold": threshold,
+        "is_real_person": bool(liveness["is_real"]),
+        "liveness_score": liveness["real_prob"],
+        "best_match": best_match if is_identified else None,
+        "top_candidates": candidates,
+        "message": f"Đã tìm thấy thí sinh: {best_match['full_name']} ({best_match['user_id']}) với độ khớp {int(best_match['similarity']*100)}%"
+                   if is_identified else "Không tìm thấy thí sinh nào trùng khớp trong hệ thống (Người lạ).",
         "policy_checks": fqa["policy_checks"],
         "warnings": fqa["warnings"],
     }

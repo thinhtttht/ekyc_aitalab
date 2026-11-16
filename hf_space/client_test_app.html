@@ -123,18 +123,21 @@
       <div class="lg:col-span-7 space-y-6">
         
         <!-- Navigation Tabs -->
-        <div class="flex border-b border-slate-700 space-x-2">
-          <button onclick="switchTab('register')" id="tabBtnRegister" class="px-4 py-2.5 font-medium text-sm text-blue-400 border-b-2 border-blue-500 flex items-center gap-2">
-            <i class="fa-solid fa-user-plus"></i> Đăng Ký (Register)
+        <div class="flex border-b border-slate-700 space-x-1 sm:space-x-2 overflow-x-auto">
+          <button onclick="switchTab('register')" id="tabBtnRegister" class="px-3.5 py-2.5 font-medium text-xs sm:text-sm text-blue-400 border-b-2 border-blue-500 flex items-center gap-1.5 whitespace-nowrap">
+            <i class="fa-solid fa-user-plus"></i> Đăng Ký
           </button>
-          <button onclick="switchTab('verify')" id="tabBtnVerify" class="px-4 py-2.5 font-medium text-sm text-slate-400 hover:text-slate-200 flex items-center gap-2">
-            <i class="fa-solid fa-user-check"></i> Xác Thực (Verify 1:1)
+          <button onclick="switchTab('verify')" id="tabBtnVerify" class="px-3.5 py-2.5 font-medium text-xs sm:text-sm text-slate-400 hover:text-slate-200 flex items-center gap-1.5 whitespace-nowrap">
+            <i class="fa-solid fa-user-check"></i> Xác Thực (1:1)
           </button>
-          <button onclick="switchTab('compare')" id="tabBtnCompare" class="px-4 py-2.5 font-medium text-sm text-slate-400 hover:text-slate-200 flex items-center gap-2">
+          <button onclick="switchTab('identify')" id="tabBtnIdentify" class="px-3.5 py-2.5 font-medium text-xs sm:text-sm text-slate-400 hover:text-slate-200 flex items-center gap-1.5 whitespace-nowrap">
+            <i class="fa-solid fa-users-viewfinder text-amber-400"></i> Nhận Diện (1:N)
+          </button>
+          <button onclick="switchTab('compare')" id="tabBtnCompare" class="px-3.5 py-2.5 font-medium text-xs sm:text-sm text-slate-400 hover:text-slate-200 flex items-center gap-1.5 whitespace-nowrap">
             <i class="fa-solid fa-images"></i> So Sánh 2 Ảnh
           </button>
-          <button onclick="switchTab('users')" id="tabBtnUsers" class="px-4 py-2.5 font-medium text-sm text-slate-400 hover:text-slate-200 flex items-center gap-2">
-            <i class="fa-solid fa-database"></i> Danh Sách User
+          <button onclick="switchTab('users')" id="tabBtnUsers" class="px-3.5 py-2.5 font-medium text-xs sm:text-sm text-slate-400 hover:text-slate-200 flex items-center gap-1.5 whitespace-nowrap">
+            <i class="fa-solid fa-database"></i> CSDL Users
           </button>
         </div>
 
@@ -195,6 +198,31 @@
 
             <button onclick="submitVerify()" id="btnSubmitVerify" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-medium py-2.5 rounded-xl transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20">
               <i class="fa-solid fa-fingerprint"></i> Gửi Xác Thực Khuôn Mặt (POST /verify)
+            </button>
+          </div>
+        </div>
+
+        <!-- TAB NHẬN DIỆN 1:N (IDENTIFY) -->
+        <div id="tabIdentify" class="space-y-4 hidden">
+          <div class="bg-slate-800/80 border border-slate-700 rounded-2xl p-5 shadow-xl">
+            <h3 class="font-semibold text-white mb-3 flex items-center gap-2">
+              <i class="fa-solid fa-users-viewfinder text-amber-400"></i> Nhận diện tự động 1:N (Không cần nhập MSSV)
+            </h3>
+            <p class="text-xs text-slate-400 mb-4">Hệ thống quét toàn bộ database xem người đang đứng trước camera là ai trong số tất cả thí sinh.</p>
+            
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+              <div>
+                <label class="block text-xs font-medium text-slate-300 mb-1">Ngưỡng Khớp (Threshold):</label>
+                <input id="idenThreshold" type="number" step="0.05" min="0.3" max="0.9" value="0.55" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500">
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-slate-300 mb-1">Số Lượng Ứng Viên Gần Nhất (Top-K):</label>
+                <input id="idenTopK" type="number" min="1" max="10" value="3" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500">
+              </div>
+            </div>
+
+            <button onclick="submitIdentify()" id="btnSubmitIdentify" class="w-full bg-amber-600 hover:bg-amber-500 text-white font-medium py-2.5 rounded-xl transition flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20">
+              <i class="fa-solid fa-magnifying-glass"></i> Ai Đây? - Tìm Kiếm 1:N (POST /identify)
             </button>
           </div>
         </div>
@@ -398,15 +426,15 @@
 
     // Switch Tabs
     function switchTab(tab) {
-      ['register', 'verify', 'compare', 'users'].forEach(t => {
+      ['register', 'verify', 'identify', 'compare', 'users'].forEach(t => {
         const tabEl = document.getElementById(`tab${t.charAt(0).toUpperCase() + t.slice(1)}`);
         const btnEl = document.getElementById(`tabBtn${t.charAt(0).toUpperCase() + t.slice(1)}`);
         if (t === tab) {
           tabEl.classList.remove('hidden');
-          btnEl.className = "px-4 py-2.5 font-medium text-sm text-blue-400 border-b-2 border-blue-500 flex items-center gap-2";
+          btnEl.className = "px-3.5 py-2.5 font-medium text-xs sm:text-sm text-blue-400 border-b-2 border-blue-500 flex items-center gap-1.5 whitespace-nowrap";
         } else {
           tabEl.classList.add('hidden');
-          btnEl.className = "px-4 py-2.5 font-medium text-sm text-slate-400 hover:text-slate-200 flex items-center gap-2";
+          btnEl.className = "px-3.5 py-2.5 font-medium text-xs sm:text-sm text-slate-400 hover:text-slate-200 flex items-center gap-1.5 whitespace-nowrap";
         }
       });
       if (tab === 'users') loadUsersList();
@@ -466,6 +494,24 @@
         document.getElementById('metricSimilarity').textContent = `${((data.similarity || 0) * 100).toFixed(1)}%`;
         const livenessScore = data.liveness_score !== undefined ? (data.liveness_score * 100).toFixed(1) + "%" : "Đạt";
         document.getElementById('metricLiveness').textContent = `${data.is_real_person ? "Thật" : "Nghi ngờ"} (${livenessScore}) 🟢`;
+      } 
+      else if (data.found === true && data.best_match) {
+        banner.className = "p-4 rounded-xl flex items-center gap-3 bg-amber-500/10 border border-amber-500/30 text-amber-400";
+        icon.innerHTML = '<i class="fa-solid fa-users-viewfinder"></i>';
+        title.textContent = `TÌM THẤY: ${data.best_match.full_name} (${data.best_match.user_id})`;
+        subtitle.textContent = `Khớp trong ${data.total_database_users} hồ sơ. Độ tương đồng: ${(data.best_match.similarity * 100).toFixed(1)}%.`;
+        document.getElementById('metricSimilarity').textContent = `${(data.best_match.similarity * 100).toFixed(1)}%`;
+        const livenessScore = data.liveness_score !== undefined ? (data.liveness_score * 100).toFixed(1) + "%" : "Đạt";
+        document.getElementById('metricLiveness').textContent = `${data.is_real_person ? "Thật" : "Nghi ngờ"} (${livenessScore}) 🟢`;
+      }
+      else if (data.found === false && data.top_candidates) {
+        banner.className = "p-4 rounded-xl flex items-center gap-3 bg-slate-700/50 border border-slate-600 text-slate-300";
+        icon.innerHTML = '<i class="fa-solid fa-user-xmark"></i>';
+        title.textContent = "KHÔNG TÌM THẤY TRONG CSDL";
+        subtitle.textContent = data.message || "Người này chưa được đăng ký trong danh sách thí sinh.";
+        const topScore = data.top_candidates[0] ? (data.top_candidates[0].similarity * 100).toFixed(1) + "%" : "0%";
+        document.getElementById('metricSimilarity').textContent = `Max: ${topScore}`;
+        document.getElementById('metricLiveness').textContent = data.liveness_score ? `${(data.liveness_score * 100).toFixed(1)}%` : "N/A";
       } 
       else if (data.verified === false) {
         banner.className = "p-4 rounded-xl flex items-center gap-3 bg-rose-500/10 border border-rose-500/30 text-rose-400";
@@ -543,6 +589,32 @@
       const t0 = performance.now();
       try {
         const res = await fetch(`${serverUrl}/api/v1/verify`, { method: "POST", body: formData });
+        const latency = Math.round(performance.now() - t0);
+        const data = await res.json();
+        displayResult(res.status, data, latency);
+      } catch (err) {
+        displayResult(0, { error: err.message }, Math.round(performance.now() - t0));
+      }
+    }
+
+    // Call API Identify 1:N
+    async function submitIdentify() {
+      if (!currentBlob) {
+        alert("Vui lòng chụp ảnh từ webcam hoặc chọn file ảnh trước!");
+        return;
+      }
+      const threshold = document.getElementById('idenThreshold').value;
+      const topK = document.getElementById('idenTopK').value;
+
+      const serverUrl = document.getElementById('serverUrl').value.replace(/\/$/, "");
+      const formData = new FormData();
+      formData.append("threshold", threshold);
+      formData.append("top_k", topK);
+      formData.append("image", currentBlob, "identify.jpg");
+
+      const t0 = performance.now();
+      try {
+        const res = await fetch(`${serverUrl}/api/v1/identify`, { method: "POST", body: formData });
         const latency = Math.round(performance.now() - t0);
         const data = await res.json();
         displayResult(res.status, data, latency);

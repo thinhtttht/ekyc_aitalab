@@ -13,7 +13,7 @@ import cv2
 import numpy as np
 from fastapi import FastAPI, File, Form, UploadFile, HTTPException, Response, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, Response
+from fastapi.responses import JSONResponse, Response, FileResponse, HTMLResponse
 
 # Add current folder to sys.path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -86,7 +86,19 @@ async def root():
             "landmarks": "mediapipe_facemesh_478",
         },
         "docs_url": "/docs",
+        "demo_client_url": "/demo",
     }
+
+
+@app.get("/demo", response_class=HTMLResponse, tags=["General"])
+async def demo_client():
+    """Giao diện Web Client trực quan để test Webcam và gọi các API Đăng ký / Xác thực."""
+    html_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "client_test_app.html")
+    if not os.path.exists(html_path):
+        html_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "client_test_app.html")
+    if os.path.exists(html_path):
+        return FileResponse(html_path)
+    return HTMLResponse("<h3>client_test_app.html not found</h3>", status_code=404)
 
 
 @app.post("/api/v1/register", tags=["eKYC Core"])

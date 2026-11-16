@@ -8,14 +8,16 @@ echo.
 echo Server dang khoi dong tren tat ca cac card mang (0.0.0.0:8000)...
 echo.
 echo [1] Truy cap tu chinh may ban:
-echo     - Swagger Docs: http://localhost:8000/docs
-echo     - API Base:     http://localhost:8000
+echo     - Web Demo (Co Webcam): http://localhost:8000/demo
+echo     - Swagger Docs:         http://localhost:8000/docs
+echo     - API Base:             http://localhost:8000
 echo.
 echo [2] Cho may khac trong mang Wi-Fi goi API:
-echo     - Swagger Docs: http://10.3.68.193:8000/docs
-echo     - Dang ky mat:  POST http://10.3.68.193:8000/api/v1/register
-echo     - Xac thuc mat: POST http://10.3.68.193:8000/api/v1/verify
-echo     - So sanh mat:  POST http://10.3.68.193:8000/api/v1/compare
+echo     - Web Demo tu xa:       http://10.3.68.193:8000/demo
+echo     - Swagger Docs:         http://10.3.68.193:8000/docs
+echo     - Dang ky mat:          POST http://10.3.68.193:8000/api/v1/register
+echo     - Xac thuc mat:         POST http://10.3.68.193:8000/api/v1/verify
+echo     - So sanh mat:          POST http://10.3.68.193:8000/api/v1/compare
 echo.
 echo Nhan Ctrl + C de dung server.
 echo ======================================================================

@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>eKYC Client Tester - Demo Khách Hàng</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <style>
+    .oval-guide {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 58%;
+      height: 78%;
+      border: 3px dashed rgba(59, 130, 246, 0.85);
+      border-radius: 50% / 60% 60% 50% 50%;
+      box-shadow: 0 0 0 9999px rgba(15, 23, 42, 0.45);
+      pointer-events: none;
+      transition: all 0.3s ease;
+    }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen font-sans">
+  
+  <!-- Header Bar -->
+  <header class="bg-slate-800/90 border-b border-slate-700 sticky top-0 z-50 backdrop-blur px-6 py-4">
+    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/30">
+          <i class="fa-solid fa-id-card-clip text-xl"></i>
+        </div>
+        <div>
+          <h1 class="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+            eKYC Client Tester
+            <span class="text-xs bg-blue-500/20 text-blue-400 px-2.5 py-0.5 rounded-full border border-blue-500/30 font-medium">App Khách Hàng</span>
+          </h1>
+          <p class="text-xs text-slate-400">Ứng dụng mẫu giả lập phần mềm thi vấn đáp gọi sang API Server</p>
+        </div>
+      </div>
+
+      <!-- Server Config Section -->
+      <div class="flex items-center gap-2 bg-slate-950/60 p-1.5 rounded-xl border border-slate-700/80">
+        <span class="text-xs text-slate-400 pl-2 font-mono"><i class="fa-solid fa-server mr-1"></i>Server:</span>
+        <input id="serverUrl" type="text" value="http://localhost:8000" class="bg-slate-800 text-xs text-slate-200 px-3 py-1.5 rounded-lg border border-slate-600 focus:outline-none focus:border-blue-500 w-52 font-mono" placeholder="http://10.3.68.193:8000">
+        <button onclick="pingServer()" class="bg-blue-600 hover:bg-blue-500 text-white text-xs px-3 py-1.5 rounded-lg transition font-medium flex items-center gap-1.5">
+          <i class="fa-solid fa-plug"></i> Test
+        </button>
+        <button onclick="setWifiIp()" title="Dùng IP Wi-Fi nội bộ" class="bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs px-2.5 py-1.5 rounded-lg transition font-mono">
+          IP Wi-Fi
+        </button>
+        <div id="serverStatusBadge" class="flex items-center gap-1.5 px-3 py-1 text-xs rounded-lg bg-yellow-500/10 text-yellow-400 border border-yellow-500/30">
+          <span class="w-2 h-2 rounded-full bg-yellow-400 animate-pulse"></span> Chưa kết nối
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-6 py-8">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      
+      <!-- CỘT TRÁI: CAMERA & ẢNH ĐẦU VÀO (5 CỘT) -->
+      <div class="lg:col-span-5 space-y-6">
+        <div class="bg-slate-800/80 border border-slate-700 rounded-2xl p-5 shadow-xl">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="font-semibold text-white flex items-center gap-2">
+              <i class="fa-solid fa-camera text-blue-400"></i> Camera / Ảnh Thí Sinh
+            </h2>
+            <div class="flex gap-2">
+              <button id="btnStartCam" onclick="startCamera()" class="text-xs bg-slate-700 hover:bg-slate-600 text-slate-200 px-3 py-1 rounded-lg transition">
+                <i class="fa-solid fa-video mr-1"></i> Bật Cam
+              </button>
+              <button id="btnCapture" onclick="captureSnapshot()" disabled class="text-xs bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white px-3 py-1 rounded-lg transition font-medium">
+                <i class="fa-solid fa-circle-dot mr-1"></i> Chụp
+              </button>
+            </div>
+          </div>
+
+          <!-- Video Viewport with Oval Guide -->
+          <div class="relative w-full aspect-[4/3] bg-black rounded-xl overflow-hidden border border-slate-700 flex items-center justify-center">
+            <video id="videoElement" autoplay playsinline class="w-full h-full object-cover -scale-x-100 hidden"></video>
+            
+            <div id="camPlaceholder" class="text-center p-6">
+              <i class="fa-solid fa-camera-slash text-4xl text-slate-600 mb-2"></i>
+              <p class="text-sm text-slate-400">Chưa bật camera</p>
+              <p class="text-xs text-slate-500 mt-1">Bấm "Bật Cam" hoặc chọn tải file ảnh bên dưới</p>
+            </div>
+
+            <!-- Khung Oval Hướng Dẫn -->
+            <div id="ovalGuide" class="oval-guide hidden"></div>
+
+            <canvas id="hiddenCanvas" class="hidden"></canvas>
+          </div>
+
+          <!-- Oval Policy Notice -->
+          <div class="mt-3 flex items-start gap-2 bg-blue-950/40 border border-blue-800/50 rounded-xl p-3 text-xs text-blue-300">
+            <i class="fa-solid fa-circle-info text-blue-400 mt-0.5"></i>
+            <div>
+              <p class="font-medium">Chính sách Oval Face (FQA Policy):</p>
+              <p class="text-blue-200/80 mt-0.5">Đặt khuôn mặt vừa vặn vào khung oval, mắt nhìn thẳng, không đeo khẩu trang hay kính râm.</p>
+            </div>
+          </div>
+
+          <!-- File Upload Option -->
+          <div class="mt-4 pt-4 border-t border-slate-700/60">
+            <label class="block text-xs font-medium text-slate-300 mb-2">Hoặc chọn ảnh có sẵn từ máy:</label>
+            <input type="file" id="fileInput" accept="image/*" onchange="handleFileSelect(event)" class="block w-full text-xs text-slate-400 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-500 cursor-pointer">
+          </div>
+
+          <!-- Current Image Preview -->
+          <div class="mt-4">
+            <span class="text-xs text-slate-400 block mb-1.5 font-medium">Ảnh đã chọn để gửi lên API:</span>
+            <div class="w-full h-32 bg-slate-900 rounded-xl border border-slate-700 flex items-center justify-center overflow-hidden">
+              <img id="previewImage" src="" alt="Chưa có ảnh" class="w-full h-full object-contain hidden">
+              <span id="noImageText" class="text-xs text-slate-500 italic">Chưa chụp hoặc chưa chọn ảnh nào</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CỘT PHẢI: CÁC CHỨC NĂNG TEST & KẾT QUẢ (7 CỘT) -->
+      <div class="lg:col-span-7 space-y-6">
+        
+        <!-- Navigation Tabs -->
+        <div class="flex border-b border-slate-700 space-x-2">
+          <button onclick="switchTab('register')" id="tabBtnRegister" class="px-4 py-2.5 font-medium text-sm text-blue-400 border-b-2 border-blue-500 flex items-center gap-2">
+            <i class="fa-solid fa-user-plus"></i> Đăng Ký (Register)
+          </button>
+          <button onclick="switchTab('verify')" id="tabBtnVerify" class="px-4 py-2.5 font-medium text-sm text-slate-400 hover:text-slate-200 flex items-center gap-2">
+            <i class="fa-solid fa-user-check"></i> Xác Thực (Verify 1:1)
+          </button>
+          <button onclick="switchTab('compare')" id="tabBtnCompare" class="px-4 py-2.5 font-medium text-sm text-slate-400 hover:text-slate-200 flex items-center gap-2">
+            <i class="fa-solid fa-images"></i> So Sánh 2 Ảnh
+          </button>
+          <button onclick="switchTab('users')" id="tabBtnUsers" class="px-4 py-2.5 font-medium text-sm text-slate-400 hover:text-slate-200 flex items-center gap-2">
+            <i class="fa-solid fa-database"></i> Danh Sách User
+          </button>
+        </div>
+
+        <!-- TAB 1: ĐĂNG KÝ (REGISTER) -->
+        <div id="tabRegister" class="space-y-4">
+          <div class="bg-slate-800/80 border border-slate-700 rounded-2xl p-5 shadow-xl">
+            <h3 class="font-semibold text-white mb-3 flex items-center gap-2">
+              <i class="fa-solid fa-address-card text-blue-400"></i> Đăng ký khuôn mặt mẫu ban đầu
+            </h3>
+            <p class="text-xs text-slate-400 mb-4">Lưu vector đặc trưng 512D chuẩn và kiểm tra người thật (Anti-Spoofing MiniFASNet).</p>
+            
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+              <div>
+                <label class="block text-xs font-medium text-slate-300 mb-1">Mã Thí Sinh / User ID (*):</label>
+                <input id="regUserId" type="text" placeholder="VD: SV2026_01" value="SV2026_01" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500">
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-slate-300 mb-1">Họ và Tên (*):</label>
+                <input id="regFullName" type="text" placeholder="VD: Nguyễn Văn An" value="Nguyễn Văn An" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500">
+              </div>
+            </div>
+
+            <div class="flex items-center gap-4 mb-4 text-xs text-slate-300">
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" id="regEnforceOval" class="rounded bg-slate-900 border-slate-700 text-blue-600 focus:ring-0">
+                Bắt buộc chuẩn khung Oval (Khuyên dùng)
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" id="regRequireLiveness" checked class="rounded bg-slate-900 border-slate-700 text-blue-600 focus:ring-0">
+                Chống giả mạo (Anti-Spoofing)
+              </label>
+            </div>
+
+            <button onclick="submitRegister()" id="btnSubmitRegister" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-2.5 rounded-xl transition flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20">
+              <i class="fa-solid fa-cloud-arrow-up"></i> Gửi Yêu Cầu Đăng Ký (POST /register)
+            </button>
+          </div>
+        </div>
+
+        <!-- TAB 2: XÁC THỰC (VERIFY 1:1) -->
+        <div id="tabVerify" class="space-y-4 hidden">
+          <div class="bg-slate-800/80 border border-slate-700 rounded-2xl p-5 shadow-xl">
+            <h3 class="font-semibold text-white mb-3 flex items-center gap-2">
+              <i class="fa-solid fa-shield-halved text-emerald-400"></i> Xác thực thí sinh lúc vào phòng thi
+            </h3>
+            <p class="text-xs text-slate-400 mb-4">Hệ thống sẽ so sánh ảnh vừa chụp với vector mẫu đã đăng ký của thí sinh này.</p>
+            
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+              <div>
+                <label class="block text-xs font-medium text-slate-300 mb-1">Mã Thí Sinh Cần Xác Thực (*):</label>
+                <input id="verUserId" type="text" placeholder="VD: SV2026_01" value="SV2026_01" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500">
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-slate-300 mb-1">Ngưỡng Khớp (Threshold):</label>
+                <input id="verThreshold" type="number" step="0.05" min="0.3" max="0.9" value="0.55" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500">
+              </div>
+            </div>
+
+            <button onclick="submitVerify()" id="btnSubmitVerify" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-medium py-2.5 rounded-xl transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20">
+              <i class="fa-solid fa-fingerprint"></i> Gửi Xác Thực Khuôn Mặt (POST /verify)
+            </button>
+          </div>
+        </div>
+
+        <!-- TAB 3: SO SÁNH 2 ẢNH (COMPARE) -->
+        <div id="tabCompare" class="space-y-4 hidden">
+          <div class="bg-slate-800/80 border border-slate-700 rounded-2xl p-5 shadow-xl">
+            <h3 class="font-semibold text-white mb-3 flex items-center gap-2">
+              <i class="fa-solid fa-code-compare text-purple-400"></i> So sánh độ khớp giữa 2 bức ảnh
+            </h3>
+            <p class="text-xs text-slate-400 mb-4">So sánh trực tiếp (1:1 Verification) giữa 2 file ảnh bất kỳ mà không cần lưu vào CSDL.</p>
+            
+            <div class="grid grid-cols-2 gap-4 mb-4">
+              <div>
+                <label class="block text-xs font-medium text-slate-300 mb-1">Ảnh Nguồn (image_source):</label>
+                <input type="file" id="compFile1" accept="image/*" class="w-full text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:bg-slate-700 file:text-white">
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-slate-300 mb-1">Ảnh Đối Chiếu (image_live):</label>
+                <input type="file" id="compFile2" accept="image/*" class="w-full text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:bg-slate-700 file:text-white">
+              </div>
+            </div>
+
+            <button onclick="submitCompare()" id="btnSubmitCompare" class="w-full bg-purple-600 hover:bg-purple-500 text-white font-medium py-2.5 rounded-xl transition flex items-center justify-center gap-2 shadow-lg shadow-purple-500/20">
+              <i class="fa-solid fa-arrows-split-up-and-left"></i> So Sánh Độ Khớp (POST /compare)
+            </button>
+          </div>
+        </div>
+
+        <!-- TAB 4: DANH SÁCH USER (DATABASE) -->
+        <div id="tabUsers" class="space-y-4 hidden">
+          <div class="bg-slate-800/80 border border-slate-700 rounded-2xl p-5 shadow-xl">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="font-semibold text-white flex items-center gap-2">
+                <i class="fa-solid fa-users text-blue-400"></i> Danh sách thí sinh trong CSDL Server
+              </h3>
+              <button onclick="loadUsersList()" class="text-xs bg-slate-700 hover:bg-slate-600 text-slate-200 px-3 py-1.5 rounded-lg transition flex items-center gap-1.5">
+                <i class="fa-solid fa-rotate-right"></i> Làm mới
+              </button>
+            </div>
+            <div id="usersListContainer" class="space-y-2 max-h-60 overflow-y-auto pr-1">
+              <p class="text-xs text-slate-500 italic">Nhấn "Làm mới" để tải danh sách...</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- HỘP HIỂN THỊ KẾT QUẢ API TRẢ VỀ (RESULTS CARD) -->
+        <div id="resultCard" class="bg-slate-800/90 border border-slate-700 rounded-2xl p-5 shadow-2xl relative overflow-hidden">
+          <div class="flex items-center justify-between mb-3">
+            <h4 class="text-sm font-semibold text-slate-300 flex items-center gap-2">
+              <i class="fa-solid fa-square-poll-vertical text-blue-400"></i> Phản hồi từ Server:
+            </h4>
+            <span id="responseStatusBadge" class="text-xs font-mono px-2 py-0.5 rounded bg-slate-700 text-slate-300">HTTP ---</span>
+          </div>
+
+          <!-- Placeholder when empty -->
+          <div id="emptyResultMsg" class="py-8 text-center text-slate-500 text-xs">
+            Chưa có kết quả. Hãy chụp ảnh và nhấn một trong các nút gọi API ở trên.
+          </div>
+
+          <!-- Structured Result Content -->
+          <div id="structuredResult" class="hidden space-y-4">
+            
+            <!-- Big Status Banner -->
+            <div id="resultBanner" class="p-4 rounded-xl flex items-center gap-3 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
+              <div id="resultIcon" class="text-3xl"><i class="fa-solid fa-circle-check"></i></div>
+              <div>
+                <h5 id="resultTitle" class="font-bold text-base">XÁC THỰC THÀNH CÔNG</h5>
+                <p id="resultSubtitle" class="text-xs opacity-90">Khuôn mặt trùng khớp với dữ liệu gốc của thí sinh.</p>
+              </div>
+            </div>
+
+            <!-- Score Metric Grid -->
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-700/60 text-center">
+                <span class="text-[11px] text-slate-400 block">Độ Khớp (Similarity)</span>
+                <span id="metricSimilarity" class="text-lg font-bold text-blue-400">--%</span>
+              </div>
+              <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-700/60 text-center">
+                <span class="text-[11px] text-slate-400 block">Người Thật (Liveness)</span>
+                <span id="metricLiveness" class="text-lg font-bold text-emerald-400">--</span>
+              </div>
+              <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-700/60 text-center col-span-2 sm:col-span-1">
+                <span class="text-[11px] text-slate-400 block">Thời Gian Xử Lý</span>
+                <span id="metricLatency" class="text-lg font-bold text-slate-200">-- ms</span>
+              </div>
+            </div>
+
+            <!-- Policy Warning Messages -->
+            <div id="policyWarningBox" class="hidden p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-xs text-amber-300">
+              <p class="font-semibold flex items-center gap-1.5"><i class="fa-solid fa-triangle-exclamation"></i> Cảnh báo kiểm định khuôn mặt:</p>
+              <ul id="policyWarningList" class="list-disc pl-5 mt-1 space-y-0.5 text-amber-200/90"></ul>
+            </div>
+
+            <!-- Raw JSON Toggle -->
+            <details class="text-xs text-slate-400 pt-2 border-t border-slate-700">
+              <summary class="cursor-pointer hover:text-slate-200 font-mono py-1">Xem chi tiết phản hồi JSON (Raw)</summary>
+              <pre id="rawJsonResponse" class="bg-slate-950 p-3 rounded-lg overflow-x-auto text-[11px] font-mono text-emerald-400 mt-2 border border-slate-800"></pre>
+            </details>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </main>
+
+  <script>
+    let currentBlob = null;
+    let cameraStream = null;
+
+    // Detect if page is opened from server host
+    if (window.location.protocol.startsWith('http')) {
+      document.getElementById('serverUrl').value = window.location.origin;
+    }
+
+    // Set Server IP to Wi-Fi IP
+    function setWifiIp() {
+      document.getElementById('serverUrl').value = 'http://10.3.68.193:8000';
+      pingServer();
+    }
+
+    // Ping Server Status
+    async function pingServer() {
+      const serverUrl = document.getElementById('serverUrl').value.replace(/\/$/, "");
+      const badge = document.getElementById('serverStatusBadge');
+      badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-blue-400 animate-ping"></span> Đang kết nối...`;
+      badge.className = "flex items-center gap-1.5 px-3 py-1 text-xs rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/30";
+
+      try {
+        const res = await fetch(`${serverUrl}/`, { method: 'GET' });
+        if (res.ok) {
+          const data = await res.json();
+          badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-400"></span> Online (v${data.version})`;
+          badge.className = "flex items-center gap-1.5 px-3 py-1 text-xs rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/30";
+        } else {
+          throw new Error(`HTTP ${res.status}`);
+        }
+      } catch (err) {
+        badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-rose-400"></span> Lỗi kết nối`;
+        badge.className = "flex items-center gap-1.5 px-3 py-1 text-xs rounded-lg bg-rose-500/10 text-rose-400 border border-rose-500/30";
+      }
+    }
+
+    // Start Webcam
+    async function startCamera() {
+      const video = document.getElementById('videoElement');
+      const placeholder = document.getElementById('camPlaceholder');
+      const ovalGuide = document.getElementById('ovalGuide');
+      const btnCapture = document.getElementById('btnCapture');
+
+      try {
+        cameraStream = await navigator.mediaDevices.getUserMedia({
+          video: { width: { ideal: 1280 }, height: { ideal: 720 } },
+          audio: false
+        });
+        video.srcObject = cameraStream;
+        video.classList.remove('hidden');
+        placeholder.classList.add('hidden');
+        ovalGuide.classList.remove('hidden');
+        btnCapture.disabled = false;
+        document.getElementById('btnStartCam').innerHTML = '<i class="fa-solid fa-rotate mr-1"></i> Đổi Cam';
+      } catch (err) {
+        alert("Không thể mở Webcam: " + err.message + "\nNếu mở qua file:///, hãy mở qua http://localhost:8000/demo để trình duyệt cho phép truy cập camera.");
+      }
+    }
+
+    // Capture Snapshot from Webcam
+    function captureSnapshot() {
+      const video = document.getElementById('videoElement');
+      const canvas = document.getElementById('hiddenCanvas');
+      if (!cameraStream) return;
+
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d');
+      // Mirror image
+      ctx.translate(canvas.width, 0);
+      ctx.scale(-1, 1);
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      canvas.toBlob((blob) => {
+        currentBlob = blob;
+        const preview = document.getElementById('previewImage');
+        preview.src = URL.createObjectURL(blob);
+        preview.classList.remove('hidden');
+        document.getElementById('noImageText').classList.add('hidden');
+      }, 'image/jpeg', 0.95);
+    }
+
+    // Handle File Selection
+    function handleFileSelect(event) {
+      const file = event.target.files[0];
+      if (file) {
+        currentBlob = file;
+        const preview = document.getElementById('previewImage');
+        preview.src = URL.createObjectURL(file);
+        preview.classList.remove('hidden');
+        document.getElementById('noImageText').classList.add('hidden');
+      }
+    }
+
+    // Switch Tabs
+    function switchTab(tab) {
+      ['register', 'verify', 'compare', 'users'].forEach(t => {
+        const tabEl = document.getElementById(`tab${t.charAt(0).toUpperCase() + t.slice(1)}`);
+        const btnEl = document.getElementById(`tabBtn${t.charAt(0).toUpperCase() + t.slice(1)}`);
+        if (t === tab) {
+          tabEl.classList.remove('hidden');
+          btnEl.className = "px-4 py-2.5 font-medium text-sm text-blue-400 border-b-2 border-blue-500 flex items-center gap-2";
+        } else {
+          tabEl.classList.add('hidden');
+          btnEl.className = "px-4 py-2.5 font-medium text-sm text-slate-400 hover:text-slate-200 flex items-center gap-2";
+        }
+      });
+      if (tab === 'users') loadUsersList();
+    }
+
+    // Display Result Function
+    function displayResult(httpStatus, data, latencyMs) {
+      document.getElementById('emptyResultMsg').classList.add('hidden');
+      document.getElementById('structuredResult').classList.remove('hidden');
+      
+      const badge = document.getElementById('responseStatusBadge');
+      badge.textContent = `HTTP ${httpStatus}`;
+      badge.className = httpStatus === 200 
+        ? "text-xs font-mono px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+        : "text-xs font-mono px-2 py-0.5 rounded bg-rose-500/20 text-rose-400 border border-rose-500/30";
+
+      document.getElementById('metricLatency').textContent = `${latencyMs} ms`;
+      document.getElementById('rawJsonResponse').textContent = JSON.stringify(data, null, 2);
+
+      const banner = document.getElementById('resultBanner');
+      const icon = document.getElementById('resultIcon');
+      const title = document.getElementById('resultTitle');
+      const subtitle = document.getElementById('resultSubtitle');
+      const warningBox = document.getElementById('policyWarningBox');
+      const warningList = document.getElementById('policyWarningList');
+
+      // Reset warnings
+      warningBox.classList.add('hidden');
+      warningList.innerHTML = '';
+
+      const warnings = data.warnings || (data.policy_check && data.policy_check.warnings) || [];
+      if (warnings.length > 0) {
+        warningBox.classList.remove('hidden');
+        warnings.forEach(w => {
+          const li = document.createElement('li');
+          li.textContent = w;
+          warningList.appendChild(li);
+        });
+      }
+
+      // Check success or match
+      if (data.success === true) {
+        banner.className = "p-4 rounded-xl flex items-center gap-3 bg-blue-500/10 border border-blue-500/30 text-blue-400";
+        icon.innerHTML = '<i class="fa-solid fa-id-card"></i>';
+        title.textContent = `ĐĂNG KÝ THÀNH CÔNG: ${data.full_name || data.user_id}`;
+        subtitle.textContent = "Đã mã hóa và lưu vector đặc trưng ArcFace 512D vào CSDL.";
+        document.getElementById('metricSimilarity').textContent = "100% (Mẫu gốc)";
+        const livenessScore = data.liveness_score !== undefined ? (data.liveness_score * 100).toFixed(1) + "%" : "Đạt";
+        document.getElementById('metricLiveness').textContent = `Thật (${livenessScore}) 🟢`;
+      } 
+      else if (data.verified === true) {
+        banner.className = "p-4 rounded-xl flex items-center gap-3 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400";
+        icon.innerHTML = '<i class="fa-solid fa-circle-check"></i>';
+        title.textContent = "XÁC THỰC HỢP LỆ (CHÍNH CHỦ)";
+        const userName = data.user_info ? data.user_info.full_name : '';
+        subtitle.textContent = `Trùng khớp với thí sinh ${userName}. Tự tin: ${data.confidence_pct || 100}%.`;
+        document.getElementById('metricSimilarity').textContent = `${((data.similarity || 0) * 100).toFixed(1)}%`;
+        const livenessScore = data.liveness_score !== undefined ? (data.liveness_score * 100).toFixed(1) + "%" : "Đạt";
+        document.getElementById('metricLiveness').textContent = `${data.is_real_person ? "Thật" : "Nghi ngờ"} (${livenessScore}) 🟢`;
+      } 
+      else if (data.verified === false) {
+        banner.className = "p-4 rounded-xl flex items-center gap-3 bg-rose-500/10 border border-rose-500/30 text-rose-400";
+        icon.innerHTML = '<i class="fa-solid fa-circle-xmark"></i>';
+        title.textContent = "KHÔNG KHỚP KHUÔN MẶT";
+        subtitle.textContent = data.message || "Khuôn mặt trong ảnh khác với hồ sơ thí sinh này.";
+        document.getElementById('metricSimilarity').textContent = `${((data.similarity || 0) * 100).toFixed(1)}%`;
+        document.getElementById('metricLiveness').textContent = data.liveness_score ? `${(data.liveness_score * 100).toFixed(1)}%` : "N/A";
+      } 
+      else {
+        banner.className = "p-4 rounded-xl flex items-center gap-3 bg-rose-500/10 border border-rose-500/30 text-rose-400";
+        icon.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i>';
+        title.textContent = "XỬ LÝ THẤT BẠI";
+        subtitle.textContent = data.message || data.detail || data.error || "Không nhận diện được khuôn mặt hợp lệ.";
+        document.getElementById('metricSimilarity').textContent = "0%";
+        document.getElementById('metricLiveness').textContent = "Lỗi";
+      }
+    }
+
+    // Call API Register
+    async function submitRegister() {
+      if (!currentBlob) {
+        alert("Vui lòng chụp ảnh từ webcam hoặc chọn file ảnh trước!");
+        return;
+      }
+      const userId = document.getElementById('regUserId').value.trim();
+      const fullName = document.getElementById('regFullName').value.trim();
+      const enforceOval = document.getElementById('regEnforceOval').checked;
+      const requireLiveness = document.getElementById('regRequireLiveness').checked;
+
+      if (!userId || !fullName) {
+        alert("Vui lòng nhập Mã Thí Sinh và Họ Tên!");
+        return;
+      }
+
+      const serverUrl = document.getElementById('serverUrl').value.replace(/\/$/, "");
+      const formData = new FormData();
+      formData.append("user_id", userId);
+      formData.append("full_name", fullName);
+      formData.append("enforce_oval", enforceOval);
+      formData.append("require_liveness", requireLiveness);
+      formData.append("image", currentBlob, "register.jpg");
+
+      const t0 = performance.now();
+      try {
+        const res = await fetch(`${serverUrl}/api/v1/register`, { method: "POST", body: formData });
+        const latency = Math.round(performance.now() - t0);
+        const data = await res.json();
+        displayResult(res.status, data, latency);
+      } catch (err) {
+        displayResult(0, { error: err.message }, Math.round(performance.now() - t0));
+      }
+    }
+
+    // Call API Verify
+    async function submitVerify() {
+      if (!currentBlob) {
+        alert("Vui lòng chụp ảnh từ webcam hoặc chọn file ảnh trước!");
+        return;
+      }
+      const userId = document.getElementById('verUserId').value.trim();
+      const threshold = document.getElementById('verThreshold').value;
+
+      if (!userId) {
+        alert("Vui lòng nhập Mã Thí Sinh cần xác thực!");
+        return;
+      }
+
+      const serverUrl = document.getElementById('serverUrl').value.replace(/\/$/, "");
+      const formData = new FormData();
+      formData.append("user_id", userId);
+      formData.append("threshold", threshold);
+      formData.append("image", currentBlob, "verify.jpg");
+
+      const t0 = performance.now();
+      try {
+        const res = await fetch(`${serverUrl}/api/v1/verify`, { method: "POST", body: formData });
+        const latency = Math.round(performance.now() - t0);
+        const data = await res.json();
+        displayResult(res.status, data, latency);
+      } catch (err) {
+        displayResult(0, { error: err.message }, Math.round(performance.now() - t0));
+      }
+    }
+
+    // Call API Compare
+    async function submitCompare() {
+      const f1 = document.getElementById('compFile1').files[0];
+      const f2 = document.getElementById('compFile2').files[0];
+      if (!f1 || !f2) {
+        alert("Vui lòng chọn đủ 2 bức ảnh để so sánh!");
+        return;
+      }
+
+      const serverUrl = document.getElementById('serverUrl').value.replace(/\/$/, "");
+      const formData = new FormData();
+      formData.append("image_source", f1);
+      formData.append("image_live", f2);
+
+      const t0 = performance.now();
+      try {
+        const res = await fetch(`${serverUrl}/api/v1/compare`, { method: "POST", body: formData });
+        const latency = Math.round(performance.now() - t0);
+        const data = await res.json();
+        displayResult(res.status, data, latency);
+      } catch (err) {
+        displayResult(0, { error: err.message }, Math.round(performance.now() - t0));
+      }
+    }
+
+    // Load Registered Users from Server
+    async function loadUsersList() {
+      const serverUrl = document.getElementById('serverUrl').value.replace(/\/$/, "");
+      const container = document.getElementById('usersListContainer');
+      container.innerHTML = '<p class="text-xs text-blue-400">Đang tải...</p>';
+
+      try {
+        const res = await fetch(`${serverUrl}/api/v1/users`);
+        const data = await res.json();
+        if (data.users.length === 0) {
+          container.innerHTML = '<p class="text-xs text-slate-500 italic">Chưa có thí sinh nào đăng ký trong CSDL.</p>';
+          return;
+        }
+
+        container.innerHTML = '';
+        data.users.forEach(u => {
+          const div = document.createElement('div');
+          div.className = "flex items-center justify-between p-2.5 bg-slate-900/80 rounded-xl border border-slate-700/60 text-xs";
+          div.innerHTML = `
+            <div>
+              <span class="font-bold text-white font-mono mr-2">${u.user_id}</span>
+              <span class="text-slate-300">${u.full_name || u.name}</span>
+              <span class="text-slate-500 text-[10px] block">${u.created_at || ''}</span>
+            </div>
+            <button onclick="deleteUser('${u.user_id}')" class="text-rose-400 hover:text-rose-300 px-2 py-1 bg-rose-500/10 rounded">
+              <i class="fa-solid fa-trash"></i>
+            </button>
+          `;
+          container.appendChild(div);
+        });
+      } catch (err) {
+        container.innerHTML = `<p class="text-xs text-rose-400">Không tải được: ${err.message}</p>`;
+      }
+    }
+
+    // Delete User
+    async function deleteUser(userId) {
+      if (!confirm(`Bạn có chắc muốn xóa thí sinh ${userId}?`)) return;
+      const serverUrl = document.getElementById('serverUrl').value.replace(/\/$/, "");
+      await fetch(`${serverUrl}/api/v1/users/${userId}`, { method: 'DELETE' });
+      loadUsersList();
+    }
+
+    // Auto ping on page load
+    window.onload = () => {
+      pingServer();
+    };
+  </script>
+</body>
+</html>

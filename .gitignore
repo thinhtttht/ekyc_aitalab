@@ -43,3 +43,10 @@ desktop.ini
 # Runtime data & snapshots
 backend/data/*.json
 realsense_snapshots/
+hf_space/data/*.db*
+
+# Archives
+*.rar
+*.zip
+*.7z
+*.tar.gz

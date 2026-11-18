@@ -3,10 +3,43 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>eKYC Client Tester - Demo Khách Hàng</title>
+  <title>FPT University - eKYC Biometric System</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+    
+    :root {
+      --fpt-orange: #f26f21;
+      --fpt-amber: #ff9a1f;
+      --fpt-amber-glow: #ffd27a;
+      --fpt-dark-card: rgba(15, 23, 42, 0.75);
+      --glass-border: rgba(255, 255, 255, 0.12);
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+      background: linear-gradient(135deg, rgba(10, 15, 29, 0.88), rgba(15, 23, 42, 0.82)), 
+                  url('/static/campus_blur.png') no-repeat center center fixed;
+      background-size: cover;
+      min-height: 100vh;
+    }
+
+    .glass-panel {
+      background: rgba(15, 23, 42, 0.72);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      box-shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.1);
+    }
+
+    .glass-header {
+      background: rgba(10, 15, 29, 0.85);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
     .oval-guide {
       position: absolute;
       top: 50%;
@@ -14,104 +47,169 @@
       transform: translate(-50%, -50%);
       width: 58%;
       height: 78%;
-      border: 3px dashed rgba(59, 130, 246, 0.85);
+      border: 3px dashed var(--fpt-amber);
       border-radius: 50% / 60% 60% 50% 50%;
-      box-shadow: 0 0 0 9999px rgba(15, 23, 42, 0.45);
+      box-shadow: 0 0 0 9999px rgba(10, 15, 30, 0.55), 0 0 30px rgba(255, 154, 31, 0.4);
       pointer-events: none;
       transition: all 0.3s ease;
+      animation: pulseGlow 3s infinite ease-in-out;
+    }
+
+    @keyframes pulseGlow {
+      0%, 100% { box-shadow: 0 0 0 9999px rgba(10, 15, 30, 0.55), 0 0 25px rgba(255, 154, 31, 0.35); }
+      50% { box-shadow: 0 0 0 9999px rgba(10, 15, 30, 0.55), 0 0 40px rgba(255, 154, 31, 0.6); }
+    }
+
+    .btn-fpt-primary {
+      background: linear-gradient(135deg, #f26f21 0%, #ff9a1f 100%);
+      box-shadow: 0 8px 25px -4px rgba(242, 111, 33, 0.45);
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .btn-fpt-primary:hover {
+      background: linear-gradient(135deg, #ea580c 0%, #f97316 100%);
+      box-shadow: 0 12px 30px -2px rgba(242, 111, 33, 0.6);
+      transform: translateY(-1px);
+    }
+
+    .btn-fpt-emerald {
+      background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+      box-shadow: 0 8px 25px -4px rgba(16, 185, 129, 0.4);
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .btn-fpt-emerald:hover {
+      background: linear-gradient(135deg, #047857 0%, #059669 100%);
+      box-shadow: 0 12px 30px -2px rgba(16, 185, 129, 0.6);
+      transform: translateY(-1px);
+    }
+
+    .font-mono-code {
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.6);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(242, 111, 33, 0.6);
     }
   </style>
 </head>
-<body class="bg-slate-900 text-slate-100 min-h-screen font-sans">
+<body class="text-slate-100 flex flex-col justify-between">
   
   <!-- Header Bar -->
-  <header class="bg-slate-800/90 border-b border-slate-700 sticky top-0 z-50 backdrop-blur px-6 py-4">
+  <header class="glass-header sticky top-0 z-50 px-6 py-3.5 shadow-xl">
     <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
-      <div class="flex items-center space-x-3">
-        <div class="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/30">
-          <i class="fa-solid fa-id-card-clip text-xl"></i>
-        </div>
-        <div>
-          <h1 class="text-xl font-bold tracking-tight text-white flex items-center gap-2">
-            eKYC Client Tester
-            <span class="text-xs bg-blue-500/20 text-blue-400 px-2.5 py-0.5 rounded-full border border-blue-500/30 font-medium">App Khách Hàng</span>
-          </h1>
-          <p class="text-xs text-slate-400">Ứng dụng mẫu giả lập phần mềm thi vấn đáp gọi sang API Server</p>
-        </div>
+      
+      <!-- Logo & Branding -->
+      <div class="flex items-center space-x-4">
+        <a href="/demo" class="flex items-center space-x-3.5 group">
+          <img src="/static/fpt_logo.png" alt="FPT University Logo" class="h-10 w-auto object-contain transition-transform group-hover:scale-105" onerror="this.onerror=null; this.src='https://upload.wikimedia.org/wikipedia/vi/2/29/Logo_Tr%C6%B0%E1%BB%9Dng_%C4%90%E1%BA%A1i_h%E1%BB%8Dc_FPT.svg';">
+          <div class="border-l border-white/20 pl-3.5">
+            <div class="flex items-center gap-2">
+              <span class="text-base font-extrabold tracking-wide text-white">eKYC LAB</span>
+              <span class="text-[10px] font-semibold uppercase tracking-wider bg-gradient-to-r from-orange-500/25 to-amber-500/25 text-orange-400 px-2 py-0.5 rounded-full border border-orange-500/40">
+                FPT University
+              </span>
+            </div>
+            <p class="text-xs text-slate-300/80 font-normal">Hệ Thống Điểm Danh & Xác Thực Sinh Trắc Học Phòng Thi Vấn Đáp</p>
+          </div>
+        </a>
       </div>
 
-      <!-- Server Config Section -->
-      <div class="flex items-center gap-2 bg-slate-950/60 p-1.5 rounded-xl border border-slate-700/80">
-        <span class="text-xs text-slate-400 pl-2 font-mono"><i class="fa-solid fa-server mr-1"></i>Server:</span>
-        <input id="serverUrl" type="text" value="http://localhost:8000" class="bg-slate-800 text-xs text-slate-200 px-3 py-1.5 rounded-lg border border-slate-600 focus:outline-none focus:border-blue-500 w-52 font-mono" placeholder="http://10.3.68.193:8000">
-        <button onclick="pingServer()" class="bg-blue-600 hover:bg-blue-500 text-white text-xs px-3 py-1.5 rounded-lg transition font-medium flex items-center gap-1.5">
-          <i class="fa-solid fa-plug"></i> Test
+      <!-- Server Connection Settings -->
+      <div class="flex items-center gap-2 bg-slate-950/70 px-2.5 py-1.5 rounded-2xl border border-white/10 shadow-inner">
+        <span class="text-xs text-slate-400 pl-1 font-mono-code flex items-center gap-1.5">
+          <i class="fa-solid fa-server text-orange-400"></i> Server:
+        </span>
+        <input id="serverUrl" type="text" value="http://localhost:8000" class="bg-slate-900/90 text-xs text-slate-200 px-3 py-1.5 rounded-xl border border-white/10 focus:outline-none focus:border-orange-500 w-48 font-mono-code transition" placeholder="http://10.3.68.193:8000">
+        <button onclick="pingServer()" class="bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white text-xs px-3 py-1.5 rounded-xl transition font-medium flex items-center gap-1.5 shadow-md shadow-orange-500/20">
+          <i class="fa-solid fa-bolt"></i> Test
         </button>
-        <button onclick="setWifiIp()" title="Dùng IP Wi-Fi nội bộ" class="bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs px-2.5 py-1.5 rounded-lg transition font-mono">
-          IP Wi-Fi
+        <button onclick="setWifiIp()" title="Sử dụng IP Wi-Fi nội bộ" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs px-2.5 py-1.5 rounded-xl transition border border-white/10 font-mono-code">
+          Wi-Fi IP
         </button>
-        <div id="serverStatusBadge" class="flex items-center gap-1.5 px-3 py-1 text-xs rounded-lg bg-yellow-500/10 text-yellow-400 border border-yellow-500/30">
-          <span class="w-2 h-2 rounded-full bg-yellow-400 animate-pulse"></span> Chưa kết nối
+        <div id="serverStatusBadge" class="flex items-center gap-1.5 px-3 py-1 text-xs rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/30">
+          <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span> Đang kết nối...
         </div>
       </div>
     </div>
   </header>
 
-  <main class="max-w-7xl mx-auto px-6 py-8">
+  <!-- Main Content Layout -->
+  <main class="max-w-7xl mx-auto px-6 py-8 w-full flex-1">
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
       
       <!-- CỘT TRÁI: CAMERA & ẢNH ĐẦU VÀO (5 CỘT) -->
       <div class="lg:col-span-5 space-y-6">
-        <div class="bg-slate-800/80 border border-slate-700 rounded-2xl p-5 shadow-xl">
+        <div class="glass-panel rounded-3xl p-5 shadow-2xl">
           <div class="flex items-center justify-between mb-4">
-            <h2 class="font-semibold text-white flex items-center gap-2">
-              <i class="fa-solid fa-camera text-blue-400"></i> Camera / Ảnh Thí Sinh
+            <h2 class="font-bold text-white text-sm flex items-center gap-2">
+              <span class="w-8 h-8 rounded-xl bg-orange-500/20 flex items-center justify-center text-orange-400 border border-orange-500/30">
+                <i class="fa-solid fa-camera"></i>
+              </span>
+              Camera Sinh Viên Phòng Thi
             </h2>
             <div class="flex gap-2">
-              <button id="btnStartCam" onclick="startCamera()" class="text-xs bg-slate-700 hover:bg-slate-600 text-slate-200 px-3 py-1 rounded-lg transition">
-                <i class="fa-solid fa-video mr-1"></i> Bật Cam
+              <button id="btnStartCam" onclick="startCamera()" class="text-xs bg-slate-800/90 hover:bg-slate-700 text-slate-200 px-3.5 py-1.5 rounded-xl transition border border-white/10 font-medium flex items-center gap-1.5">
+                <i class="fa-solid fa-video text-orange-400"></i> Bật Cam
               </button>
-              <button id="btnCapture" onclick="captureSnapshot()" disabled class="text-xs bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white px-3 py-1 rounded-lg transition font-medium">
-                <i class="fa-solid fa-circle-dot mr-1"></i> Chụp
+              <button id="btnCapture" onclick="captureSnapshot()" disabled class="text-xs btn-fpt-primary disabled:opacity-50 text-white px-4 py-1.5 rounded-xl transition font-semibold flex items-center gap-1.5">
+                <i class="fa-solid fa-circle-dot"></i> Chụp
               </button>
             </div>
           </div>
 
           <!-- Video Viewport with Oval Guide -->
-          <div class="relative w-full aspect-[4/3] bg-black rounded-xl overflow-hidden border border-slate-700 flex items-center justify-center">
+          <div class="relative w-full aspect-[4/3] bg-black/80 rounded-2xl overflow-hidden border border-white/10 flex items-center justify-center shadow-inner">
             <video id="videoElement" autoplay playsinline class="w-full h-full object-cover -scale-x-100 hidden"></video>
             
             <div id="camPlaceholder" class="text-center p-6">
-              <i class="fa-solid fa-camera-slash text-4xl text-slate-600 mb-2"></i>
-              <p class="text-sm text-slate-400">Chưa bật camera</p>
-              <p class="text-xs text-slate-500 mt-1">Bấm "Bật Cam" hoặc chọn tải file ảnh bên dưới</p>
+              <div class="w-16 h-16 rounded-2xl bg-slate-800/80 mx-auto mb-3 flex items-center justify-center text-slate-500 border border-white/5">
+                <i class="fa-solid fa-camera-retro text-2xl"></i>
+              </div>
+              <p class="text-sm font-semibold text-slate-300">Chưa kích hoạt Camera</p>
+              <p class="text-xs text-slate-400 mt-1 max-w-xs mx-auto">Nhấn nút "Bật Cam" ở trên hoặc tải file ảnh chân dung sinh viên bên dưới.</p>
             </div>
 
-            <!-- Khung Oval Hướng Dẫn -->
+            <!-- Khung Oval Hướng Dẫn Phong Cách FPT -->
             <div id="ovalGuide" class="oval-guide hidden"></div>
 
             <canvas id="hiddenCanvas" class="hidden"></canvas>
           </div>
 
           <!-- Oval Policy Notice -->
-          <div class="mt-3 flex items-start gap-2 bg-blue-950/40 border border-blue-800/50 rounded-xl p-3 text-xs text-blue-300">
-            <i class="fa-solid fa-circle-info text-blue-400 mt-0.5"></i>
+          <div class="mt-3.5 flex items-start gap-2.5 bg-gradient-to-r from-orange-500/10 to-amber-500/10 border border-orange-500/30 rounded-2xl p-3.5 text-xs text-orange-200/90">
+            <i class="fa-solid fa-shield-halved text-orange-400 text-sm mt-0.5"></i>
             <div>
-              <p class="font-medium">Chính sách Oval Face (FQA Policy):</p>
-              <p class="text-blue-200/80 mt-0.5">Đặt khuôn mặt vừa vặn vào khung oval, mắt nhìn thẳng, không đeo khẩu trang hay kính râm.</p>
+              <p class="font-bold text-orange-300">Quy chuẩn phòng thi FPT (FQA Biometrics Policy):</p>
+              <p class="text-slate-300 mt-0.5 leading-relaxed">Đặt khuôn mặt lọt vào khung Oval, nhìn thẳng camera. Tuyệt đối không đeo khẩu trang, kính râm hoặc để tay che mặt.</p>
             </div>
           </div>
 
           <!-- File Upload Option -->
-          <div class="mt-4 pt-4 border-t border-slate-700/60">
-            <label class="block text-xs font-medium text-slate-300 mb-2">Hoặc chọn ảnh có sẵn từ máy:</label>
-            <input type="file" id="fileInput" accept="image/*" onchange="handleFileSelect(event)" class="block w-full text-xs text-slate-400 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-500 cursor-pointer">
+          <div class="mt-4 pt-4 border-t border-white/10">
+            <label class="block text-xs font-medium text-slate-300 mb-2 flex items-center justify-between">
+              <span>Hoặc tải ảnh thẻ / ảnh chân dung có sẵn:</span>
+              <span class="text-[10px] text-slate-400 font-mono-code">JPG, PNG</span>
+            </label>
+            <input type="file" id="fileInput" accept="image/*" onchange="handleFileSelect(event)" class="block w-full text-xs text-slate-400 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-orange-500/20 file:text-orange-300 hover:file:bg-orange-500/30 cursor-pointer border border-white/10 rounded-xl bg-slate-900/50">
           </div>
 
           <!-- Current Image Preview -->
           <div class="mt-4">
             <span class="text-xs text-slate-400 block mb-1.5 font-medium">Ảnh đã chọn để gửi lên API:</span>
-            <div class="w-full h-32 bg-slate-900 rounded-xl border border-slate-700 flex items-center justify-center overflow-hidden">
+            <div class="w-full h-32 bg-slate-950/70 rounded-2xl border border-white/10 flex items-center justify-center overflow-hidden shadow-inner">
               <img id="previewImage" src="" alt="Chưa có ảnh" class="w-full h-full object-contain hidden">
               <span id="noImageText" class="text-xs text-slate-500 italic">Chưa chụp hoặc chưa chọn ảnh nào</span>
             </div>
@@ -122,173 +220,202 @@
       <!-- CỘT PHẢI: CÁC CHỨC NĂNG TEST & KẾT QUẢ (7 CỘT) -->
       <div class="lg:col-span-7 space-y-6">
         
-        <!-- Navigation Tabs -->
-        <div class="flex border-b border-slate-700 space-x-1 sm:space-x-2 overflow-x-auto">
-          <button onclick="switchTab('register')" id="tabBtnRegister" class="px-3.5 py-2.5 font-medium text-xs sm:text-sm text-blue-400 border-b-2 border-blue-500 flex items-center gap-1.5 whitespace-nowrap">
+        <!-- Navigation Tabs Styled for FPT -->
+        <div class="glass-panel p-1.5 rounded-2xl flex border border-white/10 space-x-1 overflow-x-auto">
+          <button onclick="switchTab('register')" id="tabBtnRegister" class="flex-1 px-3 py-2 font-semibold text-xs sm:text-sm text-orange-400 bg-orange-500/15 rounded-xl border border-orange-500/30 flex items-center justify-center gap-1.5 whitespace-nowrap transition">
             <i class="fa-solid fa-user-plus"></i> Đăng Ký
           </button>
-          <button onclick="switchTab('verify')" id="tabBtnVerify" class="px-3.5 py-2.5 font-medium text-xs sm:text-sm text-slate-400 hover:text-slate-200 flex items-center gap-1.5 whitespace-nowrap">
+          <button onclick="switchTab('verify')" id="tabBtnVerify" class="flex-1 px-3 py-2 font-medium text-xs sm:text-sm text-slate-400 hover:text-slate-200 rounded-xl flex items-center justify-center gap-1.5 whitespace-nowrap transition">
             <i class="fa-solid fa-user-check"></i> Xác Thực (1:1)
           </button>
-          <button onclick="switchTab('identify')" id="tabBtnIdentify" class="px-3.5 py-2.5 font-medium text-xs sm:text-sm text-slate-400 hover:text-slate-200 flex items-center gap-1.5 whitespace-nowrap">
+          <button onclick="switchTab('identify')" id="tabBtnIdentify" class="flex-1 px-3 py-2 font-medium text-xs sm:text-sm text-slate-400 hover:text-slate-200 rounded-xl flex items-center justify-center gap-1.5 whitespace-nowrap transition">
             <i class="fa-solid fa-users-viewfinder text-amber-400"></i> Nhận Diện (1:N)
           </button>
-          <button onclick="switchTab('compare')" id="tabBtnCompare" class="px-3.5 py-2.5 font-medium text-xs sm:text-sm text-slate-400 hover:text-slate-200 flex items-center gap-1.5 whitespace-nowrap">
+          <button onclick="switchTab('compare')" id="tabBtnCompare" class="flex-1 px-3 py-2 font-medium text-xs sm:text-sm text-slate-400 hover:text-slate-200 rounded-xl flex items-center justify-center gap-1.5 whitespace-nowrap transition">
             <i class="fa-solid fa-images"></i> So Sánh 2 Ảnh
           </button>
-          <button onclick="switchTab('users')" id="tabBtnUsers" class="px-3.5 py-2.5 font-medium text-xs sm:text-sm text-slate-400 hover:text-slate-200 flex items-center gap-1.5 whitespace-nowrap">
-            <i class="fa-solid fa-database"></i> CSDL Users
+          <button onclick="switchTab('users')" id="tabBtnUsers" class="flex-1 px-3 py-2 font-medium text-xs sm:text-sm text-slate-400 hover:text-slate-200 rounded-xl flex items-center justify-center gap-1.5 whitespace-nowrap transition">
+            <i class="fa-solid fa-database"></i> CSDL Thí Sinh
           </button>
         </div>
 
         <!-- TAB 1: ĐĂNG KÝ (REGISTER) -->
         <div id="tabRegister" class="space-y-4">
-          <div class="bg-slate-800/80 border border-slate-700 rounded-2xl p-5 shadow-xl">
-            <h3 class="font-semibold text-white mb-3 flex items-center gap-2">
-              <i class="fa-solid fa-address-card text-blue-400"></i> Đăng ký khuôn mặt mẫu ban đầu
-            </h3>
-            <p class="text-xs text-slate-400 mb-4">Lưu vector đặc trưng 512D chuẩn và kiểm tra người thật (Anti-Spoofing MiniFASNet).</p>
+          <div class="glass-panel rounded-3xl p-6 shadow-2xl">
+            <div class="flex items-center gap-3 mb-2">
+              <span class="w-8 h-8 rounded-xl bg-orange-500/20 flex items-center justify-center text-orange-400 border border-orange-500/30">
+                <i class="fa-solid fa-id-card"></i>
+              </span>
+              <div>
+                <h3 class="font-bold text-white text-base">Đăng Ký Hồ Sơ Sinh Trắc Học Ban Đầu</h3>
+                <p class="text-xs text-slate-400">Trích xuất vector ArcFace 512D chuẩn và kiểm tra người thật 3D (MiniFASNet v2 Anti-Spoofing).</p>
+              </div>
+            </div>
             
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 my-5">
               <div>
-                <label class="block text-xs font-medium text-slate-300 mb-1">Mã Thí Sinh / User ID (*):</label>
-                <input id="regUserId" type="text" placeholder="VD: SV2026_01" value="SV2026_01" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500">
+                <label class="block text-xs font-semibold text-slate-300 mb-1.5">Mã Sinh Viên / User ID (*):</label>
+                <input id="regUserId" type="text" placeholder="VD: SE170123" value="SE170123" class="w-full bg-slate-900/90 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-orange-500 font-mono-code transition">
               </div>
               <div>
-                <label class="block text-xs font-medium text-slate-300 mb-1">Họ và Tên (*):</label>
-                <input id="regFullName" type="text" placeholder="VD: Nguyễn Văn An" value="Nguyễn Văn An" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500">
+                <label class="block text-xs font-semibold text-slate-300 mb-1.5">Họ và Tên Sinh Viên (*):</label>
+                <input id="regFullName" type="text" placeholder="VD: Nguyễn Thành Đạt" value="Nguyễn Thành Đạt" class="w-full bg-slate-900/90 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-orange-500 transition">
               </div>
             </div>
 
-            <div class="flex items-center gap-4 mb-4 text-xs text-slate-300">
-              <label class="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" id="regEnforceOval" class="rounded bg-slate-900 border-slate-700 text-blue-600 focus:ring-0">
-                Bắt buộc chuẩn khung Oval (Khuyên dùng)
+            <div class="flex flex-wrap items-center gap-6 mb-5 text-xs text-slate-300 bg-slate-900/50 p-3.5 rounded-2xl border border-white/5">
+              <label class="flex items-center gap-2.5 cursor-pointer">
+                <input type="checkbox" id="regEnforceOval" class="rounded bg-slate-900 border-white/20 text-orange-500 focus:ring-0">
+                <span>Bắt buộc chuẩn khung Oval (Khuyên dùng)</span>
               </label>
-              <label class="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" id="regRequireLiveness" checked class="rounded bg-slate-900 border-slate-700 text-blue-600 focus:ring-0">
-                Chống giả mạo (Anti-Spoofing)
+              <label class="flex items-center gap-2.5 cursor-pointer">
+                <input type="checkbox" id="regRequireLiveness" checked class="rounded bg-slate-900 border-white/20 text-orange-500 focus:ring-0">
+                <span>Chống giả mạo ảnh chụp / màn hình (Anti-Spoofing)</span>
               </label>
             </div>
 
-            <button onclick="submitRegister()" id="btnSubmitRegister" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-2.5 rounded-xl transition flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20">
-              <i class="fa-solid fa-cloud-arrow-up"></i> Gửi Yêu Cầu Đăng Ký (POST /register)
+            <button onclick="submitRegister()" id="btnSubmitRegister" class="w-full btn-fpt-primary text-white font-bold py-3 rounded-2xl transition flex items-center justify-center gap-2">
+              <i class="fa-solid fa-cloud-arrow-up"></i> Lưu Hồ Sơ Sinh Viên (POST /api/v1/register)
             </button>
           </div>
         </div>
 
         <!-- TAB 2: XÁC THỰC (VERIFY 1:1) -->
         <div id="tabVerify" class="space-y-4 hidden">
-          <div class="bg-slate-800/80 border border-slate-700 rounded-2xl p-5 shadow-xl">
-            <h3 class="font-semibold text-white mb-3 flex items-center gap-2">
-              <i class="fa-solid fa-shield-halved text-emerald-400"></i> Xác thực thí sinh lúc vào phòng thi
-            </h3>
-            <p class="text-xs text-slate-400 mb-4">Hệ thống sẽ so sánh ảnh vừa chụp với vector mẫu đã đăng ký của thí sinh này.</p>
-            
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+          <div class="glass-panel rounded-3xl p-6 shadow-2xl">
+            <div class="flex items-center gap-3 mb-2">
+              <span class="w-8 h-8 rounded-xl bg-emerald-500/20 flex items-center justify-center text-emerald-400 border border-emerald-500/30">
+                <i class="fa-solid fa-shield-check"></i>
+              </span>
               <div>
-                <label class="block text-xs font-medium text-slate-300 mb-1">Mã Thí Sinh Cần Xác Thực (*):</label>
-                <input id="verUserId" type="text" placeholder="VD: SV2026_01" value="SV2026_01" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500">
+                <h3 class="font-bold text-white text-base">Điểm Danh & Xác Thực Thí Sinh Vào Phòng Thi (1:1)</h3>
+                <p class="text-xs text-slate-400">So sánh ảnh chụp trực tiếp tại bàn thi với vector gốc đã đăng ký của MSSV này.</p>
+              </div>
+            </div>
+            
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 my-5">
+              <div>
+                <label class="block text-xs font-semibold text-slate-300 mb-1.5">Mã Sinh Viên Cần Điểm Danh (*):</label>
+                <input id="verUserId" type="text" placeholder="VD: SE170123" value="SE170123" class="w-full bg-slate-900/90 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500 font-mono-code transition">
               </div>
               <div>
-                <label class="block text-xs font-medium text-slate-300 mb-1">Ngưỡng Khớp (Threshold):</label>
-                <input id="verThreshold" type="number" step="0.05" min="0.3" max="0.9" value="0.55" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500">
+                <label class="block text-xs font-semibold text-slate-300 mb-1.5">Ngưỡng Trùng Khớp (Threshold):</label>
+                <input id="verThreshold" type="number" step="0.05" min="0.3" max="0.9" value="0.55" class="w-full bg-slate-900/90 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500 font-mono-code transition">
               </div>
             </div>
 
-            <button onclick="submitVerify()" id="btnSubmitVerify" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-medium py-2.5 rounded-xl transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20">
-              <i class="fa-solid fa-fingerprint"></i> Gửi Xác Thực Khuôn Mặt (POST /verify)
+            <button onclick="submitVerify()" id="btnSubmitVerify" class="w-full btn-fpt-emerald text-white font-bold py-3 rounded-2xl transition flex items-center justify-center gap-2">
+              <i class="fa-solid fa-fingerprint"></i> Xác Thực Thí Sinh (POST /api/v1/verify)
             </button>
           </div>
         </div>
 
-        <!-- TAB NHẬN DIỆN 1:N (IDENTIFY) -->
+        <!-- TAB 3: NHẬN DIỆN 1:N (IDENTIFY) -->
         <div id="tabIdentify" class="space-y-4 hidden">
-          <div class="bg-slate-800/80 border border-slate-700 rounded-2xl p-5 shadow-xl">
-            <h3 class="font-semibold text-white mb-3 flex items-center gap-2">
-              <i class="fa-solid fa-users-viewfinder text-amber-400"></i> Nhận diện tự động 1:N (Không cần nhập MSSV)
-            </h3>
-            <p class="text-xs text-slate-400 mb-4">Hệ thống quét toàn bộ database xem người đang đứng trước camera là ai trong số tất cả thí sinh.</p>
-            
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+          <div class="glass-panel rounded-3xl p-6 shadow-2xl">
+            <div class="flex items-center gap-3 mb-2">
+              <span class="w-8 h-8 rounded-xl bg-amber-500/20 flex items-center justify-center text-amber-400 border border-amber-500/30">
+                <i class="fa-solid fa-users-viewfinder"></i>
+              </span>
               <div>
-                <label class="block text-xs font-medium text-slate-300 mb-1">Ngưỡng Khớp (Threshold):</label>
-                <input id="idenThreshold" type="number" step="0.05" min="0.3" max="0.9" value="0.55" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500">
+                <h3 class="font-bold text-white text-base">Tìm Kiếm & Nhận Diện Tự Động (1:N)</h3>
+                <p class="text-xs text-slate-400">Không cần nhập MSSV. Hệ thống quét toàn bộ CSDL sinh viên bằng ma trận đa luồng.</p>
+              </div>
+            </div>
+            
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 my-5">
+              <div>
+                <label class="block text-xs font-semibold text-slate-300 mb-1.5">Ngưỡng Khớp (Threshold):</label>
+                <input id="idenThreshold" type="number" step="0.05" min="0.3" max="0.9" value="0.55" class="w-full bg-slate-900/90 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500 font-mono-code transition">
               </div>
               <div>
-                <label class="block text-xs font-medium text-slate-300 mb-1">Số Lượng Ứng Viên Gần Nhất (Top-K):</label>
-                <input id="idenTopK" type="number" min="1" max="10" value="3" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500">
+                <label class="block text-xs font-semibold text-slate-300 mb-1.5">Số Ứng Viên Gần Nhất (Top-K):</label>
+                <input id="idenTopK" type="number" min="1" max="10" value="3" class="w-full bg-slate-900/90 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500 font-mono-code transition">
               </div>
             </div>
 
-            <button onclick="submitIdentify()" id="btnSubmitIdentify" class="w-full bg-amber-600 hover:bg-amber-500 text-white font-medium py-2.5 rounded-xl transition flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20">
-              <i class="fa-solid fa-magnifying-glass"></i> Ai Đây? - Tìm Kiếm 1:N (POST /identify)
+            <button onclick="submitIdentify()" id="btnSubmitIdentify" class="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold py-3 rounded-2xl transition flex items-center justify-center gap-2 shadow-lg shadow-amber-500/30">
+              <i class="fa-solid fa-magnifying-glass"></i> Nhận Diện Sinh Viên Này Là Ai? (POST /api/v1/identify)
             </button>
           </div>
         </div>
 
-        <!-- TAB 3: SO SÁNH 2 ẢNH (COMPARE) -->
+        <!-- TAB 4: SO SÁNH 2 ẢNH (COMPARE) -->
         <div id="tabCompare" class="space-y-4 hidden">
-          <div class="bg-slate-800/80 border border-slate-700 rounded-2xl p-5 shadow-xl">
-            <h3 class="font-semibold text-white mb-3 flex items-center gap-2">
-              <i class="fa-solid fa-code-compare text-purple-400"></i> So sánh độ khớp giữa 2 bức ảnh
-            </h3>
-            <p class="text-xs text-slate-400 mb-4">So sánh trực tiếp (1:1 Verification) giữa 2 file ảnh bất kỳ mà không cần lưu vào CSDL.</p>
-            
-            <div class="grid grid-cols-2 gap-4 mb-4">
+          <div class="glass-panel rounded-3xl p-6 shadow-2xl">
+            <div class="flex items-center gap-3 mb-2">
+              <span class="w-8 h-8 rounded-xl bg-purple-500/20 flex items-center justify-center text-purple-400 border border-purple-500/30">
+                <i class="fa-solid fa-code-compare"></i>
+              </span>
               <div>
-                <label class="block text-xs font-medium text-slate-300 mb-1">Ảnh Nguồn (image_source):</label>
-                <input type="file" id="compFile1" accept="image/*" class="w-full text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:bg-slate-700 file:text-white">
+                <h3 class="font-bold text-white text-base">So Khớp Độ Giống Nhau Giữa 2 Ảnh Bất Kỳ</h3>
+                <p class="text-xs text-slate-400">So sánh 1:1 độc lập (Ảnh CCCD vs Ảnh chụp) không cần lưu CSDL.</p>
+              </div>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-4 my-5">
+              <div>
+                <label class="block text-xs font-semibold text-slate-300 mb-1.5">Ảnh Thẻ / CCCD (image_source):</label>
+                <input type="file" id="compFile1" accept="image/*" class="w-full text-xs text-slate-400 file:mr-2 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:bg-slate-800 file:text-white border border-white/10 rounded-xl bg-slate-900/50">
               </div>
               <div>
-                <label class="block text-xs font-medium text-slate-300 mb-1">Ảnh Đối Chiếu (image_live):</label>
-                <input type="file" id="compFile2" accept="image/*" class="w-full text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:bg-slate-700 file:text-white">
+                <label class="block text-xs font-semibold text-slate-300 mb-1.5">Ảnh Phòng Thi (image_live):</label>
+                <input type="file" id="compFile2" accept="image/*" class="w-full text-xs text-slate-400 file:mr-2 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:bg-slate-800 file:text-white border border-white/10 rounded-xl bg-slate-900/50">
               </div>
             </div>
 
-            <button onclick="submitCompare()" id="btnSubmitCompare" class="w-full bg-purple-600 hover:bg-purple-500 text-white font-medium py-2.5 rounded-xl transition flex items-center justify-center gap-2 shadow-lg shadow-purple-500/20">
-              <i class="fa-solid fa-arrows-split-up-and-left"></i> So Sánh Độ Khớp (POST /compare)
+            <button onclick="submitCompare()" id="btnSubmitCompare" class="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold py-3 rounded-2xl transition flex items-center justify-center gap-2 shadow-lg shadow-purple-600/30">
+              <i class="fa-solid fa-arrows-split-up-and-left"></i> So Sánh 2 Bức Ảnh (POST /api/v1/compare)
             </button>
           </div>
         </div>
 
-        <!-- TAB 4: DANH SÁCH USER (DATABASE) -->
+        <!-- TAB 5: DANH SÁCH USER (DATABASE) -->
         <div id="tabUsers" class="space-y-4 hidden">
-          <div class="bg-slate-800/80 border border-slate-700 rounded-2xl p-5 shadow-xl">
+          <div class="glass-panel rounded-3xl p-6 shadow-2xl">
             <div class="flex items-center justify-between mb-4">
-              <h3 class="font-semibold text-white flex items-center gap-2">
-                <i class="fa-solid fa-users text-blue-400"></i> Danh sách thí sinh trong CSDL Server
-              </h3>
-              <button onclick="loadUsersList()" class="text-xs bg-slate-700 hover:bg-slate-600 text-slate-200 px-3 py-1.5 rounded-lg transition flex items-center gap-1.5">
-                <i class="fa-solid fa-rotate-right"></i> Làm mới
+              <div class="flex items-center gap-3">
+                <span class="w-8 h-8 rounded-xl bg-blue-500/20 flex items-center justify-center text-blue-400 border border-blue-500/30">
+                  <i class="fa-solid fa-graduation-cap"></i>
+                </span>
+                <div>
+                  <h3 class="font-bold text-white text-base">Danh Sách Thí Sinh Trong CSDL</h3>
+                  <p class="text-xs text-slate-400">Các hồ sơ sinh trắc học đã lưu trữ trên máy chủ Lab</p>
+                </div>
+              </div>
+              <button onclick="loadUsersList()" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-3.5 py-2 rounded-xl transition border border-white/10 font-medium flex items-center gap-1.5">
+                <i class="fa-solid fa-rotate-right text-orange-400"></i> Làm mới
               </button>
             </div>
-            <div id="usersListContainer" class="space-y-2 max-h-60 overflow-y-auto pr-1">
-              <p class="text-xs text-slate-500 italic">Nhấn "Làm mới" để tải danh sách...</p>
+            <div id="usersListContainer" class="space-y-2.5 max-h-72 overflow-y-auto pr-1">
+              <p class="text-xs text-slate-500 italic text-center py-4">Nhấn "Làm mới" để tải danh sách...</p>
             </div>
           </div>
         </div>
 
         <!-- HỘP HIỂN THỊ KẾT QUẢ API TRẢ VỀ (RESULTS CARD) -->
-        <div id="resultCard" class="bg-slate-800/90 border border-slate-700 rounded-2xl p-5 shadow-2xl relative overflow-hidden">
-          <div class="flex items-center justify-between mb-3">
-            <h4 class="text-sm font-semibold text-slate-300 flex items-center gap-2">
-              <i class="fa-solid fa-square-poll-vertical text-blue-400"></i> Phản hồi từ Server:
+        <div id="resultCard" class="glass-panel rounded-3xl p-6 shadow-2xl relative overflow-hidden border border-white/15">
+          <div class="flex items-center justify-between mb-3.5">
+            <h4 class="text-sm font-bold text-slate-200 flex items-center gap-2">
+              <i class="fa-solid fa-chart-pie text-orange-400"></i> Kết Quả Xử Lý Từ Server AI:
             </h4>
-            <span id="responseStatusBadge" class="text-xs font-mono px-2 py-0.5 rounded bg-slate-700 text-slate-300">HTTP ---</span>
+            <span id="responseStatusBadge" class="text-xs font-mono-code px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-white/10">HTTP ---</span>
           </div>
 
           <!-- Placeholder when empty -->
-          <div id="emptyResultMsg" class="py-8 text-center text-slate-500 text-xs">
-            Chưa có kết quả. Hãy chụp ảnh và nhấn một trong các nút gọi API ở trên.
+          <div id="emptyResultMsg" class="py-10 text-center text-slate-400 text-xs">
+            <div class="w-12 h-12 rounded-2xl bg-slate-800/60 mx-auto mb-2 flex items-center justify-center text-slate-500">
+              <i class="fa-solid fa-satellite-dish text-lg"></i>
+            </div>
+            Chưa có yêu cầu nào. Hãy bật camera, chụp ảnh và nhấn một trong các nút thao tác ở trên.
           </div>
 
           <!-- Structured Result Content -->
           <div id="structuredResult" class="hidden space-y-4">
             
             <!-- Big Status Banner -->
-            <div id="resultBanner" class="p-4 rounded-xl flex items-center gap-3 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
-              <div id="resultIcon" class="text-3xl"><i class="fa-solid fa-circle-check"></i></div>
+            <div id="resultBanner" class="p-4 rounded-2xl flex items-center gap-3.5 bg-emerald-500/15 border border-emerald-500/30 text-emerald-300">
+              <div id="resultIcon" class="text-3xl text-emerald-400"><i class="fa-solid fa-circle-check"></i></div>
               <div>
                 <h5 id="resultTitle" class="font-bold text-base">XÁC THỰC THÀNH CÔNG</h5>
                 <p id="resultSubtitle" class="text-xs opacity-90">Khuôn mặt trùng khớp với dữ liệu gốc của thí sinh.</p>
@@ -297,30 +424,30 @@
 
             <!-- Score Metric Grid -->
             <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-700/60 text-center">
-                <span class="text-[11px] text-slate-400 block">Độ Khớp (Similarity)</span>
-                <span id="metricSimilarity" class="text-lg font-bold text-blue-400">--%</span>
+              <div class="bg-slate-900/80 p-3.5 rounded-2xl border border-white/10 text-center">
+                <span class="text-[11px] font-medium text-slate-400 block mb-0.5">Độ Khớp (Similarity)</span>
+                <span id="metricSimilarity" class="text-xl font-bold text-orange-400 font-mono-code">--%</span>
               </div>
-              <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-700/60 text-center">
-                <span class="text-[11px] text-slate-400 block">Người Thật (Liveness)</span>
-                <span id="metricLiveness" class="text-lg font-bold text-emerald-400">--</span>
+              <div class="bg-slate-900/80 p-3.5 rounded-2xl border border-white/10 text-center">
+                <span class="text-[11px] font-medium text-slate-400 block mb-0.5">Người Thật (Liveness)</span>
+                <span id="metricLiveness" class="text-xl font-bold text-emerald-400">--</span>
               </div>
-              <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-700/60 text-center col-span-2 sm:col-span-1">
-                <span class="text-[11px] text-slate-400 block">Thời Gian Xử Lý</span>
-                <span id="metricLatency" class="text-lg font-bold text-slate-200">-- ms</span>
+              <div class="bg-slate-900/80 p-3.5 rounded-2xl border border-white/10 text-center col-span-2 sm:col-span-1">
+                <span class="text-[11px] font-medium text-slate-400 block mb-0.5">Độ Trễ Phản Hồi</span>
+                <span id="metricLatency" class="text-xl font-bold text-slate-200 font-mono-code">-- ms</span>
               </div>
             </div>
 
             <!-- Policy Warning Messages -->
-            <div id="policyWarningBox" class="hidden p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-xs text-amber-300">
-              <p class="font-semibold flex items-center gap-1.5"><i class="fa-solid fa-triangle-exclamation"></i> Cảnh báo kiểm định khuôn mặt:</p>
-              <ul id="policyWarningList" class="list-disc pl-5 mt-1 space-y-0.5 text-amber-200/90"></ul>
+            <div id="policyWarningBox" class="hidden p-3.5 bg-amber-500/15 border border-amber-500/30 rounded-2xl text-xs text-amber-300">
+              <p class="font-bold flex items-center gap-1.5"><i class="fa-solid fa-triangle-exclamation"></i> Cảnh báo kiểm định khuôn mặt:</p>
+              <ul id="policyWarningList" class="list-disc pl-5 mt-1.5 space-y-0.5 text-amber-200/90"></ul>
             </div>
 
             <!-- Raw JSON Toggle -->
-            <details class="text-xs text-slate-400 pt-2 border-t border-slate-700">
-              <summary class="cursor-pointer hover:text-slate-200 font-mono py-1">Xem chi tiết phản hồi JSON (Raw)</summary>
-              <pre id="rawJsonResponse" class="bg-slate-950 p-3 rounded-lg overflow-x-auto text-[11px] font-mono text-emerald-400 mt-2 border border-slate-800"></pre>
+            <details class="text-xs text-slate-400 pt-2 border-t border-white/10">
+              <summary class="cursor-pointer hover:text-slate-200 font-mono-code py-1">Xem chi tiết phản hồi JSON (Raw API Response)</summary>
+              <pre id="rawJsonResponse" class="bg-slate-950/90 p-3.5 rounded-xl overflow-x-auto text-[11px] font-mono-code text-emerald-400 mt-2 border border-white/10 shadow-inner"></pre>
             </details>
           </div>
         </div>
@@ -328,6 +455,14 @@
       </div>
     </div>
   </main>
+
+  <!-- Footer -->
+  <footer class="glass-header px-6 py-3 mt-8 border-t border-white/10 text-center text-xs text-slate-400">
+    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
+      <span>© 2026 <strong>FPT University</strong> • eKYC Biometric Research Lab</span>
+      <span class="font-mono-code text-[11px] text-slate-500">ArcFace 512D • MiniFASNet v2 • MediaPipe 478 Mesh</span>
+    </div>
+  </footer>
 
   <script>
     let currentBlob = null;
@@ -348,21 +483,21 @@
     async function pingServer() {
       const serverUrl = document.getElementById('serverUrl').value.replace(/\/$/, "");
       const badge = document.getElementById('serverStatusBadge');
-      badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-blue-400 animate-ping"></span> Đang kết nối...`;
-      badge.className = "flex items-center gap-1.5 px-3 py-1 text-xs rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/30";
+      badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-orange-400 animate-ping"></span> Đang kết nối...`;
+      badge.className = "flex items-center gap-1.5 px-3 py-1 text-xs rounded-xl bg-orange-500/10 text-orange-400 border border-orange-500/30";
 
       try {
         const res = await fetch(`${serverUrl}/`, { method: 'GET' });
         if (res.ok) {
           const data = await res.json();
           badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-400"></span> Online (v${data.version})`;
-          badge.className = "flex items-center gap-1.5 px-3 py-1 text-xs rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/30";
+          badge.className = "flex items-center gap-1.5 px-3 py-1 text-xs rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/30";
         } else {
           throw new Error(`HTTP ${res.status}`);
         }
       } catch (err) {
         badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-rose-400"></span> Lỗi kết nối`;
-        badge.className = "flex items-center gap-1.5 px-3 py-1 text-xs rounded-lg bg-rose-500/10 text-rose-400 border border-rose-500/30";
+        badge.className = "flex items-center gap-1.5 px-3 py-1 text-xs rounded-xl bg-rose-500/10 text-rose-400 border border-rose-500/30";
       }
     }
 
@@ -383,9 +518,9 @@
         placeholder.classList.add('hidden');
         ovalGuide.classList.remove('hidden');
         btnCapture.disabled = false;
-        document.getElementById('btnStartCam').innerHTML = '<i class="fa-solid fa-rotate mr-1"></i> Đổi Cam';
+        document.getElementById('btnStartCam').innerHTML = '<i class="fa-solid fa-rotate mr-1 text-orange-400"></i> Đổi Cam';
       } catch (err) {
-        alert("Không thể mở Webcam: " + err.message + "\nNếu mở qua file:///, hãy mở qua http://localhost:8000/demo để trình duyệt cho phép truy cập camera.");
+        alert("Không thể mở Webcam: " + err.message + "\nNếu mở qua mạng IP, hãy đảm bảo đã bật cờ unsafely-treat-insecure-origin-as-secure trên trình duyệt.");
       }
     }
 
@@ -431,10 +566,10 @@
         const btnEl = document.getElementById(`tabBtn${t.charAt(0).toUpperCase() + t.slice(1)}`);
         if (t === tab) {
           tabEl.classList.remove('hidden');
-          btnEl.className = "px-3.5 py-2.5 font-medium text-xs sm:text-sm text-blue-400 border-b-2 border-blue-500 flex items-center gap-1.5 whitespace-nowrap";
+          btnEl.className = "flex-1 px-3 py-2 font-semibold text-xs sm:text-sm text-orange-400 bg-orange-500/15 rounded-xl border border-orange-500/30 flex items-center justify-center gap-1.5 whitespace-nowrap transition";
         } else {
           tabEl.classList.add('hidden');
-          btnEl.className = "px-3.5 py-2.5 font-medium text-xs sm:text-sm text-slate-400 hover:text-slate-200 flex items-center gap-1.5 whitespace-nowrap";
+          btnEl.className = "flex-1 px-3 py-2 font-medium text-xs sm:text-sm text-slate-400 hover:text-slate-200 rounded-xl flex items-center justify-center gap-1.5 whitespace-nowrap transition";
         }
       });
       if (tab === 'users') loadUsersList();
@@ -448,8 +583,8 @@
       const badge = document.getElementById('responseStatusBadge');
       badge.textContent = `HTTP ${httpStatus}`;
       badge.className = httpStatus === 200 
-        ? "text-xs font-mono px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
-        : "text-xs font-mono px-2 py-0.5 rounded bg-rose-500/20 text-rose-400 border border-rose-500/30";
+        ? "text-xs font-mono-code px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+        : "text-xs font-mono-code px-2.5 py-0.5 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/30";
 
       document.getElementById('metricLatency').textContent = `${latencyMs} ms`;
       document.getElementById('rawJsonResponse').textContent = JSON.stringify(data, null, 2);
@@ -477,52 +612,58 @@
 
       // Check success or match
       if (data.success === true) {
-        banner.className = "p-4 rounded-xl flex items-center gap-3 bg-blue-500/10 border border-blue-500/30 text-blue-400";
+        banner.className = "p-4 rounded-2xl flex items-center gap-3.5 bg-orange-500/15 border border-orange-500/30 text-orange-300";
+        icon.className = "text-3xl text-orange-400";
         icon.innerHTML = '<i class="fa-solid fa-id-card"></i>';
         title.textContent = `ĐĂNG KÝ THÀNH CÔNG: ${data.full_name || data.user_id}`;
-        subtitle.textContent = "Đã mã hóa và lưu vector đặc trưng ArcFace 512D vào CSDL.";
-        document.getElementById('metricSimilarity').textContent = "100% (Mẫu gốc)";
+        subtitle.textContent = "Đã mã hóa và lưu vector đặc trưng ArcFace 512D của sinh viên vào CSDL.";
+        document.getElementById('metricSimilarity').textContent = "100% (Gốc)";
         const livenessScore = data.liveness_score !== undefined ? (data.liveness_score * 100).toFixed(1) + "%" : "Đạt";
         document.getElementById('metricLiveness').textContent = `Thật (${livenessScore}) 🟢`;
       } 
       else if (data.verified === true) {
-        banner.className = "p-4 rounded-xl flex items-center gap-3 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400";
+        banner.className = "p-4 rounded-2xl flex items-center gap-3.5 bg-emerald-500/15 border border-emerald-500/30 text-emerald-300";
+        icon.className = "text-3xl text-emerald-400";
         icon.innerHTML = '<i class="fa-solid fa-circle-check"></i>';
-        title.textContent = "XÁC THỰC HỢP LỆ (CHÍNH CHỦ)";
+        title.textContent = "XÁC THỰC HỢP LỆ (ĐÚNG THÍ SINH)";
         const userName = data.user_info ? data.user_info.full_name : '';
-        subtitle.textContent = `Trùng khớp với thí sinh ${userName}. Tự tin: ${data.confidence_pct || 100}%.`;
+        subtitle.textContent = `Trùng khớp với thí sinh ${userName}. Độ tự tin: ${data.confidence_pct || 100}%.`;
         document.getElementById('metricSimilarity').textContent = `${((data.similarity || 0) * 100).toFixed(1)}%`;
         const livenessScore = data.liveness_score !== undefined ? (data.liveness_score * 100).toFixed(1) + "%" : "Đạt";
         document.getElementById('metricLiveness').textContent = `${data.is_real_person ? "Thật" : "Nghi ngờ"} (${livenessScore}) 🟢`;
       } 
       else if (data.found === true && data.best_match) {
-        banner.className = "p-4 rounded-xl flex items-center gap-3 bg-amber-500/10 border border-amber-500/30 text-amber-400";
+        banner.className = "p-4 rounded-2xl flex items-center gap-3.5 bg-amber-500/15 border border-amber-500/30 text-amber-300";
+        icon.className = "text-3xl text-amber-400";
         icon.innerHTML = '<i class="fa-solid fa-users-viewfinder"></i>';
         title.textContent = `TÌM THẤY: ${data.best_match.full_name} (${data.best_match.user_id})`;
-        subtitle.textContent = `Khớp trong ${data.total_database_users} hồ sơ. Độ tương đồng: ${(data.best_match.similarity * 100).toFixed(1)}%.`;
+        subtitle.textContent = `Trùng khớp trong tổng số ${data.total_database_users} hồ sơ. Độ tương đồng: ${(data.best_match.similarity * 100).toFixed(1)}%.`;
         document.getElementById('metricSimilarity').textContent = `${(data.best_match.similarity * 100).toFixed(1)}%`;
         const livenessScore = data.liveness_score !== undefined ? (data.liveness_score * 100).toFixed(1) + "%" : "Đạt";
         document.getElementById('metricLiveness').textContent = `${data.is_real_person ? "Thật" : "Nghi ngờ"} (${livenessScore}) 🟢`;
       }
       else if (data.found === false && data.top_candidates) {
-        banner.className = "p-4 rounded-xl flex items-center gap-3 bg-slate-700/50 border border-slate-600 text-slate-300";
+        banner.className = "p-4 rounded-2xl flex items-center gap-3.5 bg-slate-800/80 border border-slate-700 text-slate-300";
+        icon.className = "text-3xl text-slate-500";
         icon.innerHTML = '<i class="fa-solid fa-user-xmark"></i>';
         title.textContent = "KHÔNG TÌM THẤY TRONG CSDL";
         subtitle.textContent = data.message || "Người này chưa được đăng ký trong danh sách thí sinh.";
         const topScore = data.top_candidates[0] ? (data.top_candidates[0].similarity * 100).toFixed(1) + "%" : "0%";
         document.getElementById('metricSimilarity').textContent = `Max: ${topScore}`;
         document.getElementById('metricLiveness').textContent = data.liveness_score ? `${(data.liveness_score * 100).toFixed(1)}%` : "N/A";
-      } 
+      }
       else if (data.verified === false) {
-        banner.className = "p-4 rounded-xl flex items-center gap-3 bg-rose-500/10 border border-rose-500/30 text-rose-400";
+        banner.className = "p-4 rounded-2xl flex items-center gap-3.5 bg-rose-500/15 border border-rose-500/30 text-rose-300";
+        icon.className = "text-3xl text-rose-400";
         icon.innerHTML = '<i class="fa-solid fa-circle-xmark"></i>';
         title.textContent = "KHÔNG KHỚP KHUÔN MẶT";
-        subtitle.textContent = data.message || "Khuôn mặt trong ảnh khác với hồ sơ thí sinh này.";
+        subtitle.textContent = data.message || "Khuôn mặt trước camera khác với hồ sơ thí sinh này.";
         document.getElementById('metricSimilarity').textContent = `${((data.similarity || 0) * 100).toFixed(1)}%`;
         document.getElementById('metricLiveness').textContent = data.liveness_score ? `${(data.liveness_score * 100).toFixed(1)}%` : "N/A";
       } 
       else {
-        banner.className = "p-4 rounded-xl flex items-center gap-3 bg-rose-500/10 border border-rose-500/30 text-rose-400";
+        banner.className = "p-4 rounded-2xl flex items-center gap-3.5 bg-rose-500/15 border border-rose-500/30 text-rose-300";
+        icon.className = "text-3xl text-rose-400";
         icon.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i>';
         title.textContent = "XỬ LÝ THẤT BẠI";
         subtitle.textContent = data.message || data.detail || data.error || "Không nhận diện được khuôn mặt hợp lệ.";
@@ -543,7 +684,7 @@
       const requireLiveness = document.getElementById('regRequireLiveness').checked;
 
       if (!userId || !fullName) {
-        alert("Vui lòng nhập Mã Thí Sinh và Họ Tên!");
+        alert("Vui lòng nhập Mã Sinh Viên và Họ Tên!");
         return;
       }
 
@@ -566,7 +707,7 @@
       }
     }
 
-    // Call API Verify
+    // Call API Verify 1:1
     async function submitVerify() {
       if (!currentBlob) {
         alert("Vui lòng chụp ảnh từ webcam hoặc chọn file ảnh trước!");
@@ -576,7 +717,7 @@
       const threshold = document.getElementById('verThreshold').value;
 
       if (!userId) {
-        alert("Vui lòng nhập Mã Thí Sinh cần xác thực!");
+        alert("Vui lòng nhập Mã Sinh Viên cần xác thực!");
         return;
       }
 
@@ -652,34 +793,41 @@
     async function loadUsersList() {
       const serverUrl = document.getElementById('serverUrl').value.replace(/\/$/, "");
       const container = document.getElementById('usersListContainer');
-      container.innerHTML = '<p class="text-xs text-blue-400">Đang tải...</p>';
+      container.innerHTML = '<p class="text-xs text-orange-400 text-center py-4">Đang tải danh sách thí sinh...</p>';
 
       try {
         const res = await fetch(`${serverUrl}/api/v1/users`);
         const data = await res.json();
         if (data.users.length === 0) {
-          container.innerHTML = '<p class="text-xs text-slate-500 italic">Chưa có thí sinh nào đăng ký trong CSDL.</p>';
+          container.innerHTML = '<p class="text-xs text-slate-500 italic text-center py-4">Chưa có thí sinh nào đăng ký trong CSDL.</p>';
           return;
         }
 
         container.innerHTML = '';
         data.users.forEach(u => {
           const div = document.createElement('div');
-          div.className = "flex items-center justify-between p-2.5 bg-slate-900/80 rounded-xl border border-slate-700/60 text-xs";
+          div.className = "flex items-center justify-between p-3 bg-slate-900/80 rounded-2xl border border-white/10 text-xs shadow-sm hover:border-orange-500/30 transition";
           div.innerHTML = `
-            <div>
-              <span class="font-bold text-white font-mono mr-2">${u.user_id}</span>
-              <span class="text-slate-300">${u.full_name || u.name}</span>
-              <span class="text-slate-500 text-[10px] block">${u.created_at || ''}</span>
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded-xl bg-orange-500/10 flex items-center justify-center text-orange-400 font-bold border border-orange-500/20 font-mono-code">
+                <i class="fa-solid fa-user-graduate"></i>
+              </div>
+              <div>
+                <div class="flex items-center gap-2">
+                  <span class="font-bold text-white font-mono-code">${u.user_id}</span>
+                  <span class="text-slate-200 font-medium">${u.full_name || u.name}</span>
+                </div>
+                <span class="text-slate-400 text-[10px] block mt-0.5">${u.created_at || ''}</span>
+              </div>
             </div>
-            <button onclick="deleteUser('${u.user_id}')" class="text-rose-400 hover:text-rose-300 px-2 py-1 bg-rose-500/10 rounded">
-              <i class="fa-solid fa-trash"></i>
+            <button onclick="deleteUser('${u.user_id}')" class="text-rose-400 hover:text-rose-300 px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 rounded-xl transition border border-rose-500/20 flex items-center gap-1.5" title="Xóa thí sinh">
+              <i class="fa-solid fa-trash text-xs"></i> Xóa
             </button>
           `;
           container.appendChild(div);
         });
       } catch (err) {
-        container.innerHTML = `<p class="text-xs text-rose-400">Không tải được: ${err.message}</p>`;
+        container.innerHTML = `<p class="text-xs text-rose-400 text-center py-4">Không tải được: ${err.message}</p>`;
       }
     }
 

@@ -14,6 +14,7 @@ import numpy as np
 from fastapi import FastAPI, File, Form, UploadFile, HTTPException, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response, FileResponse, HTMLResponse
+from fastapi.staticfiles import StaticFiles
 
 # Add current folder to sys.path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -22,27 +23,43 @@ from core.face_engine import FaceEngine
 from core.database import init_db, save_user, get_user, list_users, delete_user, count_users, get_all_embeddings, get_db_dump, restore_db_dump
 
 MODELS_DIR = os.environ.get("MODELS_DIR", os.path.join(os.path.dirname(os.path.abspath(__file__)), "models"))
+STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
 
 # Global Engine Instance
 engine: Optional[FaceEngine] = None
+
+STARTUP_BANNER = r"""
+================================================================================
+  ███████╗██████╗ ████████╗    ███████╗██╗  ██╗██╗   ██╗ ██████╗
+  ██╔════╝██╔══██╗╚══██╔══╝    ██╔════╝██║ ██╔╝╚██╗ ██╔╝██╔════╝
+  █████╗  ██████╔╝   ██║       █████╗  █████╔╝  ╚████╔╝ ██║     
+  ██╔══╝  ██╔═══╝    ██║       ██╔══╝  ██╔═██╗   ╚██╔╝  ██║     
+  ██║     ██║        ██║       ██║     ██║  ██╗   ██║   ╚██████╗
+  ╚═╝     ╚═╝        ╚═╝       ╚═╝     ╚═╝  ╚═╝   ╚═╝    ╚═════╝
+             FPT UNIVERSITY - BIOMETRIC eKYC LAB SERVER
+    Core AI: ArcFace 512D | MiniFASNet v2 Anti-Spoofing | MediaPipe
+    Dedicated Exam Attendance & Face Verification System
+================================================================================
+"""
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global engine
+    print(STARTUP_BANNER)
     print("[Startup] Initializing Database...")
     init_db()
     print(f"[Startup] Loading AI models from: {MODELS_DIR}...")
     engine = FaceEngine(models_dir=MODELS_DIR)
-    print("[Startup] eKYC API is ready to serve requests!")
+    print("[Startup] FPT eKYC Lab Server is online & ready to serve requests!")
     yield
     print("[Shutdown] Cleaning up resources...")
 
 
 app = FastAPI(
-    title="eKYC & Biometric Face Recognition API",
-    description="High-performance, lightweight REST API for Face Registration, Liveness Detection (MiniFASNet), and Face Verification (ArcFace 512D). Hosted on Hugging Face Spaces.",
-    version="2.0.0",
+    title="FPT University - eKYC & Biometric Face Verification API",
+    description="Dedicated Biometric Authentication & Liveness Detection Server for FPT University Exam System.",
+    version="2.1.0",
     lifespan=lifespan,
 )
 
@@ -54,6 +71,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Mount static files directory
+if os.path.exists(STATIC_DIR):
+    app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 
 def read_image_from_upload(upload_file: UploadFile) -> np.ndarray:
@@ -77,8 +98,9 @@ async def root():
     """Trang chủ và kiểm tra trạng thái sức khỏe API."""
     return {
         "status": "online",
-        "service": "eKYC & Face Biometric API",
-        "version": "2.0.0",
+        "service": "FPT University eKYC & Biometric Face API",
+        "institution": "FPT University",
+        "version": "2.1.0",
         "registered_users": count_users(),
         "models": {
             "arcface": "w600k_r50.onnx (512D)",
